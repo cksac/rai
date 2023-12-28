@@ -1,8 +1,13 @@
 [package]
 name = "rai-nn"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["cksac <cs.cksac@gmail.com>"]
+description = "ML framework with Ergonomic APIs in Rust"
+keywords = ["deep-learning", "machine-learning", "tensor"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+repository = "https://github.com/cksac/rai"
+homepage = "https://github.com/cksac/rai"
 
 [dependencies]

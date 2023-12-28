@@ -4,3 +4,11 @@ members = [
     "rai-core",
     "rai-nn"
 ]
+
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
