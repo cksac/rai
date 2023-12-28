@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "rai",
+    "rai-core",
+    "rai-nn"
+]
