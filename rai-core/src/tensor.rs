@@ -228,7 +228,7 @@ impl Tensor {
             .or_insert_with(|| self.ones_like())
             .clone();
         let primals = &*self.inputs();
-        if primals.len() == 0 {
+        if primals.is_empty() {
             return;
         }
 
@@ -302,7 +302,7 @@ impl Hash for Tensor {
 
 impl PartialOrd for Tensor {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.id.partial_cmp(&other.0.id)
+        Some(self.0.id.cmp(&other.0.id))
     }
 }
 
@@ -314,7 +314,7 @@ impl Ord for Tensor {
 
 impl PartialEq for Tensor {
     fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
+        self.0.id == other.0.id
     }
 }
 

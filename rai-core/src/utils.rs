@@ -82,7 +82,7 @@ impl<const N: usize> TensorIter for &[&[Tensor; N]] {
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
     let mut tape = Vec::new();
     for output in args.tensor_iter() {
-        depth_first_traversal(&mut tape, output.as_ref());
+        depth_first_traversal(&mut tape, output);
     }
 
     let nodes: HashSet<String, RandomState> = HashSet::from_iter(tape.iter().map(|tensor| {

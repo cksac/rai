@@ -261,10 +261,12 @@ pub fn eval<T: TensorIter>(args: T) {
             let backend = t.backend();
             let primitive = t.primitive();
             let inputs = &*t.inputs();
-            let rule = eval_rule(backend, primitive).expect(&format!(
-                "no eval rule for backend: {:?}, primitive: {:?}",
-                backend, primitive
-            ));
+            let rule = eval_rule(backend, primitive).unwrap_or_else(|| {
+                panic!(
+                    "no eval rule for backend: {:?}, primitive: {:?}",
+                    backend, primitive
+                )
+            });
             rule.eval(backend, primitive, inputs, &t);
         }
         t.detach();

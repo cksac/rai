@@ -1,5 +1,7 @@
 {
     "cSpell.words": [
-        "matmul"
+        "matmul",
+        "primals",
+        "vjps"
     ]
 }

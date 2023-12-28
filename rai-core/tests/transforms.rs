@@ -36,13 +36,9 @@ fn test_vjp() {
     let t2 = Tensor::full(2.0, [2, 3], DType::F32, backend);
     let vjps_t2 = vjp_fn([t2]);
 
-    // eval all in one go, otherwise, some tensor will be detached and cause error in backward
-    eval((&outputs, [&vjps_t1, &vjps_t2]));
-
     println!("{}", outputs[0]);
     println!("{}", vjps_t1[0]);
     println!("{}", vjps_t1[1]);
-
     println!("{}", vjps_t2[0]);
     println!("{}", vjps_t2[1]);
 }
