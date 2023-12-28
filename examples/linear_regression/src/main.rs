@@ -4,7 +4,7 @@ use std::time::Instant;
 fn main() {
     let num_features = 100;
     let num_samples = 1000;
-    let num_iters = 1000;
+    let num_iters = 10000;
     let learning_rate = 0.01f32;
 
     let backend = &Cpu::new();
