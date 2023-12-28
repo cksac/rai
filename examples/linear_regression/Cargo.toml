@@ -1,0 +1,11 @@
+[package]
+authors = ["cksac <cs.cksac@gmail.com>"]
+name = "linear_regression"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rai = { path = "../../rai" }

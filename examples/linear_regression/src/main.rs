@@ -1,8 +1,3 @@
-# RAI
-ML framework with Ergonomic APIs in Rust 
-
-# Examples
-```rust
 use rai::{backend::Cpu, eval, grad, DType, Tensor};
 use std::time::Instant;
 
@@ -50,4 +45,3 @@ fn main() {
         loss, elapsed, throughput
     );
 }
-```
