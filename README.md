@@ -7,6 +7,9 @@
 ML framework with Ergonomic APIs in Rust. Lazy computation and composable transformations.
 
 ## Installation
+```sh
+cargo add rai
+```
 
 ## Examples
 ### transformations (eval, grad, jvp, value_and_grad, vjp)
