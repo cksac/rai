@@ -342,8 +342,7 @@ impl Debug for Tensor {
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if !self.is_evalualted() {
-            // TODO: call with retain_graph = true?
-            eval(self);
+            eval((self, true));
         }
         let data = self.0.data.borrow();
         f.write_fmt(format_args!("{}", data.as_deref().unwrap()))

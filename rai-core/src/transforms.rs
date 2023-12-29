@@ -249,10 +249,37 @@ where
     ValueAndGradFunc::new(func)
 }
 
-// TODO: args with retain_graph?
-pub fn eval<T: TensorIter>(args: T) {
+pub trait EvalArgs {
+    fn outputs(&self) -> impl Iterator<Item = &Tensor>;
+    fn retain_graph(&self) -> bool {
+        false
+    }
+}
+impl<T> EvalArgs for T
+where
+    T: TensorIter,
+{
+    fn outputs(&self) -> impl Iterator<Item = &Tensor> {
+        self.tensor_iter()
+    }
+}
+
+impl<T> EvalArgs for (T, bool)
+where
+    T: TensorIter,
+{
+    fn outputs(&self) -> impl Iterator<Item = &Tensor> {
+        self.0.tensor_iter()
+    }
+
+    fn retain_graph(&self) -> bool {
+        self.1
+    }
+}
+
+pub fn eval<T: EvalArgs>(args: T) {
     let mut tape = BTreeSet::new();
-    for output in args.tensor_iter() {
+    for output in args.outputs() {
         topological_sort(&mut tape, output);
     }
     for t in tape.into_iter() {
@@ -270,7 +297,9 @@ pub fn eval<T: TensorIter>(args: T) {
             });
             rule.eval(backend, primitive, inputs, &t);
         }
-        t.detach();
+        if !args.retain_graph() {
+            t.detach();
+        }
     }
 }
 
