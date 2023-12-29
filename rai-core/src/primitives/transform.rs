@@ -50,7 +50,7 @@ impl Primitive for Broadcast {
 pub struct Reshape;
 impl Primitive for Reshape {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {

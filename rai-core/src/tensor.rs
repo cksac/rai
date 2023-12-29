@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::sync::atomic;
 use std::vec;
 
-use crate::ops::{ReduceSumArgs, ArangeArgs};
+use crate::ops::{ArangeArgs, ReduceSumArgs};
 use crate::primitives::Full;
 use crate::{eval, utils};
 use crate::{ops, Backend, DType, Primitive, Shape};
@@ -138,10 +138,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn arange<T: ArangeArgs>(
-        args: T,
-        backend: impl Into<Box<dyn Backend>> + Debug,
-    ) -> Tensor {
+    pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
         ops::arange(args, backend)
     }
 

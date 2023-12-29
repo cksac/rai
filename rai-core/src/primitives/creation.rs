@@ -14,7 +14,7 @@ impl Full {
 
 impl Primitive for Full {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn dot_label(&self) -> String {
@@ -41,7 +41,7 @@ pub struct Normal;
 
 impl Primitive for Normal {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {

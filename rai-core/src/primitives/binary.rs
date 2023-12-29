@@ -7,7 +7,7 @@ pub struct Add;
 
 impl Primitive for Add {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -32,7 +32,7 @@ pub struct Sub;
 
 impl Primitive for Sub {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -57,7 +57,7 @@ pub struct Mul;
 
 impl Primitive for Mul {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -86,7 +86,7 @@ pub struct Div;
 
 impl Primitive for Div {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -115,7 +115,7 @@ pub struct MatMul;
 
 impl Primitive for MatMul {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {

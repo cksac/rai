@@ -122,7 +122,6 @@ impl Primitive for Sqrt {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Sign;
 
@@ -146,7 +145,6 @@ impl Primitive for Sign {
         vec![cotangent_x]
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Abs;

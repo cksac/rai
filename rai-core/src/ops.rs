@@ -3,8 +3,8 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Add, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Sin,
-        Sqrt, Square, Sub, Transpose, Sign, Abs, Arange,
+        Abs, Add, Arange, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum,
+        Reshape, Sign, Sin, Sqrt, Square, Sub, Transpose,
     },
     Backend, DType, Shape, Tensor,
 };
@@ -133,7 +133,6 @@ impl ArangeArgs for (f64, f64) {
     }
 }
 
-
 impl ArangeArgs for (f64, f64, DType) {
     fn start(&self) -> f64 {
         self.0
@@ -228,7 +227,7 @@ impl ArangeArgs for (f32, f32, DType) {
     }
 
     fn dtype(&self) -> DType {
-       self.2
+        self.2
     }
 }
 
@@ -269,19 +268,22 @@ impl ArangeArgs for (f32, f32, f32, DType) {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn arange<T: ArangeArgs>(
-    args: T,
-    backend: impl Into<Box<dyn Backend>> + Debug,
-) -> Tensor {
+pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
     let start = args.start();
     let stop = args.stop();
-    let step = args.step();    
+    let step = args.step();
     let dtype = args.dtype();
 
-    let size = std::cmp::max(((stop - start) / step).ceil() as usize,0);
+    let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
     let backend = backend.into();
     let inputs = vec![];
-    Tensor::new(backend, dtype, [size], Arange::new(start, stop, step), inputs)
+    Tensor::new(
+        backend,
+        dtype,
+        [size],
+        Arange::new(start, stop, step),
+        inputs,
+    )
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
