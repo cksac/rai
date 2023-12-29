@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "Arange",
+        "dtype",
         "matmul",
         "primals",
         "vjps"

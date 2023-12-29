@@ -46,7 +46,7 @@ macro_rules! impl_std_ops {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs = Tensor::full(rhs.into_f64(), vec![], self.dtype(), self.backend());
+                let rhs = self.full_like(rhs.into_f64());
                 $func(&self, &rhs)
             }
         }
@@ -58,8 +58,26 @@ macro_rules! impl_std_ops {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs = Tensor::full(rhs.into_f64(), vec![], self.dtype(), self.backend());
+                let rhs = self.full_like(rhs.into_f64());
                 $func(self, &rhs)
+            }
+        }
+
+        impl std::ops::$op<Tensor> for f64 {
+            type Output = Tensor;
+
+            fn $func(self, rhs: Tensor) -> Self::Output {
+                let lhs = rhs.full_like(self);
+                $func(&lhs, &rhs)
+            }
+        }
+
+        impl std::ops::$op<Tensor> for f32 {
+            type Output = Tensor;
+
+            fn $func(self, rhs: Tensor) -> Self::Output {
+                let lhs = rhs.full_like(self as f64);
+                $func(&lhs, &rhs)
             }
         }
     };

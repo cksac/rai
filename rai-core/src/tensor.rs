@@ -5,10 +5,8 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::atomic;
-use std::vec;
 
 use crate::ops::{ArangeArgs, ReduceSumArgs};
-use crate::primitives::Full;
 use crate::{eval, utils};
 use crate::{ops, Backend, DType, Primitive, Shape};
 
@@ -108,24 +106,19 @@ impl Tensor {
         ops::full(0.0, shape, dtype, backend)
     }
 
-    pub fn zeros_like(&self) -> Tensor {
-        Tensor::new(
-            self.backend(),
-            self.dtype(),
-            self.shape(),
-            Full::new(0.0f64),
-            vec![],
-        )
+    #[inline]
+    pub fn full_like(&self, val: f64) -> Tensor {
+        ops::full(val, self.shape(), self.dtype(), self.backend())
     }
 
+    #[inline]
+    pub fn zeros_like(&self) -> Tensor {
+        ops::full(0.0, self.shape(), self.dtype(), self.backend())
+    }
+
+    #[inline]
     pub fn ones_like(&self) -> Tensor {
-        Tensor::new(
-            self.backend(),
-            self.dtype(),
-            self.shape(),
-            Full::new(1.0f64),
-            vec![],
-        )
+        ops::full(1.0, self.shape(), self.dtype(), self.backend())
     }
 
     #[inline]
