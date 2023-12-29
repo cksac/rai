@@ -198,6 +198,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn sqrt(&self) -> Tensor {
+        ops::sqrt(self)
+    }
+
+    #[inline]
     pub fn sum(&self) -> Tensor {
         let axes = (0..self.ndim()).collect::<Vec<_>>();
         ops::reduce_sum(self, axes)

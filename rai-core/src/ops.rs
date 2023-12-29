@@ -4,7 +4,7 @@ use tracing::Level;
 use crate::{
     primitives::{
         Add, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Sin,
-        Square, Sub, Transpose,
+        Sqrt, Square, Sub, Transpose,
     },
     Backend, DType, Shape, Tensor,
 };
@@ -309,4 +309,12 @@ pub fn reduce_sum<T: Into<ReduceSumArgs> + Debug>(x: &Tensor, args: T) -> Tensor
 
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, ReduceSum::new(args.axes), inputs)
+}
+
+pub fn sqrt(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Sqrt, inputs)
 }

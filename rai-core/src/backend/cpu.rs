@@ -239,6 +239,16 @@ impl Eval<Cpu, primitives::Square> for Dispatch<Cpu, primitives::Square> {
     }
 }
 
+impl Eval<Cpu, primitives::Sqrt> for Dispatch<Cpu, primitives::Sqrt> {
+    fn eval(&self, _: &Cpu, _: &primitives::Sqrt, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.sqrt().unwrap();
+        output.set_data(t)
+    }
+}
+
 impl Eval<Cpu, primitives::Transpose> for Dispatch<Cpu, primitives::Transpose> {
     fn eval(&self, _: &Cpu, _: &primitives::Transpose, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
