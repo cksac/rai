@@ -4,7 +4,7 @@ use tracing::Level;
 use crate::{
     primitives::{
         Add, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Sin,
-        Sqrt, Square, Sub, Transpose,
+        Sqrt, Square, Sub, Transpose, Sign, Abs,
     },
     Backend, DType, Shape, Tensor,
 };
@@ -327,4 +327,20 @@ pub fn sqrt(x: &Tensor) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, Sqrt, inputs)
+}
+
+pub fn sign(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Sign, inputs)
+}
+
+pub fn abs(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Abs, inputs)
 }

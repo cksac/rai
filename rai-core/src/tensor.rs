@@ -203,6 +203,16 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn sign(&self) -> Tensor {
+        ops::sign(self)
+    }
+
+    #[inline]
+    pub fn abs(&self) -> Tensor {
+        ops::abs(self)
+    }
+
+    #[inline]
     pub fn sum(&self) -> Tensor {
         let axes = (0..self.ndim()).collect::<Vec<_>>();
         ops::reduce_sum(self, axes)

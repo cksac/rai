@@ -278,3 +278,26 @@ impl Eval<Cpu, primitives::Broadcast> for Dispatch<Cpu, primitives::Broadcast> {
         output.set_data(t)
     }
 }
+
+
+impl Eval<Cpu, primitives::Sign> for Dispatch<Cpu, primitives::Sign> {
+    fn eval(&self, _: &Cpu, _: &primitives::Sign, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let zero = t.zeros_like().unwrap();
+        let t = (t.ge(&zero).unwrap() -  t.le(&zero).unwrap()).unwrap();
+        output.set_data(t)
+    }
+}
+
+
+impl Eval<Cpu, primitives::Abs> for Dispatch<Cpu, primitives::Abs> {
+    fn eval(&self, _: &Cpu, _: &primitives::Abs, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.abs().unwrap();
+        output.set_data(t)
+    }
+}
