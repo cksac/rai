@@ -1,8 +1,11 @@
-use std::collections::{hash_map::RandomState, HashSet};
+use std::{
+    collections::{hash_map::RandomState, HashSet},
+    fmt::Debug,
+};
 
 use crate::Tensor;
 
-pub trait TensorIter {
+pub trait TensorIter: Debug {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor>;
 }
 

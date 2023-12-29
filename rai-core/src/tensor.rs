@@ -209,7 +209,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn reduce_sum<T: Into<ReduceSumArgs> + Debug>(&self, args: T) -> Tensor {
+    pub fn reduce_sum<T: ReduceSumArgs>(&self, args: T) -> Tensor {
         ops::reduce_sum(self, args)
     }
 

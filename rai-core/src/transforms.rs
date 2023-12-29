@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeSet, HashMap},
+    fmt::Debug,
     mem::MaybeUninit,
 };
 use tracing::Level;
@@ -249,7 +250,7 @@ where
     ValueAndGradFunc::new(func)
 }
 
-pub trait EvalArgs {
+pub trait EvalArgs: Debug {
     fn outputs(&self) -> impl Iterator<Item = &Tensor>;
     fn retain_graph(&self) -> bool {
         false

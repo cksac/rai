@@ -247,68 +247,78 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct ReduceSumArgs {
-    pub axes: Vec<usize>,
-    pub keep_dim: bool,
-}
-
 pub trait Axes {
+    fn axes(&self) -> &[usize];
     fn to_vec(&self) -> Vec<usize>;
 }
+
 impl Axes for Vec<usize> {
+    fn axes(&self) -> &[usize] {
+        self.as_slice()
+    }
+
     fn to_vec(&self) -> Vec<usize> {
         self.clone()
     }
 }
+
 impl Axes for &Vec<usize> {
+    fn axes(&self) -> &[usize] {
+        self.as_slice()
+    }
+
     fn to_vec(&self) -> Vec<usize> {
         (*self).clone()
     }
 }
 
-impl<T> From<T> for ReduceSumArgs
-where
-    T: Axes,
-{
-    fn from(v: T) -> Self {
-        ReduceSumArgs {
-            axes: v.to_vec(),
-            ..Default::default()
-        }
+pub trait ReduceSumArgs: Debug {
+    fn axes(&self) -> &[usize];
+    fn keep_dim(&self) -> bool {
+        false
     }
 }
 
-impl<T> From<(T, bool)> for ReduceSumArgs
+impl<T> ReduceSumArgs for T
 where
-    T: Axes,
+    T: Axes + Debug,
 {
-    fn from(v: (T, bool)) -> Self {
-        ReduceSumArgs {
-            axes: v.0.to_vec(),
-            keep_dim: v.1,
-        }
+    fn axes(&self) -> &[usize] {
+        Axes::axes(self)
+    }
+}
+
+impl<T> ReduceSumArgs for (T, bool)
+where
+    T: Axes + Debug,
+{
+    fn axes(&self) -> &[usize] {
+        self.0.axes()
+    }
+
+    fn keep_dim(&self) -> bool {
+        self.1
     }
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn reduce_sum<T: Into<ReduceSumArgs> + Debug>(x: &Tensor, args: T) -> Tensor {
+pub fn reduce_sum<T: ReduceSumArgs>(x: &Tensor, args: T) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
 
-    let args = args.into();
+    let axes = args.axes();
     // TODO: handle keep_dim
     let shape: Vec<usize> = x
         .shape()
         .dims()
         .iter()
         .enumerate()
-        .filter(|(i, _)| !args.axes.contains(i))
+        .filter(|(i, _)| !axes.contains(i))
         .map(|(_, v)| *v)
         .collect();
 
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, ReduceSum::new(args.axes), inputs)
+    Tensor::new(backend, dtype, shape, ReduceSum::new(axes), inputs)
 }
 
 pub fn sqrt(x: &Tensor) -> Tensor {
