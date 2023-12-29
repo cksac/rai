@@ -56,8 +56,8 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn backend(&self) -> &Box<dyn Backend> {
-        &self.0.backend
+    pub fn backend(&self) -> &dyn Backend {
+        self.0.backend.as_ref()
     }
 
     #[inline]
@@ -71,8 +71,8 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn primitive(&self) -> &Box<dyn Primitive> {
-        &self.0.primitive
+    pub fn primitive(&self) -> &dyn Primitive {
+        self.0.primitive.as_ref()
     }
 
     #[inline]
@@ -110,7 +110,7 @@ impl Tensor {
 
     pub fn zeros_like(&self) -> Tensor {
         Tensor::new(
-            self.backend().clone(),
+            self.backend(),
             self.dtype(),
             self.shape(),
             Full::new(0.0f64),
@@ -120,7 +120,7 @@ impl Tensor {
 
     pub fn ones_like(&self) -> Tensor {
         Tensor::new(
-            self.backend().clone(),
+            self.backend(),
             self.dtype(),
             self.shape(),
             Full::new(1.0f64),

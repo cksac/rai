@@ -2,7 +2,6 @@ use std::{
     collections::{BTreeSet, HashMap},
     mem::MaybeUninit,
 };
-
 use tracing::Level;
 
 use crate::{dispatch::eval_rule, utils::TensorIter, Tensor};
@@ -258,8 +257,10 @@ pub fn eval<T: TensorIter>(args: T) {
     }
     for t in tape.into_iter() {
         {
-            let backend = t.backend().as_ref();
-            let primitive = t.primitive().as_ref();
+            let backend = t.backend().clone_boxed();
+            let backend = backend.as_ref();
+            let primitive = t.primitive().clone_boxed();
+            let primitive = primitive.as_ref();
             let inputs = &*t.inputs();
             let rule = eval_rule(backend, primitive).unwrap_or_else(|| {
                 panic!(

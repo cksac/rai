@@ -33,6 +33,10 @@ impl TensorLike for candle_core::Tensor {
 }
 
 impl Backend for Cpu {
+    fn clone_boxed(&self) -> Box<dyn Backend> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -54,6 +58,16 @@ impl From<DType> for candle_core::DType {
 
 impl From<&Box<dyn Backend>> for candle_core::Device {
     fn from(val: &Box<dyn Backend>) -> Self {
+        let d = val.as_any();
+        if d.downcast_ref::<backend::Cpu>().is_some() {
+            return candle_core::Device::Cpu;
+        }
+        panic!("unsupported backend: {:?}", val);
+    }
+}
+
+impl From<&dyn Backend> for candle_core::Device {
+    fn from(val: &dyn Backend) -> Self {
         let d = val.as_any();
         if d.downcast_ref::<backend::Cpu>().is_some() {
             return candle_core::Device::Cpu;

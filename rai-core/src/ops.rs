@@ -46,8 +46,7 @@ macro_rules! impl_std_ops {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs =
-                    Tensor::full(rhs.into_f64(), vec![], self.dtype(), self.backend().clone());
+                let rhs = Tensor::full(rhs.into_f64(), vec![], self.dtype(), self.backend());
                 $func(&self, &rhs)
             }
         }
@@ -59,8 +58,7 @@ macro_rules! impl_std_ops {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs =
-                    Tensor::full(rhs.into_f64(), vec![], self.dtype(), self.backend().clone());
+                let rhs = Tensor::full(rhs.into_f64(), vec![], self.dtype(), self.backend());
                 $func(self, &rhs)
             }
         }
@@ -87,8 +85,7 @@ pub fn normal(
 ) -> Tensor {
     let backend = backend.into();
     let inputs = vec![];
-    let premitive = Normal;
-    Tensor::new(backend, dtype, shape, premitive, inputs)
+    Tensor::new(backend, dtype, shape, Normal, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

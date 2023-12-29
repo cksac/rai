@@ -1,10 +1,10 @@
 use crate::{Shape, Tensor};
-use dyn_clone::DynClone;
 use std::any::Any;
 use std::fmt::Debug;
 use std::vec;
 
-pub trait Primitive: Debug + DynClone {
+pub trait Primitive: Debug {
+    fn clone_boxed(&self) -> Box<dyn Primitive>;
     fn dot_label(&self) -> String {
         format!("{:?}", self)
     }
@@ -13,20 +13,24 @@ pub trait Primitive: Debug + DynClone {
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor>;
 }
 
-dyn_clone::clone_trait_object!(Primitive);
-
-impl From<&Box<dyn Primitive>> for Box<dyn Primitive> {
-    fn from(value: &Box<dyn Primitive>) -> Self {
-        value.clone()
+impl<T> From<T> for Box<dyn Primitive>
+where
+    T: Clone + Primitive + 'static,
+{
+    fn from(t: T) -> Self {
+        Box::new(t.clone())
     }
 }
 
-impl<T> From<T> for Box<dyn Primitive>
-where
-    T: Primitive + 'static,
-{
-    fn from(t: T) -> Self {
-        Box::new(t)
+impl Clone for Box<dyn Primitive> {
+    fn clone(&self) -> Self {
+        self.clone_boxed()
+    }
+}
+
+impl From<&dyn Primitive> for Box<dyn Primitive> {
+    fn from(t: &dyn Primitive) -> Self {
+        t.clone_boxed()
     }
 }
 
@@ -41,6 +45,10 @@ impl Full {
 }
 
 impl Primitive for Full {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn dot_label(&self) -> String {
         format!("Full({})", self.val)
     }
@@ -64,6 +72,10 @@ impl Primitive for Full {
 pub struct Normal;
 
 impl Primitive for Normal {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -92,6 +104,10 @@ impl Broadcast {
 }
 
 impl Primitive for Broadcast {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn dot_label(&self) -> String {
         format!("Broadcast({:?})", self.shape)
     }
@@ -122,6 +138,10 @@ impl Primitive for Broadcast {
 #[derive(Debug, Clone)]
 pub struct Reshape;
 impl Primitive for Reshape {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -141,6 +161,10 @@ impl Primitive for Reshape {
 pub struct Add;
 
 impl Primitive for Add {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -162,6 +186,10 @@ impl Primitive for Add {
 pub struct Sub;
 
 impl Primitive for Sub {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -183,6 +211,10 @@ impl Primitive for Sub {
 pub struct Mul;
 
 impl Primitive for Mul {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -208,6 +240,10 @@ impl Primitive for Mul {
 pub struct Div;
 
 impl Primitive for Div {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -233,6 +269,10 @@ impl Primitive for Div {
 pub struct Negative;
 
 impl Primitive for Negative {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -251,6 +291,10 @@ impl Primitive for Negative {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Square;
 impl Primitive for Square {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -271,6 +315,10 @@ impl Primitive for Square {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Sin;
 impl Primitive for Sin {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -291,6 +339,10 @@ impl Primitive for Sin {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Cos;
 impl Primitive for Cos {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -319,6 +371,10 @@ impl ReduceSum {
 }
 
 impl Primitive for ReduceSum {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn dot_label(&self) -> String {
         format!("ReduceSum({:?})", &self.axes)
     }
@@ -347,6 +403,10 @@ impl Primitive for ReduceSum {
 pub struct MatMul;
 
 impl Primitive for MatMul {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -381,6 +441,10 @@ impl Transpose {
 }
 
 impl Primitive for Transpose {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

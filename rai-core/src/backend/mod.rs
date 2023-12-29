@@ -1,20 +1,12 @@
-use dyn_clone::DynClone;
 use std::{
     any::{Any, TypeId},
     fmt::Debug,
 };
 
-pub trait Backend: Debug + DynClone {
+pub trait Backend: Debug {
+    fn clone_boxed(&self) -> Box<dyn Backend>;
     fn data_type_id(&self) -> TypeId;
     fn as_any(&self) -> &dyn Any;
-}
-
-dyn_clone::clone_trait_object!(Backend);
-
-impl From<&Box<dyn Backend>> for Box<dyn Backend> {
-    fn from(value: &Box<dyn Backend>) -> Self {
-        value.clone()
-    }
 }
 
 impl<T> From<&T> for Box<dyn Backend>
@@ -23,6 +15,18 @@ where
 {
     fn from(t: &T) -> Self {
         Box::new(t.clone())
+    }
+}
+
+impl Clone for Box<dyn Backend> {
+    fn clone(&self) -> Self {
+        self.clone_boxed()
+    }
+}
+
+impl From<&dyn Backend> for Box<dyn Backend> {
+    fn from(t: &dyn Backend) -> Self {
+        t.clone_boxed()
     }
 }
 
