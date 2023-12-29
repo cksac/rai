@@ -1,9 +1,36 @@
 # RAI
+
+![Rust](https://github.com/cksac/rai/workflows/Rust/badge.svg)
+[![Docs Status](https://docs.rs/rai/badge.svg)](https://docs.rs/rai)
+[![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
+
 ML framework with Ergonomic APIs in Rust. Lazy computation and composable transformations.
 
+## Installation
 
-# Examples
-## linear regression
+## Examples
+### transformations (eval, grad, jvp, value_and_grad, vjp)
+```rust
+use rai::backend::Cpu;
+use rai::{grad, DType, Tensor};
+
+fn f(x: &Tensor) -> Tensor {
+    x.sin()
+}
+
+fn main() {
+    let grad_fn = grad(grad(f));
+
+    let backend = &Cpu::new();
+    let x = Tensor::ones([1], DType::F32, backend);
+    let grads = grad_fn(&[x]);
+
+    println!("{}", grads[0].dot_graph());
+    println!("{}", grads[0]);
+}
+```
+
+### linear regression
 `cargo run --bin linear_regression --release`
 ```rust
 use rai::{backend::Cpu, eval, grad, DType, Tensor};
