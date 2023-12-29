@@ -64,23 +64,28 @@ type ErasedEval = Box<dyn Eval<dyn Backend, dyn Primitive>>;
 static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Lazy::new(|| {
     let mut rules: HashMap<(TypeId, TypeId), ErasedEval> = HashMap::new();
 
+    // creation
     _register::<Cpu, primitives::Full>(&mut rules);
     _register::<Cpu, primitives::Normal>(&mut rules);
+    // binary
     _register::<Cpu, primitives::Add>(&mut rules);
     _register::<Cpu, primitives::Sub>(&mut rules);
     _register::<Cpu, primitives::Mul>(&mut rules);
     _register::<Cpu, primitives::Div>(&mut rules);
+    _register::<Cpu, primitives::MatMul>(&mut rules);
+    // unary
     _register::<Cpu, primitives::Sin>(&mut rules);
     _register::<Cpu, primitives::Cos>(&mut rules);
     _register::<Cpu, primitives::Negative>(&mut rules);
-    _register::<Cpu, primitives::ReduceSum>(&mut rules);
-    _register::<Cpu, primitives::MatMul>(&mut rules);
     _register::<Cpu, primitives::Square>(&mut rules);
     _register::<Cpu, primitives::Sqrt>(&mut rules);
+    // transform
     _register::<Cpu, primitives::Transpose>(&mut rules);
     _register::<Cpu, primitives::Reshape>(&mut rules);
     _register::<Cpu, primitives::Broadcast>(&mut rules);
-
+    // reduce
+    _register::<Cpu, primitives::ReduceSum>(&mut rules);
+    
     Mutex::new(rules)
 });
 
