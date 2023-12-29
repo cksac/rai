@@ -24,7 +24,7 @@ fn f(x: &Tensor) -> Tensor {
 fn main() {
     let grad_fn = grad(grad(f));
 
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     let x = Tensor::ones([1], DType::F32, backend);
     let grads = grad_fn(&[x]);
 
@@ -45,7 +45,7 @@ fn main() {
     let num_iters = 1000;
     let learning_rate = 0.01f32;
 
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     // True parameters
     let w_star = Tensor::normal([num_features], DType::F32, backend);
 

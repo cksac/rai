@@ -4,7 +4,7 @@ use tracing::Level;
 use crate::{
     primitives::{
         Add, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Sin,
-        Sqrt, Square, Sub, Transpose, Sign, Abs,
+        Sqrt, Square, Sub, Transpose, Sign, Abs, Arange,
     },
     Backend, DType, Shape, Tensor,
 };
@@ -86,6 +86,202 @@ pub fn normal(
     let backend = backend.into();
     let inputs = vec![];
     Tensor::new(backend, dtype, shape, Normal, inputs)
+}
+
+pub trait ArangeArgs: Debug {
+    fn start(&self) -> f64 {
+        0.0
+    }
+    fn stop(&self) -> f64;
+    fn step(&self) -> f64 {
+        1.0
+    }
+    fn dtype(&self) -> DType;
+}
+
+impl ArangeArgs for f64 {
+    fn stop(&self) -> f64 {
+        *self
+    }
+
+    fn dtype(&self) -> DType {
+        DType::F64
+    }
+}
+
+impl ArangeArgs for (f64, DType) {
+    fn stop(&self) -> f64 {
+        self.0
+    }
+
+    fn dtype(&self) -> DType {
+        self.1
+    }
+}
+
+impl ArangeArgs for (f64, f64) {
+    fn start(&self) -> f64 {
+        self.0
+    }
+
+    fn stop(&self) -> f64 {
+        self.1
+    }
+
+    fn dtype(&self) -> DType {
+        DType::F64
+    }
+}
+
+
+impl ArangeArgs for (f64, f64, DType) {
+    fn start(&self) -> f64 {
+        self.0
+    }
+
+    fn stop(&self) -> f64 {
+        self.1
+    }
+
+    fn dtype(&self) -> DType {
+        self.2
+    }
+}
+
+impl ArangeArgs for (f64, f64, f64) {
+    fn start(&self) -> f64 {
+        self.0
+    }
+
+    fn stop(&self) -> f64 {
+        self.1
+    }
+
+    fn step(&self) -> f64 {
+        self.2
+    }
+
+    fn dtype(&self) -> DType {
+        DType::F64
+    }
+}
+
+impl ArangeArgs for (f64, f64, f64, DType) {
+    fn start(&self) -> f64 {
+        self.0
+    }
+
+    fn stop(&self) -> f64 {
+        self.1
+    }
+
+    fn step(&self) -> f64 {
+        self.2
+    }
+
+    fn dtype(&self) -> DType {
+        self.3
+    }
+}
+
+impl ArangeArgs for f32 {
+    fn stop(&self) -> f64 {
+        *self as f64
+    }
+
+    fn dtype(&self) -> DType {
+        DType::F32
+    }
+}
+
+impl ArangeArgs for (f32, DType) {
+    fn stop(&self) -> f64 {
+        self.0 as f64
+    }
+
+    fn dtype(&self) -> DType {
+        self.1
+    }
+}
+
+impl ArangeArgs for (f32, f32) {
+    fn start(&self) -> f64 {
+        self.0 as f64
+    }
+
+    fn stop(&self) -> f64 {
+        self.1 as f64
+    }
+
+    fn dtype(&self) -> DType {
+        DType::F32
+    }
+}
+
+impl ArangeArgs for (f32, f32, DType) {
+    fn start(&self) -> f64 {
+        self.0 as f64
+    }
+
+    fn stop(&self) -> f64 {
+        self.1 as f64
+    }
+
+    fn dtype(&self) -> DType {
+       self.2
+    }
+}
+
+impl ArangeArgs for (f32, f32, f32) {
+    fn start(&self) -> f64 {
+        self.0 as f64
+    }
+
+    fn stop(&self) -> f64 {
+        self.1 as f64
+    }
+
+    fn step(&self) -> f64 {
+        self.2 as f64
+    }
+
+    fn dtype(&self) -> DType {
+        DType::F32
+    }
+}
+
+impl ArangeArgs for (f32, f32, f32, DType) {
+    fn start(&self) -> f64 {
+        self.0 as f64
+    }
+
+    fn stop(&self) -> f64 {
+        self.1 as f64
+    }
+
+    fn step(&self) -> f64 {
+        self.2 as f64
+    }
+
+    fn dtype(&self) -> DType {
+        self.3
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn arange<T: ArangeArgs>(
+    args: T,
+    backend: impl Into<Box<dyn Backend>> + Debug,
+) -> Tensor {
+    let start = args.start();
+    let stop = args.stop();
+    let step = args.step();    
+    let dtype = args.dtype();
+
+    let size = std::cmp::max(((stop - start) / step).ceil() as usize,0);
+    let backend = backend.into();
+    let inputs = vec![];
+    Tensor::new(backend, dtype, [size], Arange::new(start, stop, step), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

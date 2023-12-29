@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::{Primitive, Shape, Tensor};
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Broadcast {
     pub shape: Vec<usize>,
 }
@@ -46,7 +46,7 @@ impl Primitive for Broadcast {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Reshape;
 impl Primitive for Reshape {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
@@ -68,7 +68,7 @@ impl Primitive for Reshape {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Transpose {
     pub axes: Vec<usize>,
 }

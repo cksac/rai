@@ -2,7 +2,7 @@ use rai_core::{backend::Cpu, DType, Tensor};
 
 #[test]
 fn test_add() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     let a = &Tensor::ones([2, 3], DType::F32, backend);
     let b = &Tensor::ones([2, 3], DType::F32, backend);
     let c = &Tensor::ones([3], DType::F32, backend);
@@ -13,7 +13,7 @@ fn test_add() {
 
 #[test]
 fn test_add2() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
 
     let a = &Tensor::ones([2, 3], DType::F32, backend);
     let b = &Tensor::full(1.4, [2, 3], DType::F32, backend);
@@ -27,7 +27,7 @@ fn test_add2() {
 
 #[test]
 fn test_eval() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     let a = &Tensor::full(1.0, [2, 3], DType::F32, backend);
     let b = &Tensor::full(2.0, [2, 3], DType::F32, backend);
     let c = &Tensor::full(3.0, [2, 3], DType::F32, backend);

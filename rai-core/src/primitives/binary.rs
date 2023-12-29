@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::{Primitive, Shape, Tensor};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Add;
 
 impl Primitive for Add {
@@ -27,7 +27,7 @@ impl Primitive for Add {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sub;
 
 impl Primitive for Sub {
@@ -52,7 +52,7 @@ impl Primitive for Sub {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Mul;
 
 impl Primitive for Mul {
@@ -81,7 +81,7 @@ impl Primitive for Mul {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Div;
 
 impl Primitive for Div {
@@ -110,7 +110,7 @@ impl Primitive for Div {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MatMul;
 
 impl Primitive for MatMul {

@@ -14,12 +14,6 @@ use crate::{
 #[derive(Debug, Clone, Default)]
 pub struct Cpu;
 
-impl Cpu {
-    pub fn new() -> Self {
-        Cpu
-    }
-}
-
 type Data = candle_core::Tensor;
 
 impl TensorLike for candle_core::Tensor {
@@ -100,6 +94,20 @@ impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
             &output.backend().into(),
         );
         let t = t.unwrap();
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::Arange> for Dispatch<Cpu, primitives::Arange> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Arange, _: &[Tensor], output: &Tensor) {
+        let start = primitive.start;
+        let end = primitive.stop;
+        let step = primitive.step;
+        let t = match output.dtype() {
+            DType::F32 => candle_core::Tensor::arange_step::<f32>(start as f32, end as f32, step as f32, &output.backend().into()),
+            DType::F64 => candle_core::Tensor::arange_step::<f64>(start, end, step, &output.backend().into()),
+        }
+        .unwrap();
         output.set_data(t);
     }
 }
@@ -301,3 +309,5 @@ impl Eval<Cpu, primitives::Abs> for Dispatch<Cpu, primitives::Abs> {
         output.set_data(t)
     }
 }
+
+

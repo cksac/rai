@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::{Primitive, Shape, Tensor};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReduceSum {
     pub axes: Vec<usize>,
 }

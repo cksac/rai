@@ -8,7 +8,7 @@ fn func(a: &Tensor, b: &Tensor) -> Tensor {
 
 #[test]
 fn test_jvp() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     let a = Tensor::full(1.0, [2, 3], DType::F32, backend);
     let b = Tensor::full(1.0, [2, 3], DType::F32, backend);
 
@@ -24,7 +24,7 @@ fn test_jvp() {
 
 #[test]
 fn test_vjp() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     let a = Tensor::full(1.0, [2, 3], DType::F32, backend);
     let b = Tensor::full(1.0, [2, 3], DType::F32, backend);
 
@@ -49,7 +49,7 @@ fn f(x: &Tensor, y: &Tensor) -> Tensor {
 
 #[test]
 fn test_grad() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
     let grad_func = grad(f);
 
     let a = Tensor::full(10.0, [1], DType::F32, backend);

@@ -2,7 +2,7 @@ use rai_core::{backend::Cpu, value_and_grad, DType, Tensor};
 
 #[test]
 fn test_add_grad() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x + y;
@@ -19,7 +19,7 @@ fn test_add_grad() {
 
 #[test]
 fn test_sub_grad() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x - y;
@@ -36,7 +36,7 @@ fn test_sub_grad() {
 
 #[test]
 fn test_mul_grad() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x * y;
@@ -53,7 +53,7 @@ fn test_mul_grad() {
 
 #[test]
 fn test_div_grad() {
-    let backend = &Cpu::new();
+    let backend = &Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x / y;
