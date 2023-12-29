@@ -258,8 +258,8 @@ pub fn eval<T: TensorIter>(args: T) {
     }
     for t in tape.into_iter() {
         {
-            let backend = t.backend();
-            let primitive = t.primitive();
+            let backend = t.backend().as_ref();
+            let primitive = t.primitive().as_ref();
             let inputs = &*t.inputs();
             let rule = eval_rule(backend, primitive).unwrap_or_else(|| {
                 panic!(

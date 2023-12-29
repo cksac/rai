@@ -59,7 +59,7 @@ where
     }
 }
 
-type ErasedEval = Box<dyn Eval<Box<dyn Backend>, Box<dyn Primitive>>>;
+type ErasedEval = Box<dyn Eval<dyn Backend, dyn Primitive>>;
 
 static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Lazy::new(|| {
     let mut rules: HashMap<(TypeId, TypeId), ErasedEval> = HashMap::new();
@@ -97,13 +97,13 @@ pub fn register_custom<B, P, R>(rule: R)
 where
     B: Backend + 'static + Sync + Send,
     P: Primitive + 'static + Sync + Send,
-    R: Eval<B, P> + 'static + Eval<Box<(dyn Backend)>, Box<(dyn Primitive)>>,
+    R: Eval<B, P> + 'static + Eval<dyn Backend, dyn Primitive>,
 {
     let mut rules = EVAL_DISPATCHER.lock().unwrap();
     rules.insert((TypeId::of::<B>(), TypeId::of::<P>()), Box::new(rule));
 }
 
-pub fn eval_rule(backend: &Box<dyn Backend>, primitive: &Box<dyn Primitive>) -> Option<ErasedEval> {
+pub fn eval_rule(backend: &dyn Backend, primitive: &dyn Primitive) -> Option<ErasedEval> {
     let rules = EVAL_DISPATCHER.lock().unwrap();
     rules
         .get(&(backend.as_any().type_id(), primitive.as_any().type_id()))
