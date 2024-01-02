@@ -201,6 +201,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn rsqrt(&self) -> Tensor {
+        ops::rsqrt(self)
+    }
+
+    #[inline]
     pub fn sign(&self) -> Tensor {
         ops::sign(self)
     }

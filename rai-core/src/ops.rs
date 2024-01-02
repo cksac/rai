@@ -4,7 +4,7 @@ use tracing::Level;
 use crate::{
     primitives::{
         Abs, Add, Arange, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum,
-        Reshape, Sign, Sin, Sqrt, Square, Sub, Transpose,
+        Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub, Transpose,
     },
     Backend, DType, Shape, Tensor,
 };
@@ -72,10 +72,28 @@ macro_rules! impl_std_ops {
             }
         }
 
+        impl std::ops::$op<&Tensor> for f64 {
+            type Output = Tensor;
+
+            fn $func(self, rhs: &Tensor) -> Self::Output {
+                let lhs = rhs.full_like(self);
+                $func(&lhs, &rhs)
+            }
+        }
+
         impl std::ops::$op<Tensor> for f32 {
             type Output = Tensor;
 
             fn $func(self, rhs: Tensor) -> Self::Output {
+                let lhs = rhs.full_like(self as f64);
+                $func(&lhs, &rhs)
+            }
+        }
+
+        impl std::ops::$op<&Tensor> for f32 {
+            type Output = Tensor;
+
+            fn $func(self, rhs: &Tensor) -> Self::Output {
                 let lhs = rhs.full_like(self as f64);
                 $func(&lhs, &rhs)
             }
@@ -543,6 +561,14 @@ pub fn sqrt(x: &Tensor) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, Sqrt, inputs)
+}
+
+pub fn rsqrt(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Rsqrt, inputs)
 }
 
 pub fn sign(x: &Tensor) -> Tensor {
