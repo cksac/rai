@@ -3,8 +3,8 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, Broadcast, Cos, Div, Full, MatMul, Mul, Negative, Normal, ReduceSum,
-        Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub, Transpose, Exp
+        Abs, Add, Arange, Broadcast, Cos, Div, Exp, Full, MatMul, Mul, Negative, Normal, ReduceSum,
+        Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub, Transpose,
     },
     Backend, DType, Shape, Tensor,
 };
