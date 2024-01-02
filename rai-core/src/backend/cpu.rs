@@ -324,3 +324,13 @@ impl Eval<Cpu, primitives::Abs> for Dispatch<Cpu, primitives::Abs> {
         output.set_data(t)
     }
 }
+
+impl Eval<Cpu, primitives::Exp> for Dispatch<Cpu, primitives::Exp> {
+    fn eval(&self, _: &Cpu, _: &primitives::Exp, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.exp().unwrap();
+        output.set_data(t)
+    }
+}

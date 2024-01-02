@@ -4,6 +4,7 @@
         "dtype",
         "matmul",
         "primals",
+        "rsqrt",
         "vjps"
     ]
 }
