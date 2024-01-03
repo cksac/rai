@@ -57,8 +57,10 @@ impl Primitive for Reshape {
         self
     }
 
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
-        todo!()
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let tangent_x = &tangents[0];
+        // capture request shape in Reshape, instead of using the shape from output?
+        tangent_x.reshape(output)
     }
 
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
