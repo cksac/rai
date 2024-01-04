@@ -1,253 +1,351 @@
-use std::{
-    collections::{BTreeSet, HashMap},
-    fmt::Debug,
-    mem::MaybeUninit,
-};
-use tracing::Level;
+use crate::dispatch::eval_rule;
+use crate::utils::TensorIter;
+use crate::Tensor;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt::Debug;
 
-use crate::{dispatch::eval_rule, utils::TensorIter, Tensor};
-pub trait Function<const IN: usize, const OUT: usize> {
-    fn call(&self, primals: &[Tensor; IN]) -> [Tensor; OUT];
-}
-
-impl<F> Function<1, 1> for F
-where
-    F: Fn(&Tensor) -> Tensor,
-{
-    fn call(&self, primals: &[Tensor; 1]) -> [Tensor; 1] {
-        [self(&primals[0])]
+pub trait Func<IN, OUT> {
+    type Tangent: WithTensors + FromTensorMap;
+    type Cotangent: WithTensors + FromTensorMap;
+    fn call(&self, input: IN) -> OUT;
+    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
+        None
     }
 }
 
-impl<F> Function<2, 1> for F
-where
-    F: Fn(&Tensor, &Tensor) -> Tensor,
-{
-    fn call(&self, primals: &[Tensor; 2]) -> [Tensor; 1] {
-        [self(&primals[0], &primals[1])]
+pub trait WithTensors {
+    fn tensors(&self) -> Vec<Tensor>;
+}
+
+impl<const N: usize> WithTensors for [Tensor; N] {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.to_vec()
     }
 }
 
-impl<F> Function<3, 1> for F
-where
-    F: Fn(&Tensor, &Tensor, &Tensor) -> Tensor,
-{
-    fn call(&self, primals: &[Tensor; 3]) -> [Tensor; 1] {
-        [self(&primals[0], &primals[1], &primals[2])]
+impl<const N: usize> WithTensors for &[Tensor; N] {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.to_vec()
     }
 }
 
-pub fn jvp<const IN: usize, const OUT: usize, F>(
-    func: F,
-    primals: &[Tensor; IN],
-    tangents: &[Tensor; IN],
-) -> ([Tensor; OUT], [Tensor; OUT])
+impl WithTensors for Vec<Tensor> {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.clone()
+    }
+}
+
+impl WithTensors for Tensor {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![self.clone()]
+    }
+}
+
+impl WithTensors for &Tensor {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![(*self).clone()]
+    }
+}
+
+impl WithTensors for BTreeMap<usize, Tensor> {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.values().cloned().collect()
+    }
+}
+
+pub trait FromTensorMap {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self;
+}
+
+impl<const N: usize> FromTensorMap for [Tensor; N] {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
+        tensors
+            .into_values()
+            .collect::<Vec<Tensor>>()
+            .try_into()
+            .unwrap_or_else(|v: Vec<Tensor>| {
+                panic!("Expected a Vec of length {} but it was {}", N, v.len())
+            })
+    }
+}
+
+impl FromTensorMap for Vec<Tensor> {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
+        tensors.into_values().collect()
+    }
+}
+
+impl FromTensorMap for BTreeMap<usize, Tensor> {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
+        tensors
+    }
+}
+
+pub fn jvp<IN, OUT, F>(func: F, input: IN, tangents: F::Tangent) -> (OUT, F::Cotangent)
 where
-    F: Function<IN, OUT>,
+    F: Func<IN, OUT>,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     let mut tangent_map = HashMap::new();
+    let params = if let Some(params) = func.captured_inputs() {
+        params
+    } else {
+        input.tensors()
+    };
 
-    for (p, t) in primals.iter().zip(tangents) {
+    for (p, t) in params.iter().zip(tangents.tensors()) {
         tangent_map.insert(p.id(), t.clone());
     }
-    let outputs = func.call(primals);
+    let output = func.call(input);
 
-    let mut jvps: [MaybeUninit<Tensor>; OUT] = unsafe { MaybeUninit::uninit().assume_init() };
-    for (i, t) in outputs.iter().enumerate() {
-        jvps[i] = MaybeUninit::new(t.jvp(&mut tangent_map));
+    let out_tensors = output.tensors();
+    let mut jvps = BTreeMap::new();
+    for t in out_tensors {
+        jvps.insert(t.id(), t.jvp(&mut tangent_map));
     }
-    let jvps = unsafe { MaybeUninit::array_assume_init(jvps) };
+    let jvps = F::Cotangent::from_tensor_map(jvps);
 
-    (outputs, jvps)
+    (output, jvps)
 }
 
-type VjpFn<const IN: usize, const OUT: usize> = Box<dyn Fn([Tensor; OUT]) -> [Tensor; IN]>;
+type VjpFn<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
 
-#[tracing::instrument(skip(func), name = "transform::vjp" level = Level::TRACE)]
-pub fn vjp<const IN: usize, const OUT: usize, F>(
-    func: F,
-    primals: &[Tensor; IN],
-) -> ([Tensor; OUT], VjpFn<IN, OUT>)
+pub fn vjp<IN, OUT, F>(func: F, input: IN) -> (OUT, VjpFn<F::Cotangent, F::Tangent>)
 where
-    F: Function<IN, OUT>,
+    F: Func<IN, OUT>,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
-    let outputs = func.call(primals);
+    let params = if let Some(params) = func.captured_inputs() {
+        params
+    } else {
+        input.tensors()
+    };
+    let input_ids: Vec<usize> = params.iter().map(|v| v.id()).collect();
+    let output = func.call(input);
+    let out_tensors = output.tensors();
 
-    let outs = outputs.clone();
-    let primal_ids: Vec<usize> = primals.iter().map(|v| v.id()).collect();
-    let vjps_fn = move |cotangents: [Tensor; OUT]| {
+    let vjps_fn = move |cotangents: F::Cotangent| {
         let mut cotangent_map = HashMap::new();
 
-        for (p, c) in outs.iter().zip(cotangents) {
+        for (p, c) in out_tensors.iter().zip(cotangents.tensors()) {
             cotangent_map.insert(p.id(), c);
         }
 
-        for t in outs.iter() {
+        for t in out_tensors.iter() {
             t.vjp(&mut cotangent_map);
         }
 
-        let mut vjps: [MaybeUninit<Tensor>; IN] = unsafe { MaybeUninit::uninit().assume_init() };
-
-        for (i, id) in primal_ids.iter().enumerate() {
-            vjps[i] = MaybeUninit::new(cotangent_map.get(id).unwrap().clone());
+        let mut vjps = BTreeMap::new();
+        for id in input_ids.iter() {
+            let t = cotangent_map.get(id).unwrap().clone();
+            vjps.insert(*id, t);
         }
-
-        unsafe { MaybeUninit::array_assume_init(vjps) }
+        F::Tangent::from_tensor_map(vjps)
     };
 
-    (outputs, Box::new(vjps_fn))
+    (output, Box::new(vjps_fn))
 }
 
 #[derive(Clone)]
-pub struct GradFunc<const IN: usize, const OUT: usize, F>
+pub struct GradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
 {
     func: F,
+    phantom: std::marker::PhantomData<(IN, OUT)>,
 }
-impl<const IN: usize, const OUT: usize, F> GradFunc<IN, OUT, F>
+
+impl<IN, OUT, F> GradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     pub fn new(func: F) -> Self {
-        Self { func }
-    }
-
-    #[tracing::instrument(skip(self), name = "GradFunc::call" level = Level::TRACE)]
-    fn call(&self, primals: &[Tensor; IN]) -> [Tensor; IN] {
-        let (outputs, f_vjp) = vjp(self.func.clone(), primals);
-
-        let mut cotangents: [MaybeUninit<Tensor>; OUT] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-
-        for (i, t) in outputs.iter().enumerate() {
-            cotangents[i] = MaybeUninit::new(t.ones_like());
+        Self {
+            func,
+            phantom: std::marker::PhantomData,
         }
-
-        let cotangents = unsafe { MaybeUninit::array_assume_init(cotangents) };
-
-        f_vjp(cotangents)
-    }
-}
-
-impl<const IN: usize, const OUT: usize, F> FnOnce<(&[Tensor; IN],)> for GradFunc<IN, OUT, F>
-where
-    F: Function<IN, OUT> + Clone + 'static,
-{
-    type Output = [Tensor; IN];
-
-    extern "rust-call" fn call_once(self, args: (&[Tensor; IN],)) -> Self::Output {
-        let inputs = args.0;
-        self.call(inputs)
-    }
-}
-
-impl<const IN: usize, const OUT: usize, F> FnMut<(&[Tensor; IN],)> for GradFunc<IN, OUT, F>
-where
-    F: Function<IN, OUT> + Clone + 'static,
-{
-    extern "rust-call" fn call_mut(&mut self, args: (&[Tensor; IN],)) -> Self::Output {
-        let inputs = args.0;
-        self.call(inputs)
-    }
-}
-
-impl<const IN: usize, const OUT: usize, F> Fn<(&[Tensor; IN],)> for GradFunc<IN, OUT, F>
-where
-    F: Function<IN, OUT> + Clone + 'static,
-{
-    extern "rust-call" fn call(&self, args: (&[Tensor; IN],)) -> Self::Output {
-        let inputs = args.0;
-        self.call(inputs)
-    }
-}
-
-impl<const IN: usize, const OUT: usize, F> Function<IN, IN> for GradFunc<IN, OUT, F>
-where
-    F: Function<IN, OUT> + Clone + 'static,
-{
-    fn call(&self, primals: &[Tensor; IN]) -> [Tensor; IN] {
-        self(primals)
-    }
-}
-
-pub struct ValueAndGradFunc<const IN: usize, const OUT: usize, F>
-where
-    F: Function<IN, OUT> + Clone + 'static,
-{
-    func: F,
-}
-
-impl<const IN: usize, const OUT: usize, F> ValueAndGradFunc<IN, OUT, F>
-where
-    F: Function<IN, OUT> + Clone + 'static,
-{
-    pub fn new(func: F) -> Self {
-        Self { func }
     }
 
-    fn call(&self, primals: &[Tensor; IN]) -> ([Tensor; OUT], [Tensor; IN]) {
-        let (outputs, f_vjp) = vjp(self.func.clone(), primals);
-
-        let mut cotangents: [MaybeUninit<Tensor>; OUT] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-
-        for (i, t) in outputs.iter().enumerate() {
-            cotangents[i] = MaybeUninit::new(t.ones_like());
+    fn apply(&self, input: IN) -> F::Tangent {
+        let (output, vjp_fn) = vjp(self.func.clone(), input);
+        let mut cotagents = BTreeMap::new();
+        for t in output.tensors() {
+            cotagents.insert(t.id(), t.ones_like());
         }
-
-        let cotangents = unsafe { MaybeUninit::array_assume_init(cotangents) };
-
-        let grads = f_vjp(cotangents);
-        (outputs, grads)
+        vjp_fn(F::Cotangent::from_tensor_map(cotagents))
     }
 }
 
-impl<const IN: usize, const OUT: usize, F> FnOnce<(&[Tensor; IN],)> for ValueAndGradFunc<IN, OUT, F>
+impl<IN, OUT, F> Func<IN, OUT> for GradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
-    type Output = ([Tensor; OUT], [Tensor; IN]);
-
-    extern "rust-call" fn call_once(self, args: (&[Tensor; IN],)) -> Self::Output {
-        let inputs = args.0;
-        self.call(inputs)
+    type Tangent = F::Tangent;
+    type Cotangent = F::Cotangent;
+    fn call(&self, input: IN) -> OUT {
+        self.func.call(input)
     }
 }
 
-impl<const IN: usize, const OUT: usize, F> FnMut<(&[Tensor; IN],)> for ValueAndGradFunc<IN, OUT, F>
+impl<IN, OUT, F> FnOnce<(IN,)> for GradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
-    extern "rust-call" fn call_mut(&mut self, args: (&[Tensor; IN],)) -> Self::Output {
-        let inputs = args.0;
-        self.call(inputs)
+    type Output = F::Tangent;
+    extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
     }
 }
 
-impl<const IN: usize, const OUT: usize, F> Fn<(&[Tensor; IN],)> for ValueAndGradFunc<IN, OUT, F>
+impl<IN, OUT, F> FnMut<(IN,)> for GradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
-    extern "rust-call" fn call(&self, args: (&[Tensor; IN],)) -> Self::Output {
-        let inputs = args.0;
-        self.call(inputs)
+    extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
     }
 }
 
-#[tracing::instrument(skip(func), level = Level::TRACE)]
-pub fn grad<const IN: usize, const OUT: usize, F>(func: F) -> GradFunc<IN, OUT, F>
+impl<IN, OUT, F> Fn<(IN,)> for GradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+pub fn grad<IN, OUT, F>(func: F) -> GradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     GradFunc::new(func)
 }
 
-pub fn value_and_grad<const IN: usize, const OUT: usize, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
+#[derive(Clone)]
+pub struct ValueAndGradFunc<IN, OUT, F>
 where
-    F: Function<IN, OUT> + Clone + 'static,
+    F: Func<IN, OUT> + Clone + 'static,
+{
+    func: F,
+    phantom: std::marker::PhantomData<(IN, OUT)>,
+}
+
+impl<IN, OUT, F> ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            phantom: std::marker::PhantomData,
+        }
+    }
+
+    fn apply(&self, input: IN) -> (OUT, F::Tangent) {
+        let (output, vjp_fn) = vjp(self.func.clone(), input);
+        let mut cotagents = BTreeMap::new();
+        for t in output.tensors() {
+            cotagents.insert(t.id(), t.ones_like());
+        }
+        let tangents = vjp_fn(F::Cotangent::from_tensor_map(cotagents));
+        (output, tangents)
+    }
+}
+
+impl<IN, OUT, F> Func<IN, OUT> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    type Tangent = F::Tangent;
+    type Cotangent = F::Cotangent;
+    fn call(&self, input: IN) -> OUT {
+        self.func.call(input)
+    }
+}
+
+impl<IN, OUT, F> FnOnce<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    type Output = (OUT, F::Tangent);
+    extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+impl<IN, OUT, F> FnMut<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+impl<IN, OUT, F> Fn<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+pub fn value_and_grad<IN, OUT, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     ValueAndGradFunc::new(func)
+}
+
+// impl for Fn
+impl<F> Func<[Tensor; 1], [Tensor; 1]> for F
+where
+    F: Fn(&Tensor) -> Tensor,
+{
+    type Tangent = [Tensor; 1];
+    type Cotangent = [Tensor; 1];
+    fn call(&self, input: [Tensor; 1]) -> [Tensor; 1] {
+        [self(&input[0])]
+    }
+}
+
+impl<F> Func<[Tensor; 2], [Tensor; 1]> for F
+where
+    F: Fn(&Tensor, &Tensor) -> Tensor,
+{
+    type Tangent = [Tensor; 2];
+    type Cotangent = [Tensor; 1];
+    fn call(&self, input: [Tensor; 2]) -> [Tensor; 1] {
+        [self(&input[0], &input[1])]
+    }
 }
 
 pub trait EvalArgs: Debug {

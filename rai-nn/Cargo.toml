@@ -12,3 +12,4 @@ repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
 [dependencies]
+rai = { path = "../rai" }

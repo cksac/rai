@@ -15,7 +15,7 @@ fn test_jvp() {
     let at = Tensor::full(1.0, [2, 3], DType::F32, backend);
     let bt = Tensor::full(3.0, [2, 3], DType::F32, backend);
 
-    let (outputs, jvps) = jvp(func, &[a, b], &[at, bt]);
+    let (outputs, jvps) = jvp(func, [a, b], [at, bt]);
     eval((&outputs, &jvps));
 
     println!("{}", outputs[0]);
@@ -28,7 +28,7 @@ fn test_vjp() {
     let a = Tensor::full(1.0, [2, 3], DType::F32, backend);
     let b = Tensor::full(1.0, [2, 3], DType::F32, backend);
 
-    let (outputs, vjp_fn) = vjp(func, &[a, b]);
+    let (outputs, vjp_fn) = vjp(func, [a, b]);
 
     let t1 = Tensor::full(1.0, [2, 3], DType::F32, backend);
     let vjps_t1 = vjp_fn([t1]);
@@ -54,7 +54,7 @@ fn test_grad() {
 
     let a = Tensor::full(10.0, [1], DType::F32, backend);
     let b = Tensor::full(5.0, [1], DType::F32, backend);
-    let grads = grad_func(&[a, b]);
+    let grads = grad_func([a, b]);
     eval(&grads);
 
     println!("{}", grads[0]);
