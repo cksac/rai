@@ -1,5 +1,5 @@
 use crate::{Backend, DType, Tensor};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 
 pub trait Func<IN, OUT> {
@@ -16,7 +16,7 @@ pub trait WithTensors {
 }
 
 pub trait FromTensors {
-    fn from_tensors(tensors: Vec<Tensor>) -> Self;
+    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self;
 }
 
 pub trait Input: WithTensors {}
@@ -41,9 +41,10 @@ where
     }
     let output = func.call(input);
 
-    let mut jvps = Vec::new();
-    for t in output.tensors() {
-        jvps.push(t.jvp(&mut tangent_map));
+    let out_tensors = output.tensors();
+    let mut jvps = BTreeMap::new();
+    for t in out_tensors {
+        jvps.insert(t.id(), t.jvp(&mut tangent_map));
     }
     let jvps = F::Cotangent::from_tensors(jvps);
 
@@ -73,9 +74,10 @@ where
             t.vjp(&mut cotangent_map);
         }
 
-        let mut vjps: Vec<Tensor> = Vec::with_capacity(input_ids.len());
+        let mut vjps = BTreeMap::new();
         for (i, id) in input_ids.iter().enumerate() {
-            vjps[i] = cotangent_map.get(id).unwrap().clone();
+            let t = cotangent_map.get(id).unwrap().clone();
+            vjps.insert(t.id(), t);
         }
         F::Tangent::from_tensors(vjps)
     };
@@ -136,16 +138,32 @@ impl WithTensors for &Tensor {
     }
 }
 
+impl WithTensors for BTreeMap<usize, Tensor> {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.values().cloned().collect()
+    }
+}
+
 impl<const N: usize> FromTensors for [Tensor; N] {
-    fn from_tensors(tensors: Vec<Tensor>) -> Self {
-        tensors.try_into().unwrap_or_else(|v: Vec<Tensor>| {
-            panic!("Expected a Vec of length {} but it was {}", N, v.len())
-        })
+    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self {
+        tensors
+            .into_values()
+            .collect::<Vec<Tensor>>()
+            .try_into()
+            .unwrap_or_else(|v: Vec<Tensor>| {
+                panic!("Expected a Vec of length {} but it was {}", N, v.len())
+            })
     }
 }
 
 impl FromTensors for Vec<Tensor> {
-    fn from_tensors(tensors: Vec<Tensor>) -> Self {
+    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self {
+        tensors.into_values().collect()
+    }
+}
+
+impl FromTensors for BTreeMap<usize, Tensor> {
+    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self {
         tensors
     }
 }
@@ -187,29 +205,56 @@ impl Linear {
         };
         Self { weight, bias }
     }
+
+    pub fn parameters(&self) -> Vec<Tensor> {
+        match &self.bias {
+            Some(bias) => vec![self.weight.clone(), bias.clone()],
+            None => vec![self.weight.clone()],
+        }
+    }
 }
 
-impl Func<&Tensor, Tensor> for Linear {
-    type Tangent = Vec<Tensor>;
-    type Cotangent = Vec<Tensor>;
+pub trait Module {
+    fn forward(&self, input: &Tensor) -> Tensor;
+    fn parameters(&self) -> Vec<Tensor>;
+}
 
-    fn call(&self, input: &Tensor) -> Tensor {
+impl Module for Linear {
+    fn forward(&self, input: &Tensor) -> Tensor {
         match &self.bias {
             Some(bias) => self.weight.matmul(input) + bias,
             None => input.matmul(&self.weight),
         }
     }
 
-    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
-        Some(match &self.bias {
+    fn parameters(&self) -> Vec<Tensor> {
+        match &self.bias {
             Some(bias) => vec![self.weight.clone(), bias.clone()],
             None => vec![self.weight.clone()],
-        })
+        }
+    }
+}
+
+impl<T> Func<&Tensor, Tensor> for T
+where
+    T: Module,
+{
+    type Tangent = BTreeMap<usize, Tensor>;
+    type Cotangent = BTreeMap<usize, Tensor>;
+
+    fn call(&self, input: &Tensor) -> Tensor {
+        self.forward(input)
+    }
+
+    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
+        Some(self.parameters())
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::collections::BTreeMap;
+
     use crate::{backend::Cpu, transform::jvp, DType, Tensor};
 
     use super::Linear;
@@ -237,9 +282,12 @@ mod test {
         let linear = Linear::new(100, 10, true, DType::F32, backend);
         let input = Tensor::normal([100], DType::F32, backend);
 
-        let wt = linear.weight.ones_like();
-        let bt = linear.bias.as_ref().unwrap().ones_like();
+        let tangents: BTreeMap<usize, Tensor> = linear
+            .parameters()
+            .iter()
+            .map(|t| (t.id(), t.ones_like()))
+            .collect();
 
-        let (output, jvps) = jvp(linear, &input, &vec![wt, bt]);
+        let (output, jvps) = jvp(linear, &input, &tangents);
     }
 }
