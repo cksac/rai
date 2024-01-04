@@ -173,6 +173,95 @@ where
     GradFunc::new(func)
 }
 
+#[derive(Clone)]
+pub struct ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+{
+    func: F,
+    phantom: std::marker::PhantomData<(IN, OUT)>,
+}
+
+impl<IN, OUT, F> ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: Input,
+    OUT: Output,
+{
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            phantom: std::marker::PhantomData,
+        }
+    }
+
+    fn apply(&self, input: IN) -> (OUT, F::Tangent) {
+        let (output, vjp_fn) = vjp(self.func.clone(), input);
+        let mut cotagents = BTreeMap::new();
+        for t in output.tensors() {
+            cotagents.insert(t.id(), t.ones_like());
+        }
+        let tangents = vjp_fn(F::Cotangent::from_tensors(cotagents));
+        (output, tangents)
+    }
+}
+
+impl<IN, OUT, F> Func<IN, OUT> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: Input,
+    OUT: Output,
+{
+    type Tangent = F::Tangent;
+    type Cotangent = F::Cotangent;
+    fn call(&self, input: IN) -> OUT {
+        self.func.call(input)
+    }
+}
+
+impl<IN, OUT, F> FnOnce<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: Input,
+    OUT: Output,
+{
+    type Output = (OUT, F::Tangent);
+    extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+impl<IN, OUT, F> FnMut<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: Input,
+    OUT: Output,
+{
+    extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+impl<IN, OUT, F> Fn<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: Input,
+    OUT: Output,
+{
+    extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
+        self.apply(args.0)
+    }
+}
+
+pub fn value_and_grad<IN, OUT, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + Clone + 'static,
+    IN: Input,
+    OUT: Output,
+{
+    ValueAndGradFunc::new(func)
+}
+
 // impls
 impl<F> Func<[Tensor; 1], [Tensor; 1]> for F
 where
@@ -346,7 +435,7 @@ mod test {
 
     use crate::{
         backend::Cpu,
-        transform::{grad, jvp, WithTensors},
+        transform::{grad, jvp, value_and_grad, WithTensors},
         DType, Tensor,
     };
 
@@ -397,18 +486,20 @@ mod test {
 
         let grad_fn = grad(grad(linear));
         let grads = grad_fn(input).tensors();
+        println!("{}", grads[0].dot_graph());
         println!("{}", grads[0]);
     }
 
     #[test]
     fn test_mul_grad() {
-        let grad_fn = grad(grad(f));
+        let grad_fn = value_and_grad(grad(f));
 
         let backend = &Cpu;
         let x = Tensor::ones([1], DType::F32, backend);
-        let grads = grad_fn([x]);
+        let (outs, grads) = grad_fn([x]);
 
         println!("{}", grads[0].dot_graph());
+        println!("{}", outs[0]);
         println!("{}", grads[0]);
     }
 }
