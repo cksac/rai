@@ -72,6 +72,33 @@ where
     }
 }
 
+impl<M> WithTensors for (&M, &Tensor)
+where
+    M: Module,
+{
+    fn tensors(&self) -> Vec<Tensor> {
+        self.0.parameters()
+    }
+}
+
+impl<M> WithTensors for (&M, Tensor, Tensor)
+where
+    M: Module,
+{
+    fn tensors(&self) -> Vec<Tensor> {
+        self.0.parameters()
+    }
+}
+
+impl<M> WithTensors for (&M, &Tensor, &Tensor)
+where
+    M: Module,
+{
+    fn tensors(&self) -> Vec<Tensor> {
+        self.0.parameters()
+    }
+}
+
 pub trait FromTensorMap {
     fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self;
 }

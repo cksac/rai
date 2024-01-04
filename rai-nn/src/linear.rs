@@ -28,7 +28,7 @@ impl Linear {
 }
 
 impl Module for Linear {
-    fn forward(&self, input: Tensor) -> Tensor {
+    fn forward(&self, input: &Tensor) -> Tensor {
         match &self.bias {
             Some(bias) => input.matmul(self.weight.t()) + bias,
             None => input.matmul(self.weight.t()),

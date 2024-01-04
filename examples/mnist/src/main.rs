@@ -7,8 +7,8 @@ struct Mlp {
 }
 
 impl Module for Mlp {
-    fn forward(&self, x: Tensor) -> Tensor {
-        let x = self.ln1.forward(x);
+    fn forward(&self, x: &Tensor) -> Tensor {
+        let x = &self.ln1.forward(x);
         self.ln2.forward(x)
     }
 
@@ -23,14 +23,14 @@ fn cross_entropy(logits: &Tensor, label: &Tensor) -> Tensor {
     loss
 }
 
-fn train_step(model: &mut Mlp, input: Tensor, label: Tensor) {
-    let loss_fn = move |m: &Mlp, x: &Tensor| {
-        let logits = m.forward(x.clone());
-        let loss = cross_entropy(x, &label);
+fn train_step(model: &mut Mlp, input: &Tensor, label: &Tensor) {
+    let loss_fn = move |m: &Mlp, x: &Tensor, label: &Tensor| {
+        let logits = m.forward(x);
+        let loss = cross_entropy(x, label);
         (loss, logits)
     };
     let vg_fn = value_and_grad(loss_fn);
-    let ((loss, logits), grads) = vg_fn((model, input));
+    let ((loss, logits), grads) = vg_fn((model, input, label));
 }
 
 fn main() {
