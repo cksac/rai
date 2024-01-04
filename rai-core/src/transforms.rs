@@ -191,6 +191,10 @@ where
     fn call(&self, input: IN) -> OUT {
         self.func.call(input)
     }
+
+    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
+        self.func.captured_inputs()
+    }
 }
 
 impl<IN, OUT, F> FnOnce<(IN,)> for GradFunc<IN, OUT, F>
@@ -279,6 +283,10 @@ where
     type Cotangent = F::Cotangent;
     fn call(&self, input: IN) -> OUT {
         self.func.call(input)
+    }
+
+    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
+        self.func.captured_inputs()
     }
 }
 

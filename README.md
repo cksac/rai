@@ -27,7 +27,7 @@ fn main() {
 
     let backend = &Cpu;
     let x = Tensor::ones([1], DType::F32, backend);
-    let grads = grad_fn(&[x]);
+    let grads = grad_fn([x]);
 
     println!("{}", grads[0].dot_graph());
     println!("{}", grads[0]);
@@ -71,7 +71,7 @@ fn main() {
 
     let start = Instant::now();
     for _ in 0..num_iters {
-        let grads = grad_fn(&[w.clone()]);
+        let grads = grad_fn([w.clone()]);
         let grad = &grads[0];
         w = w - grad * learning_rate;
         eval(&w);

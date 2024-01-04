@@ -49,6 +49,7 @@ fn test_linear_grad_of_grad() {
     let grads = grads.tensors();
 
     println!("{}", grads[0]);
+    println!("{}", grads[1]);
 }
 
 #[test]
@@ -64,4 +65,5 @@ fn test_linear_value_and_grad_of_grad() {
 
     println!("{}", output);
     println!("{}", grads[0]);
+    println!("{}", grads[1]);
 }
