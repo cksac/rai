@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 
 pub trait Func<IN, OUT> {
-    type Tangent: WithTensors + FromTensors;
-    type Cotangent: WithTensors + FromTensors;
+    type Tangent: WithTensors + FromTensorMap;
+    type Cotangent: WithTensors + FromTensorMap;
     fn call(&self, input: IN) -> OUT;
     fn captured_inputs(&self) -> Option<Vec<Tensor>> {
         None
@@ -15,19 +15,15 @@ pub trait WithTensors {
     fn tensors(&self) -> Vec<Tensor>;
 }
 
-pub trait FromTensors {
-    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self;
+pub trait FromTensorMap {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self;
 }
 
-pub trait Input: WithTensors {}
-
-pub trait Output: WithTensors {}
-
-pub fn jvp<IN, OUT, F>(func: F, input: IN, tangents: &F::Tangent) -> (OUT, F::Cotangent)
+pub fn jvp<IN, OUT, F>(func: F, input: IN, tangents: F::Tangent) -> (OUT, F::Cotangent)
 where
     F: Func<IN, OUT>,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     let mut tangent_map = HashMap::new();
     let params = if let Some(params) = func.captured_inputs() {
@@ -46,7 +42,7 @@ where
     for t in out_tensors {
         jvps.insert(t.id(), t.jvp(&mut tangent_map));
     }
-    let jvps = F::Cotangent::from_tensors(jvps);
+    let jvps = F::Cotangent::from_tensor_map(jvps);
 
     (output, jvps)
 }
@@ -56,8 +52,8 @@ type VjpFn<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
 pub fn vjp<IN, OUT, F>(func: F, input: IN) -> (OUT, VjpFn<F::Cotangent, F::Tangent>)
 where
     F: Func<IN, OUT>,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     let input_ids: Vec<usize> = input.tensors().iter().map(|v| v.id()).collect();
     let output = func.call(input);
@@ -79,7 +75,7 @@ where
             let t = cotangent_map.get(id).unwrap().clone();
             vjps.insert(t.id(), t);
         }
-        F::Tangent::from_tensors(vjps)
+        F::Tangent::from_tensor_map(vjps)
     };
 
     (output, Box::new(vjps_fn))
@@ -97,8 +93,8 @@ where
 impl<IN, OUT, F> GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     pub fn new(func: F) -> Self {
         Self {
@@ -113,15 +109,15 @@ where
         for t in output.tensors() {
             cotagents.insert(t.id(), t.ones_like());
         }
-        vjp_fn(F::Cotangent::from_tensors(cotagents))
+        vjp_fn(F::Cotangent::from_tensor_map(cotagents))
     }
 }
 
 impl<IN, OUT, F> Func<IN, OUT> for GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     type Tangent = F::Tangent;
     type Cotangent = F::Cotangent;
@@ -133,8 +129,8 @@ where
 impl<IN, OUT, F> FnOnce<(IN,)> for GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     type Output = F::Tangent;
     extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
@@ -145,8 +141,8 @@ where
 impl<IN, OUT, F> FnMut<(IN,)> for GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
         self.apply(args.0)
@@ -156,8 +152,8 @@ where
 impl<IN, OUT, F> Fn<(IN,)> for GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
         self.apply(args.0)
@@ -167,8 +163,8 @@ where
 pub fn grad<IN, OUT, F>(func: F) -> GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     GradFunc::new(func)
 }
@@ -185,8 +181,8 @@ where
 impl<IN, OUT, F> ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     pub fn new(func: F) -> Self {
         Self {
@@ -201,7 +197,7 @@ where
         for t in output.tensors() {
             cotagents.insert(t.id(), t.ones_like());
         }
-        let tangents = vjp_fn(F::Cotangent::from_tensors(cotagents));
+        let tangents = vjp_fn(F::Cotangent::from_tensor_map(cotagents));
         (output, tangents)
     }
 }
@@ -209,8 +205,8 @@ where
 impl<IN, OUT, F> Func<IN, OUT> for ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     type Tangent = F::Tangent;
     type Cotangent = F::Cotangent;
@@ -222,8 +218,8 @@ where
 impl<IN, OUT, F> FnOnce<(IN,)> for ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     type Output = (OUT, F::Tangent);
     extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
@@ -234,8 +230,8 @@ where
 impl<IN, OUT, F> FnMut<(IN,)> for ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
         self.apply(args.0)
@@ -245,8 +241,8 @@ where
 impl<IN, OUT, F> Fn<(IN,)> for ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
         self.apply(args.0)
@@ -256,8 +252,8 @@ where
 pub fn value_and_grad<IN, OUT, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
-    IN: Input,
-    OUT: Output,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     ValueAndGradFunc::new(func)
 }
@@ -321,8 +317,8 @@ impl WithTensors for BTreeMap<usize, Tensor> {
     }
 }
 
-impl<const N: usize> FromTensors for [Tensor; N] {
-    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self {
+impl<const N: usize> FromTensorMap for [Tensor; N] {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
         tensors
             .into_values()
             .collect::<Vec<Tensor>>()
@@ -333,30 +329,17 @@ impl<const N: usize> FromTensors for [Tensor; N] {
     }
 }
 
-impl FromTensors for Vec<Tensor> {
-    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self {
+impl FromTensorMap for Vec<Tensor> {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
         tensors.into_values().collect()
     }
 }
 
-impl FromTensors for BTreeMap<usize, Tensor> {
-    fn from_tensors(tensors: BTreeMap<usize, Tensor>) -> Self {
+impl FromTensorMap for BTreeMap<usize, Tensor> {
+    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
         tensors
     }
 }
-
-impl<const N: usize> Input for [Tensor; N] {}
-
-impl<const N: usize> Output for [Tensor; N] {}
-
-impl<const N: usize> Input for &[Tensor; N] {}
-
-impl<const N: usize> Output for &[Tensor; N] {}
-
-impl Input for Vec<Tensor> {}
-impl Input for Tensor {}
-impl Input for &Tensor {}
-impl Output for Tensor {}
 
 // module impl
 #[derive(Clone, Debug)]
@@ -436,6 +419,7 @@ mod test {
     use crate::{
         backend::Cpu,
         transform::{grad, jvp, value_and_grad, WithTensors},
+        utils::dot_graph,
         DType, Tensor,
     };
 
@@ -458,7 +442,7 @@ mod test {
         let at = Tensor::full(1.0, [2, 3], DType::F32, backend);
         let bt = Tensor::full(3.0, [2, 3], DType::F32, backend);
 
-        let (output, jvps) = jvp(func, [a, b], &[at, bt]);
+        let (output, jvps) = jvp(func, [a, b], [at, bt]);
     }
 
     #[test]
@@ -474,7 +458,7 @@ mod test {
             .map(|t| (t.id(), t.ones_like()))
             .collect();
 
-        let (output, jvps) = jvp(linear, input, &tangents);
+        let (output, jvps) = jvp(linear, input, tangents);
     }
 
     #[test]
@@ -498,8 +482,8 @@ mod test {
         let x = Tensor::ones([1], DType::F32, backend);
         let (outs, grads) = grad_fn([x]);
 
-        println!("{}", grads[0].dot_graph());
-        println!("{}", outs[0]);
-        println!("{}", grads[0]);
+        println!("{}", dot_graph([&outs, &grads]));
+        println!("{} = {}", outs[0].id(), outs[0]);
+        println!("{} = {}", grads[0].id(), grads[0]);
     }
 }
