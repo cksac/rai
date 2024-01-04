@@ -1,5 +1,5 @@
 [package]
-name = "rai"
+name = "rai-opt"
 authors = ["cksac <cs.cksac@gmail.com>"]
 description = "ML framework with Ergonomic APIs in Rust"
 keywords = ["deep-learning", "machine-learning", "tensor"]
@@ -13,5 +13,3 @@ homepage = "https://github.com/cksac/rai"
 
 [dependencies]
 rai-core = { workspace = true }
-rai-nn = { workspace = true }
-rai-opt = { workspace = true }

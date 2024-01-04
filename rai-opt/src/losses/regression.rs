@@ -1,0 +1,11 @@
+use rai_core::Tensor;
+
+pub fn squared_error(predictions: &Tensor, targets: &Tensor) -> Tensor {
+    let ref errors = predictions - targets;
+    // TODO: use integer power error.powi(2);
+    errors * errors
+}
+
+pub fn l2_loss(predictions: &Tensor, targets: &Tensor) -> Tensor {
+    0.5 * squared_error(predictions, targets)
+}

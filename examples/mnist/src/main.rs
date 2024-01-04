@@ -1,4 +1,5 @@
 use rai::backend::Cpu;
+use rai::opt::losses::l2_loss;
 use rai::{eval, WithTensors};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
@@ -42,14 +43,9 @@ impl Module for Mlp {
     }
 }
 
-fn cross_entropy(logits: &Tensor, label: &Tensor) -> Tensor {
-    // TODO: loss implementation
-    logits - label
-}
-
 fn loss_fn(model: &Mlp, input: &Tensor, label: &Tensor) -> (Tensor, Tensor) {
     let logits = model.forward(input);
-    let loss = cross_entropy(&logits, label);
+    let loss = l2_loss(&logits, label);
     (loss, logits)
 }
 
