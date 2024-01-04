@@ -33,7 +33,7 @@ where
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
     fn call(&self, input: (&M, &Tensor)) -> Tensor {
-        self(input.0, &input.1)
+        self(input.0, input.1)
     }
 
     fn capture_inputs(&self, input: &(&M, &Tensor)) -> Vec<Tensor> {
@@ -50,7 +50,7 @@ where
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
     fn call(&self, input: (&M, &Tensor, &Tensor)) -> Tensor {
-        self(input.0, &input.1, &input.2)
+        self(input.0, input.1, input.2)
     }
 
     fn capture_inputs(&self, input: &(&M, &Tensor, &Tensor)) -> Vec<Tensor> {
@@ -67,7 +67,7 @@ where
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
     fn call(&self, input: (&M, &Tensor)) -> (Tensor, Tensor) {
-        self(input.0, &input.1)
+        self(input.0, input.1)
     }
 
     fn capture_inputs(&self, input: &(&M, &Tensor)) -> Vec<Tensor> {
@@ -84,7 +84,7 @@ where
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
     fn call(&self, input: (&M, &Tensor, &Tensor)) -> (Tensor, Tensor) {
-        self(input.0, &input.1, &input.2)
+        self(input.0, input.1, input.2)
     }
 
     fn capture_inputs(&self, input: &(&M, &Tensor, &Tensor)) -> Vec<Tensor> {

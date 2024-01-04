@@ -43,9 +43,8 @@ impl Module for Mlp {
 }
 
 fn cross_entropy(logits: &Tensor, label: &Tensor) -> Tensor {
-    // TODO: loss fn implementation
-    let loss = logits - label;
-    loss
+    // TODO: loss implementation
+    logits - label
 }
 
 fn loss_fn(model: &Mlp, input: &Tensor, label: &Tensor) -> (Tensor, Tensor) {
