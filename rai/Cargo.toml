@@ -13,3 +13,4 @@ homepage = "https://github.com/cksac/rai"
 
 [dependencies]
 rai-core = { path = "../rai-core" }
+rai-nn = { path = "../rai-nn" }

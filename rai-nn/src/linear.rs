@@ -1,4 +1,4 @@
-use rai::{Backend, DType, Module, Tensor};
+use rai_core::{Backend, DType, Module, Tensor};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]

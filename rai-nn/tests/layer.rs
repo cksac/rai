@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use rai::{backend::Cpu, grad, jvp, value_and_grad, DType, Module, Tensor, WithTensors};
+use rai_core::{backend::Cpu, grad, jvp, value_and_grad, DType, Module, Tensor, WithTensors};
 use rai_nn::Linear;
 
 #[test]

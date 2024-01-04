@@ -5,7 +5,8 @@
 [![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
 
 ML framework with Ergonomic APIs in Rust. Lazy computation and composable transformations.
-Note: It required Rust nightly with following features [fn_traits,, unboxed_closures]
+---
+Note: It required `Rust nightly` with following features [`fn_traits`, `unboxed_closures`]
 
 ## Installation
 ```sh
