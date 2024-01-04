@@ -5,6 +5,7 @@
 [![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
 
 ML framework with Ergonomic APIs in Rust. Lazy computation and composable transformations.
+Note: It required Rust nightly with following features [fn_traits,, unboxed_closures]
 
 ## Installation
 ```sh
@@ -82,6 +83,25 @@ fn main() {
         "loss: {}, elapsed: {:?}, throughput: {:?} iters/sec",
         loss, elapsed, throughput
     );
+}
+```
+
+### Neuron network modules with transformation (grad, jvp, value_and_grad, vjp)
+```rust
+#[test]
+fn test_linear_grad() {
+    let backend = &Cpu;
+
+    let linear = Linear::new(5, 2, true, DType::F32, backend);
+    let input = Tensor::normal([5], DType::F32, backend);
+
+    let grad_fn = grad(linear);
+    let grads = grad_fn(input);
+    println!("{:?}", &grads);
+
+    let grads = grads.tensors();
+    println!("{}", grads[0]); // grad of linear.weight
+    println!("{}", grads[1]); // grad of linear.bias
 }
 ```
 
