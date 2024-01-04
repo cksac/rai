@@ -15,9 +15,9 @@ impl Linear {
         dtype: DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Self {
-        let backend = backend.into();
+        let backend = &backend.into();
         // TODO: init strategy
-        let weight = Tensor::normal([out_features, in_features], dtype, backend.clone());
+        let weight = Tensor::normal([out_features, in_features], dtype, backend);
         let bias = if has_bias {
             Some(Tensor::normal([out_features], dtype, backend))
         } else {
@@ -39,6 +39,17 @@ impl Module for Linear {
         match &self.bias {
             Some(bias) => vec![self.weight.clone(), bias.clone()],
             None => vec![self.weight.clone()],
+        }
+    }
+
+    fn update(&mut self, params: &std::collections::BTreeMap<usize, Tensor>) {
+        if let Some(weight) = params.get(&self.weight.id()).cloned() {
+            self.weight = weight;
+        }
+        if let Some(bias) = &mut self.bias {
+            if let Some(new_bias) = params.get(&bias.id()).cloned() {
+                *bias = new_bias;
+            }
         }
     }
 }

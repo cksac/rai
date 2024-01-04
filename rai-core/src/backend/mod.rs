@@ -18,6 +18,12 @@ where
     }
 }
 
+impl From<&Box<dyn Backend>> for Box<dyn Backend> {
+    fn from(t: &Box<dyn Backend>) -> Self {
+        t.clone()
+    }
+}
+
 impl Clone for Box<dyn Backend> {
     fn clone(&self) -> Self {
         self.clone_boxed()

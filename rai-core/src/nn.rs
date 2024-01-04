@@ -5,6 +5,7 @@ use crate::{transforms::Func, Tensor};
 pub trait Module {
     fn forward(&self, input: &Tensor) -> Tensor;
     fn parameters(&self) -> Vec<Tensor>;
+    fn update(&mut self, params: &BTreeMap<usize, Tensor>);
 }
 
 impl<T> Func<Tensor, Tensor> for T
