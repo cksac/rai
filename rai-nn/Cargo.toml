@@ -12,4 +12,4 @@ repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
 [dependencies]
-rai-core = { path = "../rai-core", version = "0.3.0" }
+rai-core = { workspace = true }
