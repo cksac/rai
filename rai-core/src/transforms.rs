@@ -1,15 +1,19 @@
 use crate::dispatch::eval_rule;
 use crate::utils::TensorIter;
-use crate::Tensor;
+use crate::{Module, Tensor};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
 
-pub trait Func<IN, OUT> {
+pub trait Func<IN, OUT>
+where
+    IN: WithTensors,
+    OUT: WithTensors,
+{
     type Tangent: WithTensors + FromTensorMap;
     type Cotangent: WithTensors + FromTensorMap;
     fn call(&self, input: IN) -> OUT;
-    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
-        None
+    fn capture_inputs(&self, input: &IN) -> Vec<Tensor> {
+        input.tensors()
     }
 }
 
@@ -47,9 +51,24 @@ impl WithTensors for &Tensor {
     }
 }
 
+impl WithTensors for (Tensor, Tensor) {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![self.0.clone(), self.1.clone()]
+    }
+}
+
 impl WithTensors for BTreeMap<usize, Tensor> {
     fn tensors(&self) -> Vec<Tensor> {
         self.values().cloned().collect()
+    }
+}
+
+impl<M> WithTensors for (&M, Tensor)
+where
+    M: Module,
+{
+    fn tensors(&self) -> Vec<Tensor> {
+        self.0.parameters()
     }
 }
 
@@ -88,13 +107,8 @@ where
     OUT: WithTensors,
 {
     let mut tangent_map = HashMap::new();
-    let params = if let Some(params) = func.captured_inputs() {
-        params
-    } else {
-        input.tensors()
-    };
-
-    for (p, t) in params.iter().zip(tangents.tensors()) {
+    let inputs = func.capture_inputs(&input);
+    for (p, t) in inputs.iter().zip(tangents.tensors()) {
         tangent_map.insert(p.id(), t.clone());
     }
     let output = func.call(input);
@@ -117,12 +131,8 @@ where
     IN: WithTensors,
     OUT: WithTensors,
 {
-    let params = if let Some(params) = func.captured_inputs() {
-        params
-    } else {
-        input.tensors()
-    };
-    let input_ids: Vec<usize> = params.iter().map(|v| v.id()).collect();
+    let inputs = func.capture_inputs(&input);
+    let input_ids: Vec<usize> = inputs.iter().map(|v| v.id()).collect();
     let output = func.call(input);
     let out_tensors = output.tensors();
 
@@ -152,6 +162,8 @@ where
 pub struct GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     func: F,
     phantom: std::marker::PhantomData<(IN, OUT)>,
@@ -192,8 +204,8 @@ where
         self.func.call(input)
     }
 
-    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
-        self.func.captured_inputs()
+    fn capture_inputs(&self, input: &IN) -> Vec<Tensor> {
+        self.func.capture_inputs(input)
     }
 }
 
@@ -244,6 +256,8 @@ where
 pub struct ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
 {
     func: F,
     phantom: std::marker::PhantomData<(IN, OUT)>,
@@ -285,8 +299,8 @@ where
         self.func.call(input)
     }
 
-    fn captured_inputs(&self) -> Option<Vec<Tensor>> {
-        self.func.captured_inputs()
+    fn capture_inputs(&self, input: &IN) -> Vec<Tensor> {
+        self.func.capture_inputs(input)
     }
 }
 
