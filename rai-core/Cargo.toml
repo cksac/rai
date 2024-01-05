@@ -13,6 +13,7 @@ homepage = "https://github.com/cksac/rai"
 
 [dependencies]
 candle-core = { workspace = true }
+candle-nn = { workspace = true }
 dyn-clone = { workspace = true }
 once_cell = { workspace = true }
 thiserror = { workspace = true }

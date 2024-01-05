@@ -30,7 +30,7 @@ impl Mlp {
 impl Module for Mlp {
     fn forward(&self, x: &Tensor) -> Tensor {
         let x = &self.ln1.forward(x);
-        // TODO: add relu
+        let x = &x.relu();
         self.ln2.forward(x)
     }
 

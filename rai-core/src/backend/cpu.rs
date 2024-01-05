@@ -408,3 +408,30 @@ impl Eval<Cpu, primitives::LessEqual> for Dispatch<Cpu, primitives::LessEqual> {
         output.set_data(t);
     }
 }
+
+impl Eval<Cpu, primitives::Maximum> for Dispatch<Cpu, primitives::Maximum> {
+    fn eval(&self, _: &Cpu, _: &primitives::Maximum, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.maximum(t2).unwrap()
+        } else {
+            t1.broadcast_maximum(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Softmax, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = candle_nn::ops::softmax(t, primitive.axis).unwrap();
+        output.set_data(t)
+    }
+}

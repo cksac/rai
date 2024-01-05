@@ -161,6 +161,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn maximum<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::maximum(self, rhs.as_ref())
+    }
+
+    #[inline]
     pub fn t(&self) -> Tensor {
         assert!(self.ndim() >= 2);
         let ndim = self.ndim();
@@ -238,6 +243,16 @@ impl Tensor {
     #[inline]
     pub fn exp(&self) -> Tensor {
         ops::exp(self)
+    }
+
+    #[inline]
+    pub fn softmax(&self, axis: usize) -> Tensor {
+        ops::softmax(self, axis)
+    }
+
+    #[inline]
+    pub fn relu(&self) -> Tensor {
+        ops::relu(self)
     }
 
     #[inline]

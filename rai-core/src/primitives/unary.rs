@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{Primitive, Tensor};
+use crate::{Primitive, Shape, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Negative;
@@ -217,6 +217,45 @@ impl Primitive for Exp {
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * x.exp();
+        vec![cotangent_x]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Softmax {
+    pub axis: usize,
+}
+
+impl Softmax {
+    pub fn new(axis: usize) -> Self {
+        Self { axis }
+    }
+}
+
+impl Primitive for Softmax {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        // TODO: check correctness
+        let x = &primals[0];
+        let tangent_x = &tangents[0];
+        let s = &x.softmax(x.dims()[self.axis]);
+        let sv = &(s * tangent_x);
+        sv - s * sv.reduce_sum((sv.dims(), true))
+    }
+
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        // TODO: check correctness
+        let x = &primals[0];
+        let s = &x.softmax(x.dims()[self.axis]);
+        let sv = &(s * cotangent);
+        let cotangent_x = sv - s * sv.reduce_sum((sv.dims(), true));
         vec![cotangent_x]
     }
 }

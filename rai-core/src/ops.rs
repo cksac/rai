@@ -4,8 +4,8 @@ use tracing::Level;
 use crate::{
     primitives::{
         Abs, Add, Arange, Broadcast, Cos, Div, Exp, Full, Greater, GreaterEqual, Less, LessEqual,
-        MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub,
-        Transpose,
+        MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax,
+        Sqrt, Square, Sub, Transpose,
     },
     utils::dot_graph,
     Backend, DType, Shape, Tensor,
@@ -566,6 +566,16 @@ impl<const N: usize> Axes for [usize; N] {
     }
 }
 
+impl Axes for &[usize] {
+    fn axes(&self) -> &[usize] {
+        self
+    }
+
+    fn to_vec(&self) -> Vec<usize> {
+        Vec::from(*self)
+    }
+}
+
 pub trait ReduceSumArgs: Debug {
     fn axes(&self) -> &[usize];
     fn keep_dim(&self) -> bool {
@@ -718,4 +728,32 @@ pub fn less_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, LessEqual, inputs)
+}
+
+pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = lhs.dtype();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "maximum({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, Maximum, inputs)
+}
+
+pub fn softmax(x: &Tensor, axis: usize) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Softmax::new(axis), inputs)
+}
+
+pub fn relu(x: &Tensor) -> Tensor {
+    x.maximum(x.zeros_like())
 }

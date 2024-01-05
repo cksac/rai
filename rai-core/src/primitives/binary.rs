@@ -239,3 +239,32 @@ impl Primitive for LessEqual {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Maximum;
+
+impl Primitive for Maximum {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let tangent_lhs = &tangents[0];
+        let tangent_rhs = &tangents[1];
+        tangent_lhs * lhs.greater(rhs) + tangent_rhs * lhs.less_equal(rhs)
+    }
+
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = cotangent * lhs.greater(rhs);
+        let cotangent_rhs = cotangent * lhs.less_equal(rhs);
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}

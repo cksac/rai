@@ -4,8 +4,10 @@ use crate::{transforms::Func, Tensor};
 
 pub trait Module {
     fn forward(&self, input: &Tensor) -> Tensor;
-    fn parameters(&self) -> Vec<Tensor>;
-    fn update(&self, params: &mut BTreeMap<usize, Tensor>);
+    fn parameters(&self) -> Vec<Tensor> {
+        vec![]
+    }
+    fn update(&self, _params: &mut BTreeMap<usize, Tensor>) {}
 }
 
 impl<T> Func<Tensor, Tensor> for T
