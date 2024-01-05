@@ -74,6 +74,11 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Laz
     _register::<Cpu, primitives::Mul>(&mut rules);
     _register::<Cpu, primitives::Div>(&mut rules);
     _register::<Cpu, primitives::MatMul>(&mut rules);
+    _register::<Cpu, primitives::Greater>(&mut rules);
+    _register::<Cpu, primitives::GreaterEqual>(&mut rules);
+    _register::<Cpu, primitives::Less>(&mut rules);
+    _register::<Cpu, primitives::LessEqual>(&mut rules);
+
     // unary
     _register::<Cpu, primitives::Sin>(&mut rules);
     _register::<Cpu, primitives::Cos>(&mut rules);

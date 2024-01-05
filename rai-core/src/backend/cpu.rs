@@ -334,3 +334,71 @@ impl Eval<Cpu, primitives::Exp> for Dispatch<Cpu, primitives::Exp> {
         output.set_data(t)
     }
 }
+
+impl Eval<Cpu, primitives::Greater> for Dispatch<Cpu, primitives::Greater> {
+    fn eval(&self, _: &Cpu, _: &primitives::Greater, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.gt(t2).unwrap()
+        } else {
+            t1.broadcast_gt(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::GreaterEqual> for Dispatch<Cpu, primitives::GreaterEqual> {
+    fn eval(&self, _: &Cpu, _: &primitives::GreaterEqual, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.ge(t2).unwrap()
+        } else {
+            t1.broadcast_ge(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::Less> for Dispatch<Cpu, primitives::Less> {
+    fn eval(&self, _: &Cpu, _: &primitives::Less, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.lt(t2).unwrap()
+        } else {
+            t1.broadcast_lt(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::LessEqual> for Dispatch<Cpu, primitives::LessEqual> {
+    fn eval(&self, _: &Cpu, _: &primitives::LessEqual, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.le(t2).unwrap()
+        } else {
+            t1.broadcast_le(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}

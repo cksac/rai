@@ -141,6 +141,26 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn greater<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::greater(self, rhs.as_ref())
+    }
+
+    #[inline]
+    pub fn greater_equal<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::greater_equal(self, rhs.as_ref())
+    }
+
+    #[inline]
+    pub fn less<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::less(self, rhs.as_ref())
+    }
+
+    #[inline]
+    pub fn less_equal<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::less_equal(self, rhs.as_ref())
+    }
+
+    #[inline]
     pub fn t(&self) -> Tensor {
         assert!(self.ndim() >= 2);
         let ndim = self.ndim();

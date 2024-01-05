@@ -3,8 +3,9 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, Broadcast, Cos, Div, Exp, Full, MatMul, Mul, Negative, Normal, ReduceSum,
-        Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub, Transpose,
+        Abs, Add, Arange, Broadcast, Cos, Div, Exp, Full, Greater, GreaterEqual, Less, LessEqual,
+        MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub,
+        Transpose,
     },
     Backend, DType, Shape, Tensor,
 };
@@ -593,4 +594,36 @@ pub fn exp(x: &Tensor) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, Exp, inputs)
+}
+
+pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = lhs.dtype();
+    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, Greater, inputs)
+}
+
+pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = lhs.dtype();
+    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, GreaterEqual, inputs)
+}
+
+pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = lhs.dtype();
+    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, Less, inputs)
+}
+
+pub fn less_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = lhs.dtype();
+    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, LessEqual, inputs)
 }

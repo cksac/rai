@@ -139,3 +139,103 @@ impl Primitive for MatMul {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Greater;
+
+impl Primitive for Greater {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.zeros_like()
+    }
+
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = lhs.zeros_like();
+        let cotangent_rhs = rhs.zeros_like();
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GreaterEqual;
+
+impl Primitive for GreaterEqual {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.zeros_like()
+    }
+
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = lhs.zeros_like();
+        let cotangent_rhs = rhs.zeros_like();
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Less;
+
+impl Primitive for Less {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.zeros_like()
+    }
+
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = lhs.zeros_like();
+        let cotangent_rhs = rhs.zeros_like();
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LessEqual;
+
+impl Primitive for LessEqual {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.zeros_like()
+    }
+
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = lhs.zeros_like();
+        let cotangent_rhs = rhs.zeros_like();
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}
