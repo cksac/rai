@@ -1,7 +1,7 @@
 use rai_core::Tensor;
 
 pub fn squared_error(predictions: &Tensor, targets: &Tensor) -> Tensor {
-    let ref errors = predictions - targets;
+    let errors = &(predictions - targets);
     // TODO: use integer power error.powi(2);
     errors * errors
 }
