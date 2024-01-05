@@ -1,5 +1,6 @@
 use rai::backend::Cpu;
 use rai::opt::losses::l2_loss;
+use rai::utils::dot_graph;
 use rai::{eval, WithTensors};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
@@ -37,52 +38,62 @@ impl Module for Mlp {
         [self.ln1.parameters(), self.ln2.parameters()].concat()
     }
 
-    fn update(&mut self, params: &BTreeMap<usize, Tensor>) {
+    fn update(&self, params: &mut BTreeMap<usize, Tensor>) {
         self.ln1.update(params);
         self.ln2.update(params);
     }
 }
 
 fn loss_fn(model: &Mlp, input: &Tensor, label: &Tensor) -> (Tensor, Tensor) {
+    // TODO: return correct loss
     let logits = model.forward(input);
-    let loss = l2_loss(&logits, label);
+    // Todo: use mean?
+    let logits_sm = &logits.reduce_sum([1]);
+    dbg!(&logits, logits_sm, label);
+    let loss = l2_loss(logits_sm, label);
     (loss, logits)
 }
 
-fn train(model: &mut Mlp, input: &Tensor, label: &Tensor) {
+fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
     let vg_fn = value_and_grad(loss_fn);
     let ((_loss, _logits), grads) = vg_fn((model, input, label));
 
+    println!("{:?}", model.parameters());
+    println!("{:?}", grads);
+
     // TODO: Optimizer to get new params
-    let new_params: BTreeMap<usize, Tensor> = model
+    let mut new_params: BTreeMap<usize, Tensor> = model
         .parameters()
         .iter()
         .map(|t| {
             let id = t.id();
             let grad = grads.get(&id).unwrap();
-            (id, t - grad * 0.01)
+            let new_t = t - grad * 0.01;
+            dbg!(id, t, grad, &new_t);
+            println!("{}", dot_graph([t, grad, &new_t]));
+            (id, new_t)
         })
         .collect();
     eval(new_params.tensors());
 
     // apply param update
-    model.update(&new_params);
+    model.update(&mut new_params);
 }
 
 fn main() {
-    let num_iters = 1000;
-    let batch_size = 10;
+    let num_iters = 1;
+    let batch_size = 5;
     let backend = &Cpu;
     let dtype = DType::F32;
 
-    let mut model = Mlp::new(784, 10, dtype, backend);
+    let model = Mlp::new(784, 10, dtype, backend);
 
     let start = Instant::now();
     for _ in 0..num_iters {
         // todo: get image input and label
         let input = Tensor::normal([batch_size, 784], dtype, backend);
-        let label = Tensor::zeros([batch_size, 10], dtype, backend);
-        train(&mut model, &input, &label);
+        let label = Tensor::full(0.123, [batch_size], dtype, backend);
+        train(&model, &input, &label);
     }
     let elapsed = start.elapsed();
     let throughput = num_iters as f64 / elapsed.as_secs_f64();

@@ -1,5 +1,5 @@
 use rai_core::{Backend, DType, Module, Tensor};
-use std::fmt::Debug;
+use std::{collections::BTreeMap, fmt::Debug};
 
 #[derive(Clone, Debug)]
 pub struct Linear {
@@ -42,13 +42,13 @@ impl Module for Linear {
         }
     }
 
-    fn update(&mut self, params: &std::collections::BTreeMap<usize, Tensor>) {
-        if let Some(weight) = params.get(&self.weight.id()).cloned() {
-            self.weight = weight;
+    fn update(&self, params: &mut BTreeMap<usize, Tensor>) {
+        if let Some(weight) = params.remove(&self.weight.id()) {
+            self.weight.replace_data(weight);
         }
-        if let Some(bias) = &mut self.bias {
-            if let Some(new_bias) = params.get(&bias.id()).cloned() {
-                *bias = new_bias;
+        if let Some(bias) = &self.bias {
+            if let Some(new_bias) = params.remove(&bias.id()) {
+                bias.replace_data(new_bias);
             }
         }
     }

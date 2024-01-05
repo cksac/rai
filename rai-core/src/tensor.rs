@@ -289,25 +289,43 @@ impl Tensor {
         }
     }
 
+    #[inline]
     pub fn dot_graph(&self) -> String {
         utils::dot_graph(self)
     }
 
+    #[inline]
     pub fn detach(&self) {
         self.0.inputs.borrow_mut().clear();
     }
 
     #[inline]
+    pub fn replace_data(&self, rhs: Tensor) {
+        assert!(
+            self.shape_eq(&rhs),
+            "{:?} not align with rhs shape: {:?},",
+            self,
+            rhs.shape()
+        );
+        assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
+        assert!(self.backend() == rhs.backend(), "backend must be equal");
+        assert!(rhs.is_evalualted(), "rhs must be evaluated");
+        self.0.data.replace(rhs.0.data.take());
+        self.detach();
+    }
+
+    #[inline]
     pub fn set_data<T: TensorLike + 'static>(&self, data: T) {
-        debug_assert!(
+        assert!(
             self.shape_eq(&data.shape()),
-            "{:?} not align with backend shape: {:?},",
+            "{:?} not align with data shape: {:?},",
             self,
             data.shape()
         );
         self.0.data.replace(Some(Box::new(data)));
     }
 
+    #[inline]
     pub fn get_data<T>(&self) -> Option<impl Deref<Target = T> + '_>
     where
         T: 'static,
@@ -321,6 +339,7 @@ impl Tensor {
         }
     }
 
+    #[inline]
     pub fn is_evalualted(&self) -> bool {
         self.0
             .data
@@ -369,6 +388,8 @@ impl Debug for Tensor {
             .field("id", &self.id())
             .field("shape", &self.shape().dims())
             .field("dtype", &self.dtype())
+            .field("backend", &self.backend())
+            .field("primitive", &self.primitive())
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),

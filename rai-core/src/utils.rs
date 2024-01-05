@@ -1,6 +1,7 @@
 use std::{
     collections::{hash_map::RandomState, HashSet},
     fmt::Debug,
+    ops::Deref,
 };
 
 use crate::Tensor;
@@ -24,9 +25,19 @@ impl<const N: usize> TensorIter for [Tensor; N] {
         self.iter()
     }
 }
+impl<const N: usize> TensorIter for [&Tensor; N] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().map(Deref::deref)
+    }
+}
 impl<const N: usize> TensorIter for &[Tensor; N] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
+    }
+}
+impl<const N: usize> TensorIter for &[&Tensor; N] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().map(Deref::deref)
     }
 }
 impl TensorIter for Vec<Tensor> {
@@ -42,6 +53,11 @@ impl TensorIter for &Vec<Tensor> {
 impl TensorIter for &[Tensor] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
+    }
+}
+impl TensorIter for &[&Tensor] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().map(Deref::deref)
     }
 }
 impl<const N: usize, const M: usize> TensorIter for ([Tensor; N], [Tensor; M]) {
@@ -90,12 +106,13 @@ pub fn dot_graph<T: TensorIter>(args: T) -> String {
 
     let nodes: HashSet<String, RandomState> = HashSet::from_iter(tape.iter().map(|tensor| {
         format!(
-            "{} [label=\"{}: {}|{{dtype:|shape:}}|{{{{{:?}}}|{{{:?}}}}}\"];",
+            "{} [label=\"{}: {}|{{dtype:|shape:|inputs:}}|{{{{{:?}}}|{{{:?}}}|{{{:?}}}}}\"];",
             tensor.id(),
             tensor.id(),
             tensor.primitive().dot_label(),
             tensor.dtype(),
-            tensor.shape()
+            tensor.shape(),
+            tensor.inputs().iter().map(|t| t.id()).collect::<Vec<_>>(),
         )
     }));
 

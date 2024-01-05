@@ -19,7 +19,7 @@ fn main() {
     let y = x.matmul(&w_star) + eps;
 
     // Initialize random parameters
-    let mut w = Tensor::normal([num_features], DType::F32, backend) * 1e-2f32;
+    let w = &(Tensor::normal([num_features], DType::F32, backend) * 1e-2f32);
 
     let loss_fn = move |w: &Tensor| {
         let y = &y;
@@ -33,11 +33,12 @@ fn main() {
     for _ in 0..num_iters {
         let grads = grad_fn([w.clone()]);
         let grad = &grads[0];
-        w = w - grad * learning_rate;
-        eval(&w);
+        let new_w = w - grad * learning_rate;
+        eval(&new_w);
+        w.replace_data(new_w);
     }
     let elapsed = start.elapsed();
-    let loss = loss_fn(&w);
+    let loss = loss_fn(w);
     let throughput = num_iters as f64 / elapsed.as_secs_f64();
     println!(
         "loss: {}, elapsed: {:?}, throughput: {:?} iters/sec",

@@ -11,7 +11,7 @@ use crate::{
     Backend, DType, Shape, Tensor,
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Cpu;
 
 type Data = candle_core::Tensor;
@@ -38,6 +38,12 @@ impl Backend for Cpu {
     #[inline]
     fn data_type_id(&self) -> std::any::TypeId {
         TypeId::of::<Data>()
+    }
+
+    fn equal(&self, rhs: &dyn Backend) -> bool {
+        rhs.as_any()
+            .downcast_ref()
+            .map_or(false, |other| self == other)
     }
 }
 

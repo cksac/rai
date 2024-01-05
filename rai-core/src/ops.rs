@@ -7,6 +7,7 @@ use crate::{
         MatMul, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin, Sqrt, Square, Sub,
         Transpose,
     },
+    utils::dot_graph,
     Backend, DType, Shape, Tensor,
 };
 
@@ -327,7 +328,15 @@ pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Deb
 pub fn add(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "add({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Add, inputs)
 }
@@ -338,7 +347,15 @@ impl_std_ops!(Add, add);
 pub fn sub(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "sub({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Sub, inputs)
 }
@@ -349,7 +366,15 @@ impl_std_ops!(Sub, sub);
 pub fn mul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "mul({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Mul, inputs)
 }
@@ -360,7 +385,15 @@ impl_std_ops!(Mul, mul);
 pub fn div(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "div({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Div, inputs)
 }
@@ -423,7 +456,15 @@ pub fn cos(x: &Tensor) -> Tensor {
 pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast_matmul(rhs).unwrap();
+    let shape = lhs.shape_broadcast_matmul(rhs).unwrap_or_else(|e| {
+        panic!(
+            "matmul({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
 
     let lhs_in = lhs;
     let rhs_in = rhs;
@@ -461,7 +502,15 @@ pub fn transpose(x: &Tensor, axes: impl Into<Vec<usize>> + Debug) -> Tensor {
 pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
-    let out_shape = x.shape_broadcast(&shape).expect("broadcast shape");
+    let out_shape = x.shape_broadcast(&shape).unwrap_or_else(|e| {
+        panic!(
+            "{:?} broadcast_to shape {} with error {:?}\n{}",
+            x,
+            shape.ndim(),
+            e,
+            dot_graph(x)
+        )
+    });
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, out_shape, Broadcast::new(shape), inputs)
 }
@@ -478,7 +527,7 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
         let inputs = vec![x.clone()];
         Tensor::new(backend, dtype, shape, Reshape, inputs)
     } else {
-        panic!("cannot reshape tensor");
+        panic!("cannot reshape tensor {:?} to shape {:?}", x, shape.dims());
     }
 }
 
@@ -504,6 +553,16 @@ impl Axes for &Vec<usize> {
 
     fn to_vec(&self) -> Vec<usize> {
         (*self).clone()
+    }
+}
+
+impl<const N: usize> Axes for [usize; N] {
+    fn axes(&self) -> &[usize] {
+        self.as_slice()
+    }
+
+    fn to_vec(&self) -> Vec<usize> {
+        Vec::from(self)
     }
 }
 
@@ -599,7 +658,16 @@ pub fn exp(x: &Tensor) -> Tensor {
 pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "greater({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
+
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Greater, inputs)
 }
@@ -607,7 +675,15 @@ pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "greater_equal({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, GreaterEqual, inputs)
 }
@@ -615,7 +691,15 @@ pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "less({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Less, inputs)
 }
@@ -623,7 +707,15 @@ pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn less_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap();
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "less_equal({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, LessEqual, inputs)
 }

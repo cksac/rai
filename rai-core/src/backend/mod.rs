@@ -7,6 +7,7 @@ pub trait Backend: Debug {
     fn clone_boxed(&self) -> Box<dyn Backend>;
     fn data_type_id(&self) -> TypeId;
     fn as_any(&self) -> &dyn Any;
+    fn equal(&self, rhs: &dyn Backend) -> bool;
 }
 
 impl<T> From<&T> for Box<dyn Backend>
@@ -33,6 +34,12 @@ impl Clone for Box<dyn Backend> {
 impl From<&dyn Backend> for Box<dyn Backend> {
     fn from(t: &dyn Backend) -> Self {
         t.clone_boxed()
+    }
+}
+
+impl<'a> PartialEq for &'a dyn Backend {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.equal(*rhs)
     }
 }
 
