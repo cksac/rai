@@ -2,9 +2,15 @@
     "cSpell.words": [
         "Arange",
         "dtype",
+        "logits",
         "matmul",
         "primals",
         "rsqrt",
         "vjps"
-    ]
+    ],
+    "rust-analyzer.linkedProjects": [
+        "./rai-opt/Cargo.toml",
+        "./rai-opt/Cargo.toml"
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false
 }
