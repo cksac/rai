@@ -5,7 +5,9 @@
         "logits",
         "matmul",
         "primals",
+        "relu",
         "rsqrt",
+        "softmax",
         "vjps"
     ],
     "rust-analyzer.linkedProjects": [

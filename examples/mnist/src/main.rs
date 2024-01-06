@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
 use rai::opt::losses::l2_loss;
 use rai::utils::dot_graph;
-use rai::{eval, WithTensors};
+use rai::{eval, WithTensors, Shape};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -47,8 +47,7 @@ impl Module for Mlp {
 fn loss_fn(model: &Mlp, input: &Tensor, label: &Tensor) -> (Tensor, Tensor) {
     // TODO: return correct loss
     let logits = model.forward(input);
-    // Todo: use mean?
-    let logits_sm = &logits.reduce_sum([1]);
+    let logits_sm = &logits.softmax(logits.ndim()-1);
     dbg!(&logits, logits_sm, label);
     let loss = l2_loss(logits_sm, label);
     (loss, logits)

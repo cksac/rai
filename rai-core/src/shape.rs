@@ -6,6 +6,11 @@ pub trait Shape: Debug {
     fn ndim(&self) -> usize;
 
     #[inline]
+    fn axes(&self) -> Vec<usize> {
+        (0..self.ndim()).collect::<Vec<_>>()
+    }
+
+    #[inline]
     fn size(&self) -> usize {
         self.dims().iter().product()
     }
@@ -25,11 +30,11 @@ pub trait Shape: Debug {
         transposed_dims
     }
     #[inline]
-    fn shape_at(&self, index: usize) -> usize
+    fn shape_at(&self, dim: usize) -> usize
     where
         Self: Sized,
     {
-        self.dims()[index]
+        self.dims()[dim]
     }
 
     #[inline]

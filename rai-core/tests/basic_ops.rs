@@ -103,3 +103,24 @@ fn test_sum() {
     println!("{}", outs[0]);
     println!("{}", grads[0]);
 }
+
+#[test]
+
+fn test_softmax() {
+    let backend = &Cpu;
+    let func = |x: &Tensor| x.softmax(0);
+    let vg_func = value_and_grad(func);
+    let a = &Tensor::arange((0.0f32, 1.0f32, 0.1), backend);
+    let (outs, grads) = vg_func([a.clone()]);
+    println!("{}", dot_graph([&outs, &grads]));
+
+    println!("{:?}", outs[0]);
+    println!("{:?}", grads[0]);
+
+    println!("{}", a);
+    println!("{}", outs[0]);
+    
+    println!("{}", outs[0].sum());
+
+    println!("{}", grads[0]);
+}

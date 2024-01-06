@@ -237,25 +237,25 @@ impl Primitive for Softmax {
         Box::new(self.clone())
     }
 
+    fn dot_label(&self) -> String {
+        format!("Softmax({:?})", &self.axis)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        // TODO: check correctness
-        let x = &primals[0];
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        // TODO: use primals instead of output?
         let tangent_x = &tangents[0];
-        let s = &x.softmax(x.dims()[self.axis]);
-        let sv = &(s * tangent_x);
-        sv - s * sv.reduce_sum((sv.dims(), true))
+        let sv = &(output * tangent_x);
+        sv - output * sv.reduce_sum((sv.axes(), true))
     }
 
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        // TODO: check correctness
-        let x = &primals[0];
-        let s = &x.softmax(x.dims()[self.axis]);
-        let sv = &(s * cotangent);
-        let cotangent_x = sv - s * sv.reduce_sum((sv.dims(), true));
+    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        // TODO: use primals instead of output?
+        let sv = &(output * cotangent);
+        let cotangent_x = sv - output * sv.reduce_sum((sv.axes(), true));
         vec![cotangent_x]
     }
 }
