@@ -1,5 +1,5 @@
 use rai::backend::Cpu;
-use rai::opt::losses::l2_loss;
+use rai::opt::losses::{l2_loss, softmax_cross_entropy};
 use rai::utils::dot_graph;
 use rai::{eval, WithTensors, Shape};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
@@ -44,12 +44,11 @@ impl Module for Mlp {
     }
 }
 
-fn loss_fn(model: &Mlp, input: &Tensor, label: &Tensor) -> (Tensor, Tensor) {
+fn loss_fn(model: &Mlp, input: &Tensor, labels: &Tensor) -> (Tensor, Tensor) {
     // TODO: return correct loss
     let logits = model.forward(input);
-    let logits_sm = &logits.softmax(logits.ndim()-1);
-    dbg!(&logits, logits_sm, label);
-    let loss = l2_loss(logits_sm, label);
+    let loss = softmax_cross_entropy(&logits, labels);
+    dbg!(&logits, &loss);
     (loss, logits)
 }
 
@@ -91,8 +90,8 @@ fn main() {
     for _ in 0..num_iters {
         // todo: get image input and label
         let input = Tensor::normal([batch_size, 784], dtype, backend);
-        let label = Tensor::full(0.123, [batch_size], dtype, backend);
-        train(&model, &input, &label);
+        let labels = Tensor::full(0.123, [batch_size, 10], dtype, backend);
+        train(&model, &input, &labels);
     }
     let elapsed = start.elapsed();
     let throughput = num_iters as f64 / elapsed.as_secs_f64();

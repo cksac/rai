@@ -3,6 +3,10 @@
 
 pub mod ops;
 pub mod primitives;
+
+mod axis;
+pub use axis::Axis;
+
 pub use primitives::Primitive;
 
 mod shape;

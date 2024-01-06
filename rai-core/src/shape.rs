@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{Error, Result, Axis};
 use std::fmt::Debug;
 
 pub trait Shape: Debug {
@@ -30,11 +30,11 @@ pub trait Shape: Debug {
         transposed_dims
     }
     #[inline]
-    fn shape_at(&self, dim: usize) -> usize
+    fn shape_at<T: Axis>(&self, axis: T) -> usize
     where
         Self: Sized,
     {
-        self.dims()[dim]
+        self.dims()[axis.of_shape(self)]
     }
 
     #[inline]
