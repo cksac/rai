@@ -4,13 +4,10 @@
 pub mod ops;
 pub mod primitives;
 
-mod axis;
-pub use axis::Axis;
-
 pub use primitives::Primitive;
 
 mod shape;
-pub use shape::Shape;
+pub use shape::{Shape, AsDim};
 
 mod tensor;
 pub use tensor::Tensor;

@@ -1,5 +1,46 @@
-use crate::{Error, Result, Axis};
+use crate::{Error, Result};
 use std::fmt::Debug;
+
+pub trait AsDim {
+    fn as_dim<T: Shape>(&self, shape: &T) -> usize;
+}
+
+impl AsDim for usize {
+    fn as_dim<T: Shape>(&self, shape: &T) -> usize {
+        assert!(*self < shape.ndim());
+        *self
+    }
+}
+
+impl AsDim for isize {
+    fn as_dim<T: Shape>(&self, shape: &T) -> usize {
+        let axis = if *self > 0 {
+            *self as usize
+        } else {
+            self.checked_add_unsigned(shape.ndim()).unwrap() as usize
+        };
+        assert!(axis < shape.ndim());
+        axis
+    }
+}
+
+pub trait AsDims {
+    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize>;
+}
+
+impl AsDims for usize {
+    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        assert!(*self < shape.ndim());
+        shape.dims().iter().cloned().take(*self).collect()
+    }
+}
+
+impl AsDims for isize {
+    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        let dim = self.as_dim(shape);
+        shape.dims().iter().cloned().take(dim).collect()
+    }
+}
 
 pub trait Shape: Debug {
     fn dims(&self) -> &[usize];
@@ -30,11 +71,11 @@ pub trait Shape: Debug {
         transposed_dims
     }
     #[inline]
-    fn shape_at<T: Axis>(&self, axis: T) -> usize
+    fn shape_at<T: AsDim>(&self, dim: T) -> usize
     where
         Self: Sized,
     {
-        self.dims()[axis.of_shape(self)]
+        self.dims()[dim.as_dim(self)]
     }
 
     #[inline]

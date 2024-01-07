@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::sync::atomic;
 
 use crate::ops::{ArangeArgs, ReduceSumArgs};
-use crate::{eval, utils, Axis};
+use crate::{eval, utils, AsDim};
 use crate::{ops, Backend, DType, Primitive, Shape};
 
 pub trait TensorLike: Debug + Display {
@@ -246,8 +246,8 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn softmax<T: Axis>(&self, axis: T) -> Tensor {
-        ops::softmax(self, axis.of_shape(self))
+    pub fn softmax<T: AsDim>(&self, dim: T) -> Tensor {
+        ops::softmax(self, dim.as_dim(self))
     }
 
     #[inline]
