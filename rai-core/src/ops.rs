@@ -8,7 +8,7 @@ use crate::{
         Sqrt, Square, Sub, Transpose,
     },
     utils::dot_graph,
-    AsDim, Backend, DType, Shape, Tensor,
+    DimIndex, Backend, DType, Shape, Tensor,
 };
 
 macro_rules! impl_std_ops {
@@ -745,12 +745,12 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Maximum, inputs)
 }
 
-pub fn softmax<T: AsDim>(x: &Tensor, dim: T) -> Tensor {
+pub fn softmax<T: DimIndex>(x: &Tensor, dim: T) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let axis = dim.as_dim(&shape);
+    let axis = dim.dim_of(&shape);
     Tensor::new(backend, dtype, shape, Softmax::new(axis), inputs)
 }
 

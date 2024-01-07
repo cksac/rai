@@ -1,19 +1,25 @@
 use crate::{Error, Result};
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::RangeFull};
 
-pub trait AsDim {
-    fn as_dim<T: Shape>(&self, shape: &T) -> usize;
+pub trait DimIndex {
+    fn dim_of<T: Shape>(&self, shape: &T) -> usize;
 }
 
-impl AsDim for usize {
-    fn as_dim<T: Shape>(&self, shape: &T) -> usize {
+impl DimIndex for usize {
+    fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         assert!(*self < shape.ndim());
         *self
     }
 }
 
-impl AsDim for isize {
-    fn as_dim<T: Shape>(&self, shape: &T) -> usize {
+impl DimIndex for RangeFull {
+    fn dim_of<T: Shape>(&self, shape: &T) -> usize {
+        shape.ndim() - 1
+    }
+}
+
+impl DimIndex for isize {
+    fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         let axis = if *self >= 0 {
             *self as usize
         } else {
@@ -24,8 +30,8 @@ impl AsDim for isize {
     }
 }
 
-impl AsDim for i32 {
-    fn as_dim<T: Shape>(&self, shape: &T) -> usize {
+impl DimIndex for i32 {
+    fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         let axis = if *self >= 0 {
             *self as usize
         } else {
@@ -33,31 +39,6 @@ impl AsDim for i32 {
         };
         assert!(axis < shape.ndim(), "{} < {}", axis, shape.ndim());
         axis
-    }
-}
-
-pub trait AsDims {
-    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize>;
-}
-
-impl AsDims for usize {
-    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        assert!(*self < shape.ndim());
-        shape.shape().iter().cloned().take(*self).collect()
-    }
-}
-
-impl AsDims for isize {
-    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        let dim = self.as_dim(shape);
-        shape.shape().iter().cloned().take(dim).collect()
-    }
-}
-
-impl AsDims for i32 {
-    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        let dim = self.as_dim(shape);
-        shape.shape().iter().cloned().take(dim).collect()
     }
 }
 
@@ -70,11 +51,6 @@ pub trait Shape: Debug {
     }
 
     #[inline]
-    fn axes(&self) -> Vec<usize> {
-        (0..self.ndim()).collect::<Vec<_>>()
-    }
-
-    #[inline]
     fn size(&self) -> usize {
         self.shape().iter().product()
     }
@@ -82,6 +58,34 @@ pub trait Shape: Debug {
     #[inline]
     fn to_vec(&self) -> Vec<usize> {
         self.shape().to_vec()
+    }
+
+    #[inline]
+    fn shape_at<I: DimIndex>(&self, i: I) -> usize
+    where
+        Self: Sized,
+    {
+        self.shape()[i.dim_of(self)]
+    }
+
+    #[inline]
+    fn shape_until<I: DimIndex>(&self, i: I) -> &[usize] where Self: Sized {
+        &self.shape()[..=i.dim_of(self)]
+    }
+
+    #[inline]
+    fn dim_at<I: DimIndex>(&self, i: I) -> usize where Self: Sized {
+        i.dim_of(self)
+    }
+
+    #[inline]
+    fn dims_until<I: DimIndex>(&self, i: I) -> Vec<usize> where Self: Sized {
+        (0..=i.dim_of(self)).collect()
+    }
+
+    #[inline]
+    fn dims(&self) -> Vec<usize> where Self: Sized {
+        (0..self.ndim()).collect()
     }
 
     fn shape_transpose(&self) -> Vec<usize> {
@@ -92,13 +96,6 @@ pub trait Shape: Debug {
             transposed_dims[ndim - i - 1] = dim;
         }
         transposed_dims
-    }
-    #[inline]
-    fn shape_at<T: AsDim>(&self, dim: T) -> usize
-    where
-        Self: Sized,
-    {
-        self.shape()[dim.as_dim(self)]
     }
 
     #[inline]

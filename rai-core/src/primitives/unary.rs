@@ -249,13 +249,13 @@ impl Primitive for Softmax {
         // TODO: use primals instead of output?
         let tangent_x = &tangents[0];
         let sv = &(output * tangent_x);
-        sv - output * sv.reduce_sum((sv.axes(), true))
+        sv - output * sv.reduce_sum((sv.dims(), true))
     }
 
     fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         // TODO: use primals instead of output?
         let sv = &(output * cotangent);
-        let cotangent_x = sv - output * sv.reduce_sum((sv.axes(), true));
+        let cotangent_x = sv - output * sv.reduce_sum((sv.dims(), true));
         vec![cotangent_x]
     }
 }

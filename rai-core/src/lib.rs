@@ -7,7 +7,7 @@ pub mod primitives;
 pub use primitives::Primitive;
 
 mod shape;
-pub use shape::{AsDim, Shape};
+pub use shape::{DimIndex, Shape};
 
 mod tensor;
 pub use tensor::Tensor;
