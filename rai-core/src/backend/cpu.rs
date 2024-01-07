@@ -79,7 +79,7 @@ impl From<&dyn Backend> for candle_core::Device {
 impl Eval<Cpu, primitives::Full> for Dispatch<Cpu, primitives::Full> {
     fn eval(&self, _: &Cpu, primitive: &primitives::Full, _: &[Tensor], output: &Tensor) {
         let t = candle_core::Tensor::ones(
-            output.shape().dims(),
+            output.shape(),
             output.dtype().into(),
             &output.backend().into(),
         )
@@ -93,12 +93,8 @@ impl Eval<Cpu, primitives::Full> for Dispatch<Cpu, primitives::Full> {
 impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
     fn eval(&self, _: &Cpu, _: &primitives::Normal, _: &[Tensor], output: &Tensor) {
         // TODO: not always f32
-        let t = candle_core::Tensor::rand(
-            -1.0f32,
-            1.0f32,
-            output.shape().dims(),
-            &output.backend().into(),
-        );
+        let t =
+            candle_core::Tensor::rand(-1.0f32, 1.0f32, output.shape(), &output.backend().into());
         let t = t.unwrap();
         output.set_data(t);
     }
@@ -295,7 +291,7 @@ impl Eval<Cpu, primitives::Reshape> for Dispatch<Cpu, primitives::Reshape> {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.reshape(output.shape().dims()).unwrap();
+        let t = t.reshape(output.shape()).unwrap();
         output.set_data(t)
     }
 }
@@ -305,7 +301,7 @@ impl Eval<Cpu, primitives::Broadcast> for Dispatch<Cpu, primitives::Broadcast> {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.broadcast_as(primitive.shape.dims()).unwrap();
+        let t = t.broadcast_as(primitive.shape()).unwrap();
         output.set_data(t)
     }
 }

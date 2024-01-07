@@ -12,6 +12,10 @@ impl Broadcast {
             shape: shape.to_vec(),
         }
     }
+
+    pub fn shape(&self) -> &[usize] {
+        self.shape.as_slice()
+    }
 }
 
 impl Primitive for Broadcast {

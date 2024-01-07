@@ -14,12 +14,24 @@ impl AsDim for usize {
 
 impl AsDim for isize {
     fn as_dim<T: Shape>(&self, shape: &T) -> usize {
-        let axis = if *self > 0 {
+        let axis = if *self >= 0 {
             *self as usize
         } else {
             self.checked_add_unsigned(shape.ndim()).unwrap() as usize
         };
         assert!(axis < shape.ndim());
+        axis
+    }
+}
+
+impl AsDim for i32 {
+    fn as_dim<T: Shape>(&self, shape: &T) -> usize {
+        let axis = if *self >= 0 {
+            *self as usize
+        } else {
+            self.checked_add_unsigned(shape.ndim() as u32).unwrap() as usize
+        };
+        assert!(axis < shape.ndim(), "{} < {}", axis, shape.ndim());
         axis
     }
 }
@@ -31,20 +43,31 @@ pub trait AsDims {
 impl AsDims for usize {
     fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
         assert!(*self < shape.ndim());
-        shape.dims().iter().cloned().take(*self).collect()
+        shape.shape().iter().cloned().take(*self).collect()
     }
 }
 
 impl AsDims for isize {
     fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
         let dim = self.as_dim(shape);
-        shape.dims().iter().cloned().take(dim).collect()
+        shape.shape().iter().cloned().take(dim).collect()
+    }
+}
+
+impl AsDims for i32 {
+    fn as_dims<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        let dim = self.as_dim(shape);
+        shape.shape().iter().cloned().take(dim).collect()
     }
 }
 
 pub trait Shape: Debug {
-    fn dims(&self) -> &[usize];
-    fn ndim(&self) -> usize;
+    fn shape(&self) -> &[usize];
+
+    #[inline]
+    fn ndim(&self) -> usize {
+        self.shape().len()
+    }
 
     #[inline]
     fn axes(&self) -> Vec<usize> {
@@ -53,16 +76,16 @@ pub trait Shape: Debug {
 
     #[inline]
     fn size(&self) -> usize {
-        self.dims().iter().product()
+        self.shape().iter().product()
     }
 
     #[inline]
     fn to_vec(&self) -> Vec<usize> {
-        self.dims().to_vec()
+        self.shape().to_vec()
     }
 
     fn shape_transpose(&self) -> Vec<usize> {
-        let dims = self.dims();
+        let dims = self.shape();
         let ndim = self.ndim();
         let mut transposed_dims = vec![0; ndim];
         for (i, &dim) in dims.iter().enumerate() {
@@ -75,7 +98,7 @@ pub trait Shape: Debug {
     where
         Self: Sized,
     {
-        self.dims()[dim.as_dim(self)]
+        self.shape()[dim.as_dim(self)]
     }
 
     #[inline]
@@ -83,7 +106,7 @@ pub trait Shape: Debug {
     where
         Self: Sized,
     {
-        self.dims().eq(rhs.dims())
+        self.shape().eq(rhs.shape())
     }
 
     #[inline]
@@ -107,8 +130,8 @@ pub trait Shape: Debug {
         Self: Sized,
     {
         let lhs = self;
-        let lhs_dims = lhs.dims();
-        let rhs_dims = rhs.dims();
+        let lhs_dims = lhs.shape();
+        let rhs_dims = rhs.shape();
         let lhs_ndims = lhs_dims.len();
         let rhs_ndims = rhs_dims.len();
         let bcast_ndims = usize::max(lhs_ndims, rhs_ndims);
@@ -155,8 +178,8 @@ pub trait Shape: Debug {
             });
         }
 
-        let mut lhs = self.dims().to_owned();
-        let mut rhs = rhs.dims().to_owned();
+        let mut lhs = self.shape().to_owned();
+        let mut rhs = rhs.shape().to_owned();
 
         if lhs.len() == 1 {
             lhs.insert(0, 1);
@@ -183,7 +206,7 @@ pub trait Shape: Debug {
         let rhs_b = &rhs[..rhs.len() - 2];
 
         let batching = lhs_b.shape_broadcast(&rhs_b)?;
-        let mut out_shape = [batching.dims(), &[m, n]].concat();
+        let mut out_shape = [batching.shape(), &[m, n]].concat();
 
         if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
             let erase_start = out_shape.len() - if lhs_in.ndim() == 1 { 2 } else { 1 };
@@ -196,7 +219,7 @@ pub trait Shape: Debug {
 }
 
 impl Shape for Vec<usize> {
-    fn dims(&self) -> &[usize] {
+    fn shape(&self) -> &[usize] {
         self.as_slice()
     }
 
@@ -206,7 +229,7 @@ impl Shape for Vec<usize> {
 }
 
 impl Shape for &Vec<usize> {
-    fn dims(&self) -> &[usize] {
+    fn shape(&self) -> &[usize] {
         self.as_slice()
     }
 
@@ -216,7 +239,7 @@ impl Shape for &Vec<usize> {
 }
 
 impl Shape for &[usize] {
-    fn dims(&self) -> &[usize] {
+    fn shape(&self) -> &[usize] {
         self
     }
 
@@ -226,7 +249,7 @@ impl Shape for &[usize] {
 }
 
 impl<const N: usize> Shape for [usize; N] {
-    fn dims(&self) -> &[usize] {
+    fn shape(&self) -> &[usize] {
         self.as_slice()
     }
 
@@ -236,7 +259,7 @@ impl<const N: usize> Shape for [usize; N] {
 }
 
 impl<const N: usize> Shape for &[usize; N] {
-    fn dims(&self) -> &[usize] {
+    fn shape(&self) -> &[usize] {
         self.as_slice()
     }
 

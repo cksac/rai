@@ -64,11 +64,6 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn shape(&self) -> impl Shape + '_ {
-        &self.0.shape
-    }
-
-    #[inline]
     pub fn primitive(&self) -> &dyn Primitive {
         self.0.primitive.as_ref()
     }
@@ -400,7 +395,7 @@ impl Debug for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Tensor")
             .field("id", &self.id())
-            .field("shape", &self.shape().dims())
+            .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
             .field("backend", &self.backend())
             .field("primitive", &self.primitive())
@@ -429,21 +424,13 @@ impl AsRef<Tensor> for Tensor {
 }
 
 impl Shape for Tensor {
-    fn dims(&self) -> &[usize] {
-        self.0.shape.dims()
-    }
-
-    fn ndim(&self) -> usize {
-        self.0.shape.ndim()
+    fn shape(&self) -> &[usize] {
+        self.0.shape.shape()
     }
 }
 
 impl Shape for &Tensor {
-    fn dims(&self) -> &[usize] {
-        self.0.shape.dims()
-    }
-
-    fn ndim(&self) -> usize {
-        self.0.shape.ndim()
+    fn shape(&self) -> &[usize] {
+        self.0.shape.shape()
     }
 }

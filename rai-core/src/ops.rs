@@ -472,10 +472,10 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let mut lhs = lhs.clone();
     let mut rhs = rhs.clone();
     if lhs.ndim() == 1 {
-        lhs = lhs.reshape([&[1], lhs.dims()].concat());
+        lhs = lhs.reshape([&[1], lhs.shape()].concat());
     }
     if rhs.ndim() == 1 {
-        rhs = rhs.reshape([rhs.dims(), &[1]].concat());
+        rhs = rhs.reshape([rhs.shape(), &[1]].concat());
     }
     let inputs = vec![lhs.clone(), rhs.clone()];
     if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
@@ -527,7 +527,7 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
         let inputs = vec![x.clone()];
         Tensor::new(backend, dtype, shape, Reshape, inputs)
     } else {
-        panic!("cannot reshape tensor {:?} to shape {:?}", x, shape.dims());
+        panic!("cannot reshape tensor {:?} to shape {:?}", x, shape.shape());
     }
 }
 
@@ -614,7 +614,6 @@ pub fn reduce_sum<T: ReduceSumArgs>(x: &Tensor, args: T) -> Tensor {
     // TODO: handle keep_dim
     let shape: Vec<usize> = x
         .shape()
-        .dims()
         .iter()
         .enumerate()
         .filter(|(i, _)| !axes.contains(i))

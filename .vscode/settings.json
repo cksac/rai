@@ -5,6 +5,7 @@
         "logits",
         "matmul",
         "primals",
+        "recip",
         "relu",
         "rsqrt",
         "softmax",

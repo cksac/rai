@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
 };
 
-use crate::Tensor;
+use crate::{Shape, Tensor};
 
 pub trait TensorIter: Debug {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor>;
