@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
-use rai::opt::losses::{l2_loss, softmax_cross_entropy};
+use rai::opt::losses::softmax_cross_entropy;
 use rai::utils::dot_graph;
-use rai::{eval, Shape, WithTensors};
+use rai::{eval, WithTensors};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
 use std::fmt::Debug;

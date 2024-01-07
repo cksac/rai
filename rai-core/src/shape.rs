@@ -69,22 +69,34 @@ pub trait Shape: Debug {
     }
 
     #[inline]
-    fn shape_until<I: DimIndex>(&self, i: I) -> &[usize] where Self: Sized {
+    fn shape_until<I: DimIndex>(&self, i: I) -> &[usize]
+    where
+        Self: Sized,
+    {
         &self.shape()[..=i.dim_of(self)]
     }
 
     #[inline]
-    fn dim_at<I: DimIndex>(&self, i: I) -> usize where Self: Sized {
+    fn dim_at<I: DimIndex>(&self, i: I) -> usize
+    where
+        Self: Sized,
+    {
         i.dim_of(self)
     }
 
     #[inline]
-    fn dims_until<I: DimIndex>(&self, i: I) -> Vec<usize> where Self: Sized {
+    fn dims_until<I: DimIndex>(&self, i: I) -> Vec<usize>
+    where
+        Self: Sized,
+    {
         (0..=i.dim_of(self)).collect()
     }
 
     #[inline]
-    fn dims(&self) -> Vec<usize> where Self: Sized {
+    fn dims(&self) -> Vec<usize>
+    where
+        Self: Sized,
+    {
         (0..self.ndim()).collect()
     }
 
