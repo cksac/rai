@@ -9,7 +9,7 @@ pub struct Broadcast {
 impl Broadcast {
     pub fn new(shape: impl Shape) -> Self {
         Self {
-            shape: shape.to_vec(),
+            shape: shape.shape().to_vec(),
         }
     }
 

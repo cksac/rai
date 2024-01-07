@@ -1,5 +1,5 @@
 use crate::{Error, Result};
-use std::{collections::HashSet, fmt::Debug, ops::RangeFull};
+use std::{fmt::Debug, ops::RangeFull};
 
 pub trait DimIndex {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize;
@@ -43,23 +43,22 @@ impl DimIndex for i32 {
 }
 
 pub trait Shape: Debug {
+    /// return size of each dimension
     fn shape(&self) -> &[usize];
 
+    /// return number of dimensions
     #[inline]
     fn ndim(&self) -> usize {
         self.shape().len()
     }
 
+    /// return total element count of the shape
     #[inline]
     fn size(&self) -> usize {
         self.shape().iter().product()
     }
 
-    #[inline]
-    fn to_vec(&self) -> Vec<usize> {
-        self.shape().to_vec()
-    }
-
+    /// return size of dimension at dim of i
     #[inline]
     fn shape_at<I: DimIndex>(&self, i: I) -> usize
     where
@@ -68,6 +67,7 @@ pub trait Shape: Debug {
         self.shape()[i.dim_of(self)]
     }
 
+    /// return size of dimensions from 0 to dim of i
     #[inline]
     fn shape_until<I: DimIndex>(&self, i: I) -> &[usize]
     where
@@ -76,6 +76,7 @@ pub trait Shape: Debug {
         &self.shape()[..=i.dim_of(self)]
     }
 
+    /// return dim index at index i
     #[inline]
     fn dim_at<I: DimIndex>(&self, i: I) -> usize
     where
@@ -84,6 +85,7 @@ pub trait Shape: Debug {
         i.dim_of(self)
     }
 
+    /// return dim indexes before index i
     #[inline]
     fn dims_until<I: DimIndex>(&self, i: I) -> Vec<usize>
     where
@@ -92,6 +94,7 @@ pub trait Shape: Debug {
         (0..=i.dim_of(self)).collect()
     }
 
+    /// return dim indexes of the shape
     #[inline]
     fn dims(&self) -> Vec<usize>
     where
@@ -101,13 +104,13 @@ pub trait Shape: Debug {
     }
 
     fn shape_transpose(&self) -> Vec<usize> {
-        let dims = self.shape();
+        let shape = self.shape();
         let ndim = self.ndim();
-        let mut transposed_dims = vec![0; ndim];
-        for (i, &dim) in dims.iter().enumerate() {
-            transposed_dims[ndim - i - 1] = dim;
+        let mut transposed_shape = vec![0; ndim];
+        for (i, &s) in shape.iter().enumerate() {
+            transposed_shape[ndim - i - 1] = s;
         }
-        transposed_dims
+        transposed_shape
     }
 
     #[inline]
@@ -139,25 +142,25 @@ pub trait Shape: Debug {
         Self: Sized,
     {
         let lhs = self;
-        let lhs_dims = lhs.shape();
-        let rhs_dims = rhs.shape();
-        let lhs_ndims = lhs_dims.len();
-        let rhs_ndims = rhs_dims.len();
-        let bcast_ndims = usize::max(lhs_ndims, rhs_ndims);
-        let mut bcast_dims = vec![0; bcast_ndims];
-        for (idx, bcast_value) in bcast_dims.iter_mut().enumerate() {
-            let rev_idx = bcast_ndims - idx;
-            let l_value = if lhs_ndims < rev_idx {
+        let lhs_shape = lhs.shape();
+        let rhs_shape = rhs.shape();
+        let lhs_ndim = lhs_shape.ndim();
+        let rhs_ndim = rhs_shape.ndim();
+        let out_ndim = usize::max(lhs_ndim, rhs_ndim);
+        let mut out_shape = vec![0; out_ndim];
+        for (idx, out_value) in out_shape.iter_mut().enumerate() {
+            let rev_idx = out_ndim - idx;
+            let l_value = if lhs_ndim < rev_idx {
                 1
             } else {
-                lhs_dims[lhs_ndims - rev_idx]
+                lhs_shape[lhs_ndim - rev_idx]
             };
-            let r_value = if rhs_ndims < rev_idx {
+            let r_value = if rhs_ndim < rev_idx {
                 1
             } else {
-                rhs_dims[rhs_ndims - rev_idx]
+                rhs_shape[rhs_ndim - rev_idx]
             };
-            *bcast_value = if l_value == r_value {
+            *out_value = if l_value == r_value {
                 l_value
             } else if l_value == 1 {
                 r_value
@@ -165,30 +168,30 @@ pub trait Shape: Debug {
                 l_value
             } else {
                 return Err(Error::IncompatibleShape {
-                    lhs: lhs.to_vec(),
-                    rhs: rhs.to_vec(),
+                    lhs: lhs.shape().to_vec(),
+                    rhs: rhs.shape().to_vec(),
                 });
             }
         }
-        Ok(bcast_dims)
+        Ok(out_shape)
     }
 
     fn shape_broadcast_matmul(&self, rhs: &impl Shape) -> Result<Vec<usize>>
     where
         Self: Sized,
     {
-        let lhs_in = &self;
-        let rhs_in = &rhs;
+        let lhs_in = self;
+        let rhs_in = rhs;
 
         if lhs_in.ndim() == 0 || rhs_in.ndim() == 0 {
             return Err(Error::IncompatibleShape {
-                lhs: lhs_in.to_vec(),
-                rhs: rhs_in.to_vec(),
+                lhs: lhs_in.shape().to_vec(),
+                rhs: rhs_in.shape().to_vec(),
             });
         }
 
-        let mut lhs = self.shape().to_owned();
-        let mut rhs = rhs.shape().to_owned();
+        let mut lhs = self.shape().to_vec();
+        let mut rhs = rhs.shape().to_vec();
 
         if lhs.len() == 1 {
             lhs.insert(0, 1);

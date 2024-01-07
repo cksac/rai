@@ -35,12 +35,11 @@ impl Tensor {
     ) -> Self {
         static COUNTER: atomic::AtomicUsize = atomic::AtomicUsize::new(1);
         let id = COUNTER.fetch_add(1, atomic::Ordering::Relaxed);
-
         let inner = TensorImpl {
             id,
             backend: backend.into(),
             dtype,
-            shape: shape.to_vec(),
+            shape: shape.shape().to_vec(),
             primitive: primitive.into(),
             inputs: RefCell::new(inputs.into()),
             data: RefCell::new(None),
