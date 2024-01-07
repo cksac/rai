@@ -609,19 +609,16 @@ where
 pub fn reduce_sum<T: ReduceSumArgs>(x: &Tensor, args: T) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
-
     let axes = args.axes();
-    // TODO: handle keep_dim
-    let shape: Vec<usize> = x
-        .shape()
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| !axes.contains(i))
-        .map(|(_, v)| *v)
-        .collect();
-
+    let shape = x.shape_reduce(args.axes(), args.keep_dim());
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, ReduceSum::new(axes), inputs)
+    Tensor::new(
+        backend,
+        dtype,
+        shape,
+        ReduceSum::new(axes, args.keep_dim()),
+        inputs,
+    )
 }
 
 pub fn sqrt(x: &Tensor) -> Tensor {

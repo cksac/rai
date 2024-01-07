@@ -1,5 +1,5 @@
 use crate::{Error, Result};
-use std::{fmt::Debug, ops::RangeFull};
+use std::{collections::HashSet, fmt::Debug, ops::RangeFull};
 
 pub trait DimIndex {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize;
@@ -23,7 +23,7 @@ impl DimIndex for isize {
         let axis = if *self >= 0 {
             *self as usize
         } else {
-            self.checked_add_unsigned(shape.ndim()).unwrap() as usize
+            self.checked_add_unsigned(shape.ndim() - 1).unwrap() as usize
         };
         assert!(axis < shape.ndim());
         axis
@@ -225,6 +225,22 @@ pub trait Shape: Debug {
 
         Ok(out_shape)
     }
+
+    fn shape_reduce<T: AsRef<[usize]>>(&self, dims: T, keep_dim: bool) -> Vec<usize>
+    where
+        Self: Sized,
+    {
+        let dims = dims.as_ref();
+        let mut out_shape = Vec::new();
+        for i in self.dims() {
+            if !dims.contains(&i) {
+                out_shape.push(self.shape_at(i));
+            } else if keep_dim {
+                out_shape.push(1);
+            }
+        }
+        out_shape
+    }
 }
 
 impl Shape for Vec<usize> {
@@ -275,4 +291,19 @@ impl<const N: usize> Shape for &[usize; N] {
     fn ndim(&self) -> usize {
         self.len()
     }
+}
+
+#[test]
+fn test_shape() {
+    let s = [1, 2, 3, 4];
+    let d = s.dims_until(-1);
+    dbg!(s, d);
+
+    let s = [1];
+    let d = s.dims_until(-1);
+    dbg!(s, d);
+
+    let s = [];
+    let d = s.dims_until(-1);
+    dbg!(s, d);
 }

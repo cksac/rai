@@ -5,10 +5,14 @@ use crate::{Primitive, Shape, Tensor};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReduceSum {
     pub axes: Vec<usize>,
+    pub keep_dim: bool,
 }
 impl ReduceSum {
-    pub fn new(axes: impl Into<Vec<usize>>) -> Self {
-        Self { axes: axes.into() }
+    pub fn new(axes: impl Into<Vec<usize>>, keep_dim: bool) -> Self {
+        Self {
+            axes: axes.into(),
+            keep_dim,
+        }
     }
 }
 
@@ -18,7 +22,7 @@ impl Primitive for ReduceSum {
     }
 
     fn dot_label(&self) -> String {
-        format!("ReduceSum({:?})", &self.axes)
+        format!("ReduceSum({:?}, {})", &self.axes, &self.keep_dim)
     }
 
     fn as_any(&self) -> &dyn Any {

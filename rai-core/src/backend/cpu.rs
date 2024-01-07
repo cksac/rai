@@ -241,7 +241,11 @@ impl Eval<Cpu, primitives::ReduceSum> for Dispatch<Cpu, primitives::ReduceSum> {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.sum(primitive.axes.as_slice()).unwrap();
+        let t = if primitive.keep_dim {
+            t.sum_keepdim(primitive.axes.as_slice()).unwrap()
+        } else {
+            t.sum(primitive.axes.as_slice()).unwrap()
+        };
         output.set_data(t)
     }
 }

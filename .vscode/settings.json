@@ -2,6 +2,7 @@
     "cSpell.words": [
         "Arange",
         "dtype",
+        "keepdim",
         "logits",
         "matmul",
         "primals",
