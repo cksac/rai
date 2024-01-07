@@ -1,24 +1,27 @@
 use crate::{Error, Result};
-use std::{fmt::Debug, ops::RangeFull};
+use std::{
+    fmt::Debug,
+    ops::{RangeFull, RangeTo},
+};
 
-pub trait DimIndex {
+pub trait Dim {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize;
 }
 
-impl DimIndex for usize {
+impl Dim for usize {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         assert!(*self < shape.ndim());
         *self
     }
 }
 
-impl DimIndex for RangeFull {
+impl Dim for RangeFull {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         shape.ndim() - 1
     }
 }
 
-impl DimIndex for isize {
+impl Dim for isize {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         let axis = if *self >= 0 {
             *self as usize
@@ -30,7 +33,7 @@ impl DimIndex for isize {
     }
 }
 
-impl DimIndex for i32 {
+impl Dim for i32 {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
         let axis = if *self >= 0 {
             *self as usize
@@ -39,6 +42,96 @@ impl DimIndex for i32 {
         };
         assert!(axis < shape.ndim(), "{} < {}", axis, shape.ndim());
         axis
+    }
+}
+
+pub trait Dims {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize>;
+}
+
+impl Dims for [usize] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for &[usize] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for Vec<usize> {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for &Vec<usize> {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for [i32] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for &[i32] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl<const N: usize> Dims for [i32; N] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl<const N: usize> Dims for &[i32; N] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for Vec<i32> {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for &Vec<i32> {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl Dims for RangeFull {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        (0..shape.ndim()).collect()
+    }
+}
+
+impl Dims for &RangeFull {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        (0..shape.ndim()).collect()
+    }
+}
+
+impl Dims for RangeTo<i32> {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        let dim = shape.dim(self.end);
+        (0..dim).collect()
+    }
+}
+
+impl Dims for RangeTo<usize> {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        let dim = shape.dim(self.end);
+        (0..dim).collect()
     }
 }
 
@@ -60,7 +153,7 @@ pub trait Shape: Debug {
 
     /// return size of dimension at dim of i
     #[inline]
-    fn shape_at<I: DimIndex>(&self, i: I) -> usize
+    fn shape_at<I: Dim>(&self, i: I) -> usize
     where
         Self: Sized,
     {
@@ -69,7 +162,7 @@ pub trait Shape: Debug {
 
     /// return size of dimensions from 0 to dim of i
     #[inline]
-    fn shape_until<I: DimIndex>(&self, i: I) -> &[usize]
+    fn shape_until<I: Dim>(&self, i: I) -> &[usize]
     where
         Self: Sized,
     {
@@ -78,29 +171,20 @@ pub trait Shape: Debug {
 
     /// return dim index at index i
     #[inline]
-    fn dim_at<I: DimIndex>(&self, i: I) -> usize
+    fn dim<I: Dim>(&self, i: I) -> usize
     where
         Self: Sized,
     {
         i.dim_of(self)
     }
 
-    /// return dim indexes before index i
+    /// return dim index at index i
     #[inline]
-    fn dims_until<I: DimIndex>(&self, i: I) -> Vec<usize>
+    fn dims<I: Dims>(&self, i: I) -> Vec<usize>
     where
         Self: Sized,
     {
-        (0..=i.dim_of(self)).collect()
-    }
-
-    /// return dim indexes of the shape
-    #[inline]
-    fn dims(&self) -> Vec<usize>
-    where
-        Self: Sized,
-    {
-        (0..self.ndim()).collect()
+        i.dims_of(self)
     }
 
     fn shape_transpose(&self) -> Vec<usize> {
@@ -235,7 +319,7 @@ pub trait Shape: Debug {
     {
         let dims = dims.as_ref();
         let mut out_shape = Vec::new();
-        for i in self.dims() {
+        for i in self.dims(..) {
             if !dims.contains(&i) {
                 out_shape.push(self.shape_at(i));
             } else if keep_dim {

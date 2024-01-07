@@ -7,8 +7,9 @@ use crate::{
         MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax,
         Sqrt, Square, Sub, Transpose,
     },
+    shape::Dims,
     utils::dot_graph,
-    Backend, DType, DimIndex, Shape, Tensor,
+    Backend, DType, Dim, Shape, Tensor,
 };
 
 macro_rules! impl_std_ops {
@@ -531,53 +532,8 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     }
 }
 
-pub trait Axes {
-    fn axes(&self) -> &[usize];
-    fn to_vec(&self) -> Vec<usize>;
-}
-
-impl Axes for Vec<usize> {
-    fn axes(&self) -> &[usize] {
-        self.as_slice()
-    }
-
-    fn to_vec(&self) -> Vec<usize> {
-        self.clone()
-    }
-}
-
-impl Axes for &Vec<usize> {
-    fn axes(&self) -> &[usize] {
-        self.as_slice()
-    }
-
-    fn to_vec(&self) -> Vec<usize> {
-        (*self).clone()
-    }
-}
-
-impl<const N: usize> Axes for [usize; N] {
-    fn axes(&self) -> &[usize] {
-        self.as_slice()
-    }
-
-    fn to_vec(&self) -> Vec<usize> {
-        Vec::from(self)
-    }
-}
-
-impl Axes for &[usize] {
-    fn axes(&self) -> &[usize] {
-        self
-    }
-
-    fn to_vec(&self) -> Vec<usize> {
-        Vec::from(*self)
-    }
-}
-
 pub trait ReduceSumArgs: Debug {
-    fn axes(&self) -> &[usize];
+    fn dims(&self) -> impl Dims;
     fn keep_dim(&self) -> bool {
         false
     }
@@ -585,19 +541,21 @@ pub trait ReduceSumArgs: Debug {
 
 impl<T> ReduceSumArgs for T
 where
-    T: Axes + Debug,
+    for<'a> &'a T: Dims,
+    T: Debug,
 {
-    fn axes(&self) -> &[usize] {
-        Axes::axes(self)
+    fn dims(&self) -> impl Dims {
+        self
     }
 }
 
-impl<T> ReduceSumArgs for (T, bool)
+impl<'a, T> ReduceSumArgs for (&'a T, bool)
 where
-    T: Axes + Debug,
+    &'a T: Dims,
+    T: Debug,
 {
-    fn axes(&self) -> &[usize] {
-        self.0.axes()
+    fn dims(&self) -> impl Dims {
+        self.0
     }
 
     fn keep_dim(&self) -> bool {
@@ -609,14 +567,14 @@ where
 pub fn reduce_sum<T: ReduceSumArgs>(x: &Tensor, args: T) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
-    let axes = args.axes();
-    let shape = x.shape_reduce(args.axes(), args.keep_dim());
+    let dims = x.dims(args.dims());
+    let shape = x.shape_reduce(&dims, args.keep_dim());
     let inputs = vec![x.clone()];
     Tensor::new(
         backend,
         dtype,
         shape,
-        ReduceSum::new(axes, args.keep_dim()),
+        ReduceSum::new(dims, args.keep_dim()),
         inputs,
     )
 }
@@ -742,7 +700,7 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Maximum, inputs)
 }
 
-pub fn softmax<T: DimIndex>(x: &Tensor, dim: T) -> Tensor {
+pub fn softmax<T: Dim>(x: &Tensor, dim: T) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();

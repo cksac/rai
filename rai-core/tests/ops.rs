@@ -1,4 +1,4 @@
-use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, DType, Tensor};
+use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, DType, Shape, Tensor};
 
 #[test]
 fn test_dot_graph() {
@@ -119,5 +119,6 @@ fn test_softmax() {
 
     println!("{}", a);
     println!("{}", outs[0]);
+    println!("sum {}", outs[0].reduce_sum([-1]));
     println!("{}", grads[0]);
 }

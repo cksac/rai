@@ -3,9 +3,9 @@ use rai_core::{Shape, Tensor};
 pub fn softmax_cross_entropy(logits: &Tensor, labels: &Tensor) -> Tensor {
     // todo: use log_softmax
     let t = labels * logits.softmax(-1);
-    let dims = t.dims_until(-1);
+    let dims = t.dims(..-1);
     dbg!(&t, &dims);
-    -t.reduce_sum((dims, true))
+    -t.reduce_sum((&dims, true))
 }
 
 pub fn softmax_cross_entropy_with_integer_labels(logits: &Tensor, labels: &Tensor) -> Tensor {

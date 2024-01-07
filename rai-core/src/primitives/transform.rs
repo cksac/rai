@@ -45,7 +45,7 @@ impl Primitive for Broadcast {
                 axes.push(i);
             }
         }
-        let cotangent_x = cotangent.reduce_sum((axes, true)).reshape(shape);
+        let cotangent_x = cotangent.reduce_sum((&axes, true)).reshape(shape);
         vec![cotangent_x]
     }
 }
