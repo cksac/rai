@@ -119,7 +119,7 @@ fn test_softmax() {
 
     println!("{}", a);
     println!("{}", outs[0]);
-    
+
     println!("{}", outs[0].sum());
 
     println!("{}", grads[0]);

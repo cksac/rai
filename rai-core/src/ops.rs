@@ -8,7 +8,7 @@ use crate::{
         Sqrt, Square, Sub, Transpose,
     },
     utils::dot_graph,
-    Backend, DType, Shape, Tensor, AsDim,
+    AsDim, Backend, DType, Shape, Tensor,
 };
 
 macro_rules! impl_std_ops {
