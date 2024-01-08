@@ -9,7 +9,7 @@ pub struct Broadcast {
     pub shape: Vec<usize>,
 }
 impl Broadcast {
-    pub fn new<S: Shape + ?Sized>(shape: &S) -> Self {
+    pub fn new(shape: impl Shape) -> Self {
         Self {
             shape: shape.shape().to_vec(),
         }
