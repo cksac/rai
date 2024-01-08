@@ -1,4 +1,4 @@
-use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, DType, Shape, Tensor};
+use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, DType, Tensor};
 
 #[test]
 fn test_dot_graph() {

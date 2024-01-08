@@ -1,6 +1,8 @@
 use std::any::Any;
 
-use crate::{Primitive, Shape, Tensor};
+use tracing::Level;
+
+use crate::{dtype, Primitive, Shape, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Add;
@@ -14,12 +16,14 @@ impl Primitive for Add {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
         tangent_lhs + tangent_rhs
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let cotangent_lhs = cotangent.clone();
         let cotangent_rhs = cotangent.clone();
@@ -39,12 +43,14 @@ impl Primitive for Sub {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
         tangent_lhs - tangent_rhs
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let cotangent_lhs = cotangent.clone();
         let cotangent_rhs = -cotangent;
@@ -64,6 +70,7 @@ impl Primitive for Mul {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -72,6 +79,7 @@ impl Primitive for Mul {
         tangent_lhs * rhs + tangent_rhs * lhs
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -93,6 +101,7 @@ impl Primitive for Div {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -101,6 +110,7 @@ impl Primitive for Div {
         (tangent_lhs - lhs * tangent_rhs) / rhs
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -122,10 +132,12 @@ impl Primitive for MatMul {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         tangents[0].matmul(&primals[1]) + primals[0].matmul(&tangents[1])
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -152,10 +164,12 @@ impl Primitive for Greater {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -177,10 +191,12 @@ impl Primitive for GreaterEqual {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -202,10 +218,12 @@ impl Primitive for Less {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -227,10 +245,12 @@ impl Primitive for LessEqual {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -252,19 +272,25 @@ impl Primitive for Maximum {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let lhs = &primals[0];
         let rhs = &primals[1];
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
-        tangent_lhs * lhs.greater(rhs) + tangent_rhs * lhs.less_equal(rhs)
+        let dtype_lhs = tangent_lhs.dtype();
+        let dtype_rhs = tangent_lhs.dtype();
+        tangent_lhs * lhs.greater(rhs).as_type(dtype_lhs)
+            + tangent_rhs * lhs.less_equal(rhs).as_type(dtype_rhs)
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
-        let cotangent_lhs = cotangent * lhs.greater(rhs);
-        let cotangent_rhs = cotangent * lhs.less_equal(rhs);
+        let dtype = cotangent.dtype();
+        let cotangent_lhs = cotangent * lhs.greater(rhs).as_type(dtype);
+        let cotangent_rhs = cotangent * lhs.less_equal(rhs).as_type(dtype);
         vec![cotangent_lhs, cotangent_rhs]
     }
 }

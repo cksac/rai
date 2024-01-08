@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{transforms::Func, Tensor};
+use crate::{transforms::Func, Tensor, WithTensors};
 
 pub trait Module {
     fn forward(&self, input: &Tensor) -> Tensor;
@@ -23,6 +23,14 @@ where
 
     fn capture_inputs(&self, _input: &Tensor) -> Vec<Tensor> {
         self.parameters()
+    }
+}
+
+pub struct Aux<T>(pub T);
+
+impl<T> WithTensors for (Tensor, Aux<T>) {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![self.0.clone()]
     }
 }
 
@@ -60,15 +68,15 @@ where
     }
 }
 
-// for loss fn  (module, input) -> (loss, logits)
-impl<M, F> Func<(&M, &Tensor), (Tensor, Tensor)> for F
+// for loss fn  (module, input) -> (loss, Aux<T>)
+impl<M, F, T> Func<(&M, &Tensor), (Tensor, Aux<T>)> for F
 where
     M: Module,
-    F: Fn(&M, &Tensor) -> (Tensor, Tensor),
+    F: Fn(&M, &Tensor) -> (Tensor, Aux<T>),
 {
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
-    fn call(&self, input: (&M, &Tensor)) -> (Tensor, Tensor) {
+    fn call(&self, input: (&M, &Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1)
     }
 
@@ -77,15 +85,15 @@ where
     }
 }
 
-// for loss fn (module, input, label) -> loss
-impl<M, F> Func<(&M, &Tensor, &Tensor), (Tensor, Tensor)> for F
+// for loss fn (module, input, label) -> (loss, Aux<T>)
+impl<M, F, T> Func<(&M, &Tensor, &Tensor), (Tensor, Aux<T>)> for F
 where
     M: Module,
-    F: Fn(&M, &Tensor, &Tensor) -> (Tensor, Tensor),
+    F: Fn(&M, &Tensor, &Tensor) -> (Tensor, Aux<T>),
 {
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
-    fn call(&self, input: (&M, &Tensor, &Tensor)) -> (Tensor, Tensor) {
+    fn call(&self, input: (&M, &Tensor, &Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1, input.2)
     }
 

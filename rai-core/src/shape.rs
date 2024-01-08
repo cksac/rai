@@ -4,19 +4,20 @@ use std::{
     ops::{RangeFull, RangeTo},
 };
 
-pub trait Dim {
+pub trait Dim: Debug {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize;
 }
 
 impl Dim for usize {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
-        assert!(*self < shape.ndim());
+        assert!(*self < shape.ndim(), "{} < {}", self, shape.ndim());
         *self
     }
 }
 
 impl Dim for RangeFull {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
+        assert!(shape.ndim() > 0);
         shape.ndim() - 1
     }
 }
@@ -26,9 +27,10 @@ impl Dim for isize {
         let dim = if *self >= 0 {
             *self as usize
         } else {
+            assert!(shape.ndim() > 0);
             self.checked_add_unsigned(shape.ndim() - 1).unwrap() as usize
         };
-        assert!(dim < shape.ndim());
+        assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
         dim
     }
 }
@@ -38,14 +40,15 @@ impl Dim for i32 {
         let dim = if *self >= 0 {
             *self as usize
         } else {
-            self.checked_add_unsigned(shape.ndim() as u32).unwrap() as usize
+            assert!(shape.ndim() > 0);
+            self.checked_add_unsigned(shape.ndim() as u32 - 1).unwrap() as usize
         };
         assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
         dim
     }
 }
 
-pub trait Dims {
+pub trait Dims: Debug {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize>;
 }
 
@@ -180,11 +183,23 @@ pub trait Shape: Debug {
 
     /// return dim index at index i
     #[inline]
-    fn dims<I: Dims>(&self, i: I) -> Vec<usize>
+    fn dims<D: Dims>(&self, d: D) -> Vec<usize>
     where
         Self: Sized,
     {
-        i.dims_of(self)
+        d.dims_of(self)
+    }
+
+    /// return total element count of dimensions
+    #[inline]
+    fn size_of_dims<D: Dims>(&self, d: D) -> usize
+    where
+        Self: Sized,
+    {
+        d.dims_of(self)
+            .into_iter()
+            .map(|d| self.shape_at(d))
+            .product()
     }
 
     fn shape_transpose(&self) -> Vec<usize> {

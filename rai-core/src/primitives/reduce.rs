@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use tracing::Level;
+
 use crate::{Primitive, Shape, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,12 +31,14 @@ impl Primitive for ReduceSum {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
-        tangent_x.reduce_sum((&self.dims, false))
+        tangent_x.sum((&self.dims, false))
     }
 
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let mut shape = x.shape().to_vec();
         for dim in &self.dims {

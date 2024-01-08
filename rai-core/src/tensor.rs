@@ -6,13 +6,15 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::atomic;
 
-use crate::ops::{ArangeArgs, ReduceSumArgs};
+use crate::ops::{ArangeArgs, ReduceArgs};
+use crate::utils::dot_graph;
 use crate::{eval, utils, Dim};
 use crate::{ops, Backend, DType, Primitive, Shape};
 
 pub trait TensorLike: Debug + Display {
     fn as_any(&self) -> &dyn std::any::Any;
     fn shape(&self) -> &[usize];
+    fn dtype(&self) -> DType;
 }
 
 struct TensorImpl {
@@ -250,13 +252,18 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn sum(&self) -> Tensor {
-        ops::reduce_sum(self, ..)
+    pub fn sum<T: ReduceArgs>(&self, args: T) -> Tensor {
+        ops::sum(self, args)
     }
 
     #[inline]
-    pub fn reduce_sum<T: ReduceSumArgs>(&self, args: T) -> Tensor {
-        ops::reduce_sum(self, args)
+    pub fn mean<T: ReduceArgs>(&self, args: T) -> Tensor {
+        ops::mean(self, args)
+    }
+
+    #[inline]
+    pub fn as_type(&self, dtype: DType) -> Tensor {
+        ops::as_type(self, dtype)
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
@@ -308,12 +315,14 @@ impl Tensor {
     }
 
     #[inline]
+    #[track_caller]
     pub fn replace_data(&self, rhs: Tensor) {
         assert!(
             self.shape_eq(&rhs),
-            "{:?} not align with rhs shape: {:?},",
+            "{:?} not align with rhs shape: {:?}\n{}",
             self,
-            rhs.shape()
+            rhs.shape(),
+            dot_graph([self, &rhs])
         );
         assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
         assert!(self.backend() == rhs.backend(), "backend must be equal");
@@ -326,9 +335,17 @@ impl Tensor {
     pub fn set_data<T: TensorLike + 'static>(&self, data: T) {
         assert!(
             self.shape_eq(&data.shape()),
-            "{:?} not align with data shape: {:?},",
+            "{:?} not align with data shape: {:?}\n{}",
             self,
-            data.shape()
+            data.shape(),
+            self.dot_graph()
+        );
+        assert!(
+            self.dtype() == data.dtype(),
+            "{:?} not align with data dtype: {:?}\n{}",
+            self,
+            data.dtype(),
+            self.dot_graph()
         );
         self.0.data.replace(Some(Box::new(data)));
     }

@@ -3,6 +3,7 @@ use std::hash::Hash;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DType {
+    U8,
     F32,
     F64,
 }
@@ -12,6 +13,20 @@ pub trait ElemType: Debug + Clone + PartialEq {
     fn one() -> Self;
     fn zero() -> Self;
     fn into_f64(self) -> f64;
+}
+
+impl ElemType for u8 {
+    const DTYPE: DType = DType::U8;
+
+    fn one() -> Self {
+        1
+    }
+    fn zero() -> Self {
+        0
+    }
+    fn into_f64(self) -> f64 {
+        self as f64
+    }
 }
 
 impl ElemType for f32 {

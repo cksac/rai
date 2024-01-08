@@ -8,4 +8,4 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rai = { path = "../../rai" }
+rai = { workspace = true }

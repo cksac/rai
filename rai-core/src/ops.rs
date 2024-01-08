@@ -3,9 +3,9 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, Broadcast, Cos, Div, Exp, Full, Greater, GreaterEqual, Less, LessEqual,
-        MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax,
-        Sqrt, Square, Sub, Transpose,
+        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Exp, Full, Greater, GreaterEqual, Less,
+        LessEqual, MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin,
+        Softmax, Sqrt, Square, Sub, Transpose,
     },
     shape::Dims,
     utils::dot_graph,
@@ -528,57 +528,16 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
         let inputs = vec![x.clone()];
         Tensor::new(backend, dtype, shape, Reshape, inputs)
     } else {
-        panic!("cannot reshape tensor {:?} to shape {:?}", x, shape.shape());
-    }
-}
-
-pub trait ReduceSumArgs: Debug {
-    fn dims(&self) -> impl Dims;
-    fn keep_dim(&self) -> bool {
-        false
-    }
-}
-
-impl<T> ReduceSumArgs for T
-where
-    for<'a> &'a T: Dims,
-    T: Debug,
-{
-    fn dims(&self) -> impl Dims {
-        self
-    }
-}
-
-impl<'a, T> ReduceSumArgs for (&'a T, bool)
-where
-    &'a T: Dims,
-    T: Debug,
-{
-    fn dims(&self) -> impl Dims {
-        self.0
-    }
-
-    fn keep_dim(&self) -> bool {
-        self.1
+        panic!(
+            "reshape({:?}, {:?}) with error\n{}",
+            x,
+            shape.shape(),
+            dot_graph(x)
+        );
     }
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn reduce_sum<T: ReduceSumArgs>(x: &Tensor, args: T) -> Tensor {
-    let backend = x.backend();
-    let dtype = x.dtype();
-    let dims = x.dims(args.dims());
-    let shape = x.shape_reduce(&dims, args.keep_dim());
-    let inputs = vec![x.clone()];
-    Tensor::new(
-        backend,
-        dtype,
-        shape,
-        ReduceSum::new(dims, args.keep_dim()),
-        inputs,
-    )
-}
-
 pub fn sqrt(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
@@ -587,6 +546,7 @@ pub fn sqrt(x: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Sqrt, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn rsqrt(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
@@ -595,6 +555,7 @@ pub fn rsqrt(x: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Rsqrt, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sign(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
@@ -603,6 +564,7 @@ pub fn sign(x: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Sign, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn abs(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
@@ -611,6 +573,7 @@ pub fn abs(x: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Abs, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn exp(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
@@ -619,9 +582,10 @@ pub fn exp(x: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Exp, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = lhs.dtype();
+    let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "greater({:?}, {:?}) with error {:?}\n{}",
@@ -636,9 +600,10 @@ pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Greater, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = lhs.dtype();
+    let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "greater_equal({:?}, {:?}) with error {:?}\n{}",
@@ -652,9 +617,10 @@ pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, GreaterEqual, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = lhs.dtype();
+    let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "less({:?}, {:?}) with error {:?}\n{}",
@@ -668,9 +634,10 @@ pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Less, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn less_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = lhs.dtype();
+    let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "less_equal({:?}, {:?}) with error {:?}\n{}",
@@ -684,6 +651,7 @@ pub fn less_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, LessEqual, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
@@ -700,6 +668,12 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(backend, dtype, shape, Maximum, inputs)
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn relu(x: &Tensor) -> Tensor {
+    x.maximum(x.zeros_like())
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn softmax<T: Dim>(x: &Tensor, dim: T) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
@@ -709,6 +683,66 @@ pub fn softmax<T: Dim>(x: &Tensor, dim: T) -> Tensor {
     Tensor::new(backend, dtype, shape, Softmax::new(dim), inputs)
 }
 
-pub fn relu(x: &Tensor) -> Tensor {
-    x.maximum(x.zeros_like())
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn as_type(x: &Tensor, dtype: DType) -> Tensor {
+    if x.dtype() == dtype {
+        return x.clone();
+    }
+    let backend = x.backend();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, AsType::new(dtype), inputs)
+}
+
+pub trait ReduceArgs: Debug {
+    fn dims(&self) -> impl Dims;
+    fn keep_dim(&self) -> bool {
+        false
+    }
+}
+
+impl<T> ReduceArgs for T
+where
+    for<'a> &'a T: Dims,
+    T: Debug,
+{
+    fn dims(&self) -> impl Dims {
+        self
+    }
+}
+
+impl<'a, T> ReduceArgs for (&'a T, bool)
+where
+    &'a T: Dims,
+    T: Debug,
+{
+    fn dims(&self) -> impl Dims {
+        self.0
+    }
+
+    fn keep_dim(&self) -> bool {
+        self.1
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let dims = x.dims(args.dims());
+    let shape = x.shape_reduce(&dims, args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        backend,
+        dtype,
+        shape,
+        ReduceSum::new(dims, args.keep_dim()),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn mean<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let elem_count = x.size_of_dims(args.dims()) as f64;
+    x.sum(args) / elem_count
 }

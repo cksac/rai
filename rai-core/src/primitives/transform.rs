@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use tracing::Level;
+
 use crate::{Primitive, Shape, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,10 +33,12 @@ impl Primitive for Broadcast {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         todo!()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let shape = x.shape().to_vec();
@@ -45,7 +49,7 @@ impl Primitive for Broadcast {
                 dims.push(i);
             }
         }
-        let cotangent_x = cotangent.reduce_sum((&dims, true)).reshape(shape);
+        let cotangent_x = cotangent.sum((&dims, true)).reshape(shape);
         vec![cotangent_x]
     }
 }
@@ -61,12 +65,14 @@ impl Primitive for Reshape {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         // capture request shape in Reshape, instead of using the shape from output?
         tangent_x.reshape(output)
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent.reshape(x);
@@ -98,11 +104,13 @@ impl Primitive for Transpose {
         format!("Transpose({:?})", &self.dims)
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         tangent_x.transpose(&*self.dims)
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let mut dims = vec![0; self.dims.len()];
         for i in 0..dims.len() {

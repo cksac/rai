@@ -8,6 +8,7 @@ use crate::{
     dispatch::{Dispatch, Eval},
     primitives,
     tensor::TensorLike,
+    utils::dot_graph,
     Backend, DType, Shape, Tensor,
 };
 
@@ -23,6 +24,18 @@ impl TensorLike for candle_core::Tensor {
 
     fn shape(&self) -> &[usize] {
         self.dims()
+    }
+
+    fn dtype(&self) -> DType {
+        match self.dtype() {
+            candle_core::DType::F32 => DType::F32,
+            candle_core::DType::F64 => DType::F64,
+            candle_core::DType::U8 => DType::U8,
+            candle_core::DType::U32 => todo!(),
+            candle_core::DType::I64 => todo!(),
+            candle_core::DType::BF16 => todo!(),
+            candle_core::DType::F16 => todo!(),
+        }
     }
 }
 
@@ -52,6 +65,7 @@ impl From<DType> for candle_core::DType {
         match val {
             DType::F32 => candle_core::DType::F32,
             DType::F64 => candle_core::DType::F64,
+            DType::U8 => candle_core::DType::U8,
         }
     }
 }
@@ -115,6 +129,12 @@ impl Eval<Cpu, primitives::Arange> for Dispatch<Cpu, primitives::Arange> {
             DType::F64 => {
                 candle_core::Tensor::arange_step::<f64>(start, end, step, &output.backend().into())
             }
+            DType::U8 => candle_core::Tensor::arange_step::<u8>(
+                start as u8,
+                end as u8,
+                step as u8,
+                &output.backend().into(),
+            ),
         }
         .unwrap();
         output.set_data(t);
@@ -164,7 +184,15 @@ impl Eval<Cpu, primitives::Mul> for Dispatch<Cpu, primitives::Mul> {
         let t1 = t1.deref();
         let t2 = t2.deref();
         let t = if lhs.shape_eq(rhs) {
-            (t1 * t2).unwrap()
+            (t1 * t2).unwrap_or_else(|e| {
+                panic!(
+                    "Mul({:?}, {:?}) with error {:?}\n{}",
+                    lhs,
+                    rhs,
+                    e,
+                    dot_graph([lhs, rhs])
+                )
+            })
         } else {
             t1.broadcast_mul(t2).unwrap()
         };
@@ -433,6 +461,16 @@ impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
         let t = candle_nn::ops::softmax(t, primitive.dim).unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::AsType> for Dispatch<Cpu, primitives::AsType> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::AsType, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.to_dtype(primitive.dtype.into()).unwrap();
         output.set_data(t)
     }
 }

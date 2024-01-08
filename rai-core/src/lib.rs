@@ -29,4 +29,4 @@ mod error;
 pub use error::{Error, Result};
 
 mod nn;
-pub use nn::Module;
+pub use nn::{Aux, Module};

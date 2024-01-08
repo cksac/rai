@@ -1,12 +1,13 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::utils::dot_graph;
-use rai::{eval, WithTensors};
+use rai::{eval, Aux, WithTensors};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::time::Instant;
-
+use tracing_subscriber::{prelude::*, Registry};
+use tracing_tree::HierarchicalLayer;
 #[derive(Debug, Clone)]
 struct Mlp {
     ln1: Linear,
@@ -44,17 +45,15 @@ impl Module for Mlp {
     }
 }
 
-fn loss_fn(model: &Mlp, input: &Tensor, labels: &Tensor) -> (Tensor, Tensor) {
-    // TODO: return correct loss
+fn loss_fn(model: &Mlp, input: &Tensor, labels: &Tensor) -> (Tensor, Aux<Tensor>) {
     let logits = model.forward(input);
-    let loss = softmax_cross_entropy(&logits, labels);
-    dbg!(&logits, &loss);
-    (loss, logits)
+    let loss = softmax_cross_entropy(&logits, labels).mean(..);
+    (loss, Aux(logits))
 }
 
 fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, _logits), grads) = vg_fn((model, input, label));
+    let ((loss, Aux(logits)), grads) = vg_fn((model, input, label));
 
     println!("{:?}", model.parameters());
     println!("{:?}", grads);
@@ -67,8 +66,8 @@ fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
             let id = t.id();
             let grad = grads.get(&id).unwrap();
             let new_t = t - grad * 0.01;
-            dbg!(id, t, grad, &new_t);
-            println!("{}", dot_graph([t, grad, &new_t]));
+            // dbg!(id, t, grad, &new_t);
+            // println!("{}", dot_graph([t, grad, &new_t]));
             (id, new_t)
         })
         .collect();
@@ -79,6 +78,9 @@ fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
 }
 
 fn main() {
+    let subscriber = Registry::default().with(HierarchicalLayer::new(2));
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
     let num_iters = 1;
     let batch_size = 5;
     let backend = &Cpu;

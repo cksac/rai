@@ -1,6 +1,7 @@
-use std::any::Any;
+use tracing::Level;
 
-use crate::{Primitive, Shape, Tensor};
+use crate::{DType, Primitive, Shape, Tensor};
+use std::any::Any;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Negative;
@@ -14,11 +15,13 @@ impl Primitive for Negative {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         -tangent_x
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let cotangent_x = -cotangent;
         vec![cotangent_x]
@@ -36,12 +39,14 @@ impl Primitive for Sin {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         x.cos() * tangent_x
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * x.cos();
@@ -60,12 +65,14 @@ impl Primitive for Cos {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         -x.sin() * tangent_x
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * -x.sin();
@@ -84,12 +91,14 @@ impl Primitive for Square {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         x * 2.0 * tangent_x
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * x * 2.0;
@@ -109,12 +118,14 @@ impl Primitive for Sqrt {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         tangent_x * 0.5 / x.sqrt()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * 0.5 / x.sqrt();
@@ -134,12 +145,14 @@ impl Primitive for Rsqrt {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         -0.5 * tangent_x * (x.rsqrt() / x)
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = -0.5 * cotangent * (x.rsqrt() / x);
@@ -159,11 +172,13 @@ impl Primitive for Sign {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         x.zeros_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = x.zeros_like();
@@ -183,12 +198,14 @@ impl Primitive for Abs {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         tangent_x * x.sign()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * x.sign();
@@ -208,12 +225,14 @@ impl Primitive for Exp {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         tangent_x * x.exp()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * x.exp();
@@ -245,17 +264,56 @@ impl Primitive for Softmax {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         // TODO: use primals instead of output?
         let tangent_x = &tangents[0];
         let sv = &(output * tangent_x);
-        sv - output * sv.reduce_sum((&sv.dims(..), true))
+        sv - output * sv.sum((&sv.dims(..), true))
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         // TODO: use primals instead of output?
         let sv = &(output * cotangent);
-        let cotangent_x = sv - output * sv.reduce_sum((&sv.dims(..), true));
+        let cotangent_x = sv - output * sv.sum((&sv.dims(..), true));
+        vec![cotangent_x]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AsType {
+    pub dtype: DType,
+}
+impl AsType {
+    pub fn new(dtype: DType) -> Self {
+        Self { dtype }
+    }
+}
+
+impl Primitive for AsType {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("AsType({:?})", &self.dtype)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let tangent_x = &tangents[0];
+        tangent_x.as_type(self.dtype)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let x = &primals[0];
+        let cotangent_x = cotangent.as_type(x.dtype());
         vec![cotangent_x]
     }
 }

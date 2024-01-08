@@ -42,6 +42,7 @@ impl Module for Linear {
         }
     }
 
+    #[track_caller]
     fn update(&self, params: &mut BTreeMap<usize, Tensor>) {
         if let Some(weight) = params.remove(&self.weight.id()) {
             self.weight.replace_data(weight);

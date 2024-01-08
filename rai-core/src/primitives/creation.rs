@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use tracing::Level;
+
 use crate::{Primitive, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,11 +27,13 @@ impl Primitive for Full {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
@@ -48,11 +52,13 @@ impl Primitive for Normal {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
@@ -85,11 +91,13 @@ impl Primitive for Arange {
         self
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
+    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
