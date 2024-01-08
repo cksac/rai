@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::RandomState, HashSet},
+    collections::{hash_map::RandomState, HashSet, BTreeMap, HashMap},
     fmt::Debug,
     ops::Deref,
 };
@@ -15,51 +15,61 @@ impl TensorIter for Tensor {
         std::iter::once(self)
     }
 }
+
 impl TensorIter for &Tensor {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         std::iter::once(*self)
     }
 }
+
 impl<const N: usize> TensorIter for [Tensor; N] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
     }
 }
+
 impl<const N: usize> TensorIter for [&Tensor; N] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter().map(Deref::deref)
     }
 }
+
 impl<const N: usize> TensorIter for &[Tensor; N] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
     }
 }
+
 impl<const N: usize> TensorIter for &[&Tensor; N] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter().map(Deref::deref)
     }
 }
+
 impl TensorIter for Vec<Tensor> {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
     }
 }
+
 impl TensorIter for &Vec<Tensor> {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
     }
 }
+
 impl TensorIter for &[Tensor] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter()
     }
 }
+
 impl TensorIter for &[&Tensor] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter().map(Deref::deref)
     }
 }
+
 impl<const N: usize, const M: usize> TensorIter for ([Tensor; N], [Tensor; M]) {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.0.iter().chain(self.1.iter())
@@ -95,6 +105,30 @@ impl<const N: usize, const R: usize> TensorIter for [&[Tensor; N]; R] {
 impl<const N: usize> TensorIter for &[&[Tensor; N]] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter().flat_map(|v| v.iter())
+    }
+}
+
+impl TensorIter for (Tensor, Vec<Tensor>) {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        std::iter::once(&self.0).chain(self.1.iter())
+    }
+}
+
+impl<const N: usize> TensorIter for (Tensor, [Tensor; N]) {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        std::iter::once(&self.0).chain(self.1.iter())
+    }
+}
+
+impl TensorIter for (Tensor, BTreeMap<usize, Tensor>) {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        std::iter::once(&self.0).chain(self.1.values())
+    }
+}
+
+impl TensorIter for (Tensor, HashMap<usize, Tensor>) {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        std::iter::once(&self.0).chain(self.1.values())
     }
 }
 
