@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use rai_core::{backend::Cpu, grad, jvp, value_and_grad, DType, Module, Tensor, WithTensors, utils::dot_graph};
+use rai_core::{backend::Cpu, grad, jvp, value_and_grad, DType, Module, Tensor, WithTensors, utils::dot_graph, Aux};
 use rai_nn::Linear;
 
 #[test]
@@ -69,6 +69,12 @@ fn test_linear_value_and_grad_of_grad() {
 }
 
 
+fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {
+    let output = model.forward(x);
+    let loss = output.sum(..);
+    (loss, Aux(output))
+}
+
 #[test]
 fn test_linear_batch_input() {
     let backend = &Cpu;
@@ -78,8 +84,9 @@ fn test_linear_batch_input() {
     let linear = Linear::new(in_size,out_size, true, DType::F32, backend);
     let input = Tensor::normal([batch_size, in_size], DType::F32, backend);
 
-    let vg_fn = value_and_grad(linear);
-    let (output, grads) = vg_fn(input);
+    let vg_fn = value_and_grad(loss_fn);
+    let ((loss, Aux(output)), grads) = vg_fn((&linear, &input));
+    println!("loss = {:?}", &loss);
     println!("output = {:?}", &output);
     println!("grads = {:?}", &grads);
 
