@@ -102,15 +102,9 @@ impl Dims for [usize] {
     }
 }
 
-impl<'a> Dims for &'a [usize] {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
 impl<'a, T> Dims for &'a T
 where
-    T: Dims,
+    T: Dims + ?Sized,
 {
     fn dims_of<U: Shape>(&self, shape: &U) -> Vec<usize> {
         (*self).dims_of(shape)

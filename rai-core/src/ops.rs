@@ -698,7 +698,7 @@ pub fn as_type(x: &Tensor, dtype: DType) -> Tensor {
 }
 
 pub trait ReduceArgs: Debug {
-    fn dims(&self) -> impl Dims;
+    fn dims(&self) -> &impl Dims;
     fn keep_dim(&self) -> bool {
         false
     }
@@ -706,10 +706,9 @@ pub trait ReduceArgs: Debug {
 
 impl<T> ReduceArgs for T
 where
-    T: Debug,
-    for<'a> &'a T: Dims,
+    T: Dims,
 {
-    fn dims(&self) -> impl Dims {
+    fn dims(&self) -> &impl Dims {
         self
     }
     fn keep_dim(&self) -> bool {
@@ -717,8 +716,8 @@ where
     }
 }
 
-impl<'a> ReduceArgs for (&'a [usize], bool) {
-    fn dims(&self) -> impl Dims {
+impl<T> ReduceArgs for (T, bool) where T: Dims {
+    fn dims(&self) -> &impl Dims {
         &self.0
     }
     fn keep_dim(&self) -> bool {
@@ -726,45 +725,6 @@ impl<'a> ReduceArgs for (&'a [usize], bool) {
     }
 }
 
-impl ReduceArgs for (Vec<usize>, bool) {
-    fn dims(&self) -> impl Dims {
-        &self.0
-    }
-    fn keep_dim(&self) -> bool {
-        self.1
-    }
-}
-
-impl<const N: usize> ReduceArgs for ([usize; N], bool) {
-    fn dims(&self) -> impl Dims {
-        &self.0
-    }
-    fn keep_dim(&self) -> bool {
-        self.1
-    }
-}
-
-impl ReduceArgs for (RangeFull, bool) {
-    fn dims(&self) -> impl Dims {
-        &self.0
-    }
-    fn keep_dim(&self) -> bool {
-        self.1
-    }
-}
-
-// impl<T> ReduceArgs for (T, bool)
-// where
-//     T: Debug,
-//     for<'a> &'a T: Dims,
-// {
-//     fn dims(&self) -> impl Dims {
-//         &self.0
-//     }
-//     fn keep_dim(&self) -> bool {
-//         self.1
-//     }
-// }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
