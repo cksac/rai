@@ -9,14 +9,14 @@ pub struct Broadcast {
     pub shape: Vec<usize>,
 }
 impl Broadcast {
-    pub fn new(shape: impl Shape) -> Self {
+    pub fn new<S: Shape + ?Sized>(shape: &S) -> Self {
         Self {
             shape: shape.shape().to_vec(),
         }
     }
 
     pub fn shape(&self) -> &[usize] {
-        self.shape.as_slice()
+        &self.shape
     }
 }
 
@@ -49,7 +49,7 @@ impl Primitive for Broadcast {
                 dims.push(i);
             }
         }
-        let cotangent_x = cotangent.sum((dims, true)).reshape(shape);
+        let cotangent_x = cotangent.sum((dims, true)).reshape(&shape);
         vec![cotangent_x]
     }
 }

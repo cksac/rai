@@ -48,7 +48,7 @@ impl Primitive for ReduceSum {
         for dim in self.dims() {
             shape[*dim] = 1;
         }
-        let cotangent_x = cotangent.reshape(shape).broadcast_to(x);
+        let cotangent_x = cotangent.reshape(&shape).broadcast_to(x);
         vec![cotangent_x]
     }
 }

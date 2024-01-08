@@ -1,7 +1,4 @@
-use std::{
-    fmt::Debug,
-    ops::{Neg, RangeFull},
-};
+use std::{fmt::Debug, ops::Neg};
 use tracing::Level;
 
 use crate::{
@@ -476,10 +473,10 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let mut lhs = lhs.clone();
     let mut rhs = rhs.clone();
     if lhs.ndim() == 1 {
-        lhs = lhs.reshape([&[1], lhs.shape()].concat());
+        lhs = lhs.reshape(&[&[1], lhs.shape()].concat());
     }
     if rhs.ndim() == 1 {
-        rhs = rhs.reshape([rhs.shape(), &[1]].concat());
+        rhs = rhs.reshape(&[rhs.shape(), &[1]].concat());
     }
     let inputs = vec![lhs.clone(), rhs.clone()];
     if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
@@ -487,7 +484,7 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
         let last = shape.ndim() - if rhs_in.ndim() == 1 { 0 } else { 1 };
         let out_shape = [&shape[..first], &shape[last..]].concat();
         let out = Tensor::new(backend, dtype, shape, MatMul, inputs);
-        out.reshape(out_shape)
+        out.reshape(&out_shape)
     } else {
         Tensor::new(backend, dtype, shape, MatMul, inputs)
     }
@@ -503,10 +500,10 @@ pub fn transpose(x: &Tensor, dims: impl Into<Vec<usize>> + Debug) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
+pub fn broadcast_to<S: Shape + ?Sized>(x: &Tensor, shape: &S) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
-    let out_shape = x.shape_broadcast(&shape).unwrap_or_else(|e| {
+    let out_shape = x.shape_broadcast(shape).unwrap_or_else(|e| {
         panic!(
             "{:?} broadcast_to shape {} with error {:?}\n{}",
             x,
@@ -520,12 +517,12 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
-    if x.shape_eq(&shape) {
+pub fn reshape<S: Shape + ?Sized>(x: &Tensor, shape: &S) -> Tensor {
+    if x.shape_eq(shape) {
         return x.clone();
     }
 
-    if x.shape_size_eq(&shape) {
+    if x.shape_size_eq(shape) {
         let backend = x.backend();
         let dtype = x.dtype();
         let inputs = vec![x.clone()];
@@ -716,7 +713,10 @@ where
     }
 }
 
-impl<T> ReduceArgs for (T, bool) where T: Dims {
+impl<T> ReduceArgs for (T, bool)
+where
+    T: Dims,
+{
     fn dims(&self) -> &impl Dims {
         &self.0
     }
@@ -724,7 +724,6 @@ impl<T> ReduceArgs for (T, bool) where T: Dims {
         self.1
     }
 }
-
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {

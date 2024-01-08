@@ -176,12 +176,12 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn broadcast_to(&self, shape: impl Shape) -> Tensor {
+    pub fn broadcast_to<S: Shape + ?Sized>(&self, shape: &S) -> Tensor {
         ops::broadcast_to(self, shape)
     }
 
     #[inline]
-    pub fn reshape(&self, shape: impl Shape) -> Tensor {
+    pub fn reshape<S: Shape + ?Sized>(&self, shape: &S) -> Tensor {
         ops::reshape(self, shape)
     }
 
@@ -440,12 +440,6 @@ impl AsRef<Tensor> for Tensor {
 }
 
 impl Shape for Tensor {
-    fn shape(&self) -> &[usize] {
-        self.0.shape.shape()
-    }
-}
-
-impl Shape for &Tensor {
     fn shape(&self) -> &[usize] {
         self.0.shape.shape()
     }
