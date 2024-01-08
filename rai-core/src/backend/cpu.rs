@@ -241,10 +241,11 @@ impl Eval<Cpu, primitives::ReduceSum> for Dispatch<Cpu, primitives::ReduceSum> {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
+        let dims = primitive.dims.as_slice();
         let t = if primitive.keep_dim {
-            t.sum_keepdim(primitive.axes.as_slice()).unwrap()
+            t.sum_keepdim(dims).unwrap()
         } else {
-            t.sum(primitive.axes.as_slice()).unwrap()
+            t.sum(dims).unwrap()
         };
         output.set_data(t)
     }
@@ -431,7 +432,7 @@ impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = candle_nn::ops::softmax(t, primitive.axis).unwrap();
+        let t = candle_nn::ops::softmax(t, primitive.dim).unwrap();
         output.set_data(t)
     }
 }

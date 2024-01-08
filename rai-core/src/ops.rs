@@ -491,12 +491,12 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn transpose(x: &Tensor, axes: impl Into<Vec<usize>> + Debug) -> Tensor {
+pub fn transpose(x: &Tensor, dims: impl Into<Vec<usize>> + Debug) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
     let shape = x.shape_transpose();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Transpose::new(axes), inputs)
+    Tensor::new(backend, dtype, shape, Transpose::new(dims), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -705,8 +705,8 @@ pub fn softmax<T: Dim>(x: &Tensor, dim: T) -> Tensor {
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let axis = dim.dim_of(&shape);
-    Tensor::new(backend, dtype, shape, Softmax::new(axis), inputs)
+    let dim = shape.dim(dim);
+    Tensor::new(backend, dtype, shape, Softmax::new(dim), inputs)
 }
 
 pub fn relu(x: &Tensor) -> Tensor {

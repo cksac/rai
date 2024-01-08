@@ -39,13 +39,13 @@ impl Primitive for Broadcast {
         let x = &primals[0];
         let shape = x.shape().to_vec();
         let diff = cotangent.ndim() - shape.ndim();
-        let mut axes = Vec::new();
+        let mut dims = Vec::new();
         for i in 0..cotangent.ndim() {
             if i < diff || shape[i - diff] != cotangent.shape_at(i) {
-                axes.push(i);
+                dims.push(i);
             }
         }
-        let cotangent_x = cotangent.reduce_sum((&axes, true)).reshape(shape);
+        let cotangent_x = cotangent.reduce_sum((&dims, true)).reshape(shape);
         vec![cotangent_x]
     }
 }
@@ -76,12 +76,12 @@ impl Primitive for Reshape {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Transpose {
-    pub axes: Vec<usize>,
+    pub dims: Vec<usize>,
 }
 
 impl Transpose {
-    pub fn new(axes: impl Into<Vec<usize>>) -> Self {
-        Self { axes: axes.into() }
+    pub fn new(dims: impl Into<Vec<usize>>) -> Self {
+        Self { dims: dims.into() }
     }
 }
 
@@ -95,20 +95,20 @@ impl Primitive for Transpose {
     }
 
     fn dot_label(&self) -> String {
-        format!("Transpose({:?})", &self.axes)
+        format!("Transpose({:?})", &self.dims)
     }
 
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
-        tangent_x.transpose(&*self.axes)
+        tangent_x.transpose(&*self.dims)
     }
 
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        let mut axes = vec![0; self.axes.len()];
-        for i in 0..self.axes.len() {
-            axes[self.axes[i]] = i;
+        let mut dims = vec![0; self.dims.len()];
+        for i in 0..dims.len() {
+            dims[self.dims[i]] = i;
         }
-        let cotangent_x = cotangent.transpose(axes);
+        let cotangent_x = cotangent.transpose(dims);
         vec![cotangent_x]
     }
 }

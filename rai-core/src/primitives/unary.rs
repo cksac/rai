@@ -223,12 +223,12 @@ impl Primitive for Exp {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Softmax {
-    pub axis: usize,
+    pub dim: usize,
 }
 
 impl Softmax {
-    pub fn new(axis: usize) -> Self {
-        Self { axis }
+    pub fn new(dim: usize) -> Self {
+        Self { dim }
     }
 }
 
@@ -238,7 +238,7 @@ impl Primitive for Softmax {
     }
 
     fn dot_label(&self) -> String {
-        format!("Softmax({:?})", &self.axis)
+        format!("Softmax({:?})", &self.dim)
     }
 
     fn as_any(&self) -> &dyn Any {

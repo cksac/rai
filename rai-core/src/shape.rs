@@ -23,25 +23,25 @@ impl Dim for RangeFull {
 
 impl Dim for isize {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
-        let axis = if *self >= 0 {
+        let dim = if *self >= 0 {
             *self as usize
         } else {
             self.checked_add_unsigned(shape.ndim() - 1).unwrap() as usize
         };
-        assert!(axis < shape.ndim());
-        axis
+        assert!(dim < shape.ndim());
+        dim
     }
 }
 
 impl Dim for i32 {
     fn dim_of<T: Shape>(&self, shape: &T) -> usize {
-        let axis = if *self >= 0 {
+        let dim = if *self >= 0 {
             *self as usize
         } else {
             self.checked_add_unsigned(shape.ndim() as u32).unwrap() as usize
         };
-        assert!(axis < shape.ndim(), "{} < {}", axis, shape.ndim());
-        axis
+        assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
+        dim
     }
 }
 
@@ -378,19 +378,4 @@ impl<const N: usize> Shape for &[usize; N] {
     fn ndim(&self) -> usize {
         self.len()
     }
-}
-
-#[test]
-fn test_shape() {
-    let s = [1, 2, 3, 4];
-    let d = s.dims_until(-1);
-    dbg!(s, d);
-
-    let s = [1];
-    let d = s.dims_until(-1);
-    dbg!(s, d);
-
-    let s = [];
-    let d = s.dims_until(-1);
-    dbg!(s, d);
 }

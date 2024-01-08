@@ -163,14 +163,14 @@ impl Tensor {
     pub fn t(&self) -> Tensor {
         assert!(self.ndim() >= 2);
         let ndim = self.ndim();
-        let mut axes = Vec::from_iter(0..ndim);
-        axes.swap(ndim - 1, ndim - 2);
-        ops::transpose(self, axes)
+        let mut dims = self.dims(..);
+        dims.swap(ndim - 1, ndim - 2);
+        ops::transpose(self, dims)
     }
 
     #[inline]
-    pub fn transpose(&self, axes: impl Into<Vec<usize>> + Debug) -> Tensor {
-        ops::transpose(self, axes)
+    pub fn transpose(&self, dims: impl Into<Vec<usize>> + Debug) -> Tensor {
+        ops::transpose(self, dims)
     }
 
     #[inline]
