@@ -326,7 +326,7 @@ impl Tensor {
         );
         assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
         assert!(self.backend() == rhs.backend(), "backend must be equal");
-        assert!(rhs.is_evalualted(), "rhs must be evaluated");
+        assert!(rhs.is_evaluated(), "rhs must be evaluated");
         self.0.data.replace(rhs.0.data.take());
         self.detach();
     }
@@ -355,7 +355,7 @@ impl Tensor {
     where
         T: 'static,
     {
-        if self.is_evalualted() {
+        if self.is_evaluated() {
             Some(Ref::map(self.0.data.borrow(), |v| {
                 v.as_ref().unwrap().as_any().downcast_ref::<T>().unwrap()
             }))
@@ -365,7 +365,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn is_evalualted(&self) -> bool {
+    pub fn is_evaluated(&self) -> bool {
         self.0
             .data
             .borrow()
@@ -425,7 +425,7 @@ impl Debug for Tensor {
 
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if !self.is_evalualted() {
+        if !self.is_evaluated() {
             eval((self, true));
         }
         let data = self.0.data.borrow();

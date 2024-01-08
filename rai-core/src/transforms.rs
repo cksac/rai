@@ -453,11 +453,11 @@ pub fn eval<T: EvalArgs>(args: T) {
 
 fn topological_sort(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
     for input in t.inputs().iter() {
-        if !t.is_evalualted() {
+        if !t.is_evaluated() {
             topological_sort(tape, input);
         }
     }
-    if t.is_evalualted() || tape.contains(t) {
+    if t.is_evaluated() || tape.contains(t) {
         return;
     }
     tape.insert(t.clone());
