@@ -1,6 +1,6 @@
 use tracing::Level;
 
-use crate::{DType, Primitive, Shape, Tensor};
+use crate::{DType, Primitive, Tensor};
 use std::any::Any;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -269,14 +269,14 @@ impl Primitive for Softmax {
         // TODO: use primals instead of output?
         let tangent_x = &tangents[0];
         let sv = &(output * tangent_x);
-        sv - output * sv.sum((&sv.dims(..), true))
+        sv - output * sv.sum((.., true))
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         // TODO: use primals instead of output?
         let sv = &(output * cotangent);
-        let cotangent_x = sv - output * sv.sum((&sv.dims(..), true));
+        let cotangent_x = sv - output * sv.sum((.., true));
         vec![cotangent_x]
     }
 }

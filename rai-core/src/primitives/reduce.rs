@@ -16,6 +16,10 @@ impl ReduceSum {
             keep_dim,
         }
     }
+
+    pub fn dims(&self) -> &[usize] {
+        &self.dims
+    }
 }
 
 impl Primitive for ReduceSum {
@@ -34,14 +38,14 @@ impl Primitive for ReduceSum {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
-        tangent_x.sum((&self.dims, false))
+        tangent_x.sum((self.dims(), false))
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let mut shape = x.shape().to_vec();
-        for dim in &self.dims {
+        for dim in self.dims() {
             shape[*dim] = 1;
         }
         let cotangent_x = cotangent.reshape(shape).broadcast_to(x);

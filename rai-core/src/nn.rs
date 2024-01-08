@@ -35,69 +35,69 @@ impl<T> WithTensors for (Tensor, Aux<T>) {
 }
 
 // for loss fn (module, input) -> loss
-impl<M, F> Func<(&M, &Tensor), Tensor> for F
+impl<'m, 'i, M, F> Func<(&'m M, &'i Tensor), Tensor> for F
 where
     M: Module,
-    F: Fn(&M, &Tensor) -> Tensor,
+    F: Fn(&'m M, &'i Tensor) -> Tensor,
 {
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
-    fn call(&self, input: (&M, &Tensor)) -> Tensor {
+    fn call(&self, input: (&'m M, &'i Tensor)) -> Tensor {
         self(input.0, input.1)
     }
 
-    fn capture_inputs(&self, input: &(&M, &Tensor)) -> Vec<Tensor> {
+    fn capture_inputs(&self, input: &(&'m M, &'i Tensor)) -> Vec<Tensor> {
         input.0.parameters()
     }
 }
 
 // for loss fn (module, input, label) -> loss
-impl<M, F> Func<(&M, &Tensor, &Tensor), Tensor> for F
+impl<'m, 'i, 'l, M, F> Func<(&'m M, &'i Tensor, &'l Tensor), Tensor> for F
 where
     M: Module,
-    F: Fn(&M, &Tensor, &Tensor) -> Tensor,
+    F: Fn(&'m M, &'i Tensor, &'l Tensor) -> Tensor,
 {
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
-    fn call(&self, input: (&M, &Tensor, &Tensor)) -> Tensor {
+    fn call(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> Tensor {
         self(input.0, input.1, input.2)
     }
 
-    fn capture_inputs(&self, input: &(&M, &Tensor, &Tensor)) -> Vec<Tensor> {
+    fn capture_inputs(&self, input: &(&'m M, &'i Tensor, &'l Tensor)) -> Vec<Tensor> {
         input.0.parameters()
     }
 }
 
 // for loss fn  (module, input) -> (loss, Aux<T>)
-impl<M, F, T> Func<(&M, &Tensor), (Tensor, Aux<T>)> for F
+impl<'m, 'i, M, F, T> Func<(&'m M, &'i Tensor), (Tensor, Aux<T>)> for F
 where
     M: Module,
-    F: Fn(&M, &Tensor) -> (Tensor, Aux<T>),
+    F: Fn(&'m M, &'i Tensor) -> (Tensor, Aux<T>),
 {
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
-    fn call(&self, input: (&M, &Tensor)) -> (Tensor, Aux<T>) {
+    fn call(&self, input: (&'m M, &'i Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1)
     }
 
-    fn capture_inputs(&self, input: &(&M, &Tensor)) -> Vec<Tensor> {
+    fn capture_inputs(&self, input: &(&'m M, &'i Tensor)) -> Vec<Tensor> {
         input.0.parameters()
     }
 }
 
 // for loss fn (module, input, label) -> (loss, Aux<T>)
-impl<M, F, T> Func<(&M, &Tensor, &Tensor), (Tensor, Aux<T>)> for F
+impl<'m, 'i, 'l, M, F, T> Func<(&'m M, &'i Tensor, &'l Tensor), (Tensor, Aux<T>)> for F
 where
     M: Module,
-    F: Fn(&M, &Tensor, &Tensor) -> (Tensor, Aux<T>),
+    F: Fn(&'m M, &'i Tensor, &'l Tensor) -> (Tensor, Aux<T>),
 {
     type Tangent = BTreeMap<usize, Tensor>;
     type Cotangent = BTreeMap<usize, Tensor>;
-    fn call(&self, input: (&M, &Tensor, &Tensor)) -> (Tensor, Aux<T>) {
+    fn call(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1, input.2)
     }
 
-    fn capture_inputs(&self, input: &(&M, &Tensor, &Tensor)) -> Vec<Tensor> {
+    fn capture_inputs(&self, input: &(&'m M, &'i Tensor, &'l Tensor)) -> Vec<Tensor> {
         input.0.parameters()
     }
 }

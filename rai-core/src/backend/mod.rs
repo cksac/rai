@@ -10,17 +10,17 @@ pub trait Backend: Debug {
     fn equal(&self, rhs: &dyn Backend) -> bool;
 }
 
-impl<T> From<&T> for Box<dyn Backend>
+impl<'a, T> From<&'a T> for Box<dyn Backend>
 where
     T: Clone + Backend + 'static,
 {
-    fn from(t: &T) -> Self {
+    fn from(t: &'a T) -> Self {
         Box::new(t.clone())
     }
 }
 
-impl From<&Box<dyn Backend>> for Box<dyn Backend> {
-    fn from(t: &Box<dyn Backend>) -> Self {
+impl<'a> From<&'a Box<dyn Backend>> for Box<dyn Backend> {
+    fn from(t: &'a Box<dyn Backend>) -> Self {
         t.clone()
     }
 }
@@ -31,8 +31,8 @@ impl Clone for Box<dyn Backend> {
     }
 }
 
-impl From<&dyn Backend> for Box<dyn Backend> {
-    fn from(t: &dyn Backend) -> Self {
+impl<'a> From<&'a dyn Backend> for Box<dyn Backend> {
+    fn from(t: &'a dyn Backend) -> Self {
         t.clone_boxed()
     }
 }

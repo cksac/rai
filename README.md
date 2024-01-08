@@ -64,7 +64,7 @@ fn main() {
     let loss_fn = move |w: &Tensor| {
         let y = &y;
         let y_hat = x.matmul(&w);
-        let loss = (y_hat - y).square().sum() * (0.5f32 / num_samples as f32);
+        let loss = (y_hat - y).square().sum(..) * (0.5f32 / num_samples as f32);
         loss
     };
 

@@ -27,8 +27,8 @@ impl Clone for Box<dyn Primitive> {
     }
 }
 
-impl From<&dyn Primitive> for Box<dyn Primitive> {
-    fn from(t: &dyn Primitive) -> Self {
+impl<'a> From<&'a dyn Primitive> for Box<dyn Primitive> {
+    fn from(t: &'a dyn Primitive) -> Self {
         t.clone_boxed()
     }
 }

@@ -2,7 +2,7 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{dtype, Primitive, Shape, Tensor};
+use crate::{Primitive, Shape, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Add;

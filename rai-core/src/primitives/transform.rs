@@ -49,7 +49,7 @@ impl Primitive for Broadcast {
                 dims.push(i);
             }
         }
-        let cotangent_x = cotangent.sum((&dims, true)).reshape(shape);
+        let cotangent_x = cotangent.sum((dims, true)).reshape(shape);
         vec![cotangent_x]
     }
 }
@@ -89,6 +89,10 @@ impl Transpose {
     pub fn new(dims: impl Into<Vec<usize>>) -> Self {
         Self { dims: dims.into() }
     }
+
+    pub fn dims(&self) -> &[usize] {
+        &self.dims
+    }
 }
 
 impl Primitive for Transpose {
@@ -101,13 +105,13 @@ impl Primitive for Transpose {
     }
 
     fn dot_label(&self) -> String {
-        format!("Transpose({:?})", &self.dims)
+        format!("Transpose({:?})", self.dims())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
-        tangent_x.transpose(&*self.dims)
+        tangent_x.transpose(self.dims())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]

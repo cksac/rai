@@ -52,37 +52,13 @@ pub trait Dims: Debug {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize>;
 }
 
-impl Dims for [usize] {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
-impl Dims for &[usize] {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
 impl Dims for Vec<usize> {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
         self.iter().map(|d| shape.dim(*d)).collect()
     }
 }
 
-impl Dims for &Vec<usize> {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
-impl Dims for [i32] {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
-impl Dims for &[i32] {
+impl<const N: usize> Dims for [usize; N] {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
         self.iter().map(|d| shape.dim(*d)).collect()
     }
@@ -94,31 +70,13 @@ impl<const N: usize> Dims for [i32; N] {
     }
 }
 
-impl<const N: usize> Dims for &[i32; N] {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
 impl Dims for Vec<i32> {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
         self.iter().map(|d| shape.dim(*d)).collect()
     }
 }
 
-impl Dims for &Vec<i32> {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        self.iter().map(|d| shape.dim(*d)).collect()
-    }
-}
-
 impl Dims for RangeFull {
-    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
-        (0..shape.ndim()).collect()
-    }
-}
-
-impl Dims for &RangeFull {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
         (0..shape.ndim()).collect()
     }
@@ -135,6 +93,27 @@ impl Dims for RangeTo<usize> {
     fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
         let dim = shape.dim(self.end);
         (0..dim).collect()
+    }
+}
+
+impl Dims for [usize] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl<'a> Dims for &'a [usize] {
+    fn dims_of<T: Shape>(&self, shape: &T) -> Vec<usize> {
+        self.iter().map(|d| shape.dim(*d)).collect()
+    }
+}
+
+impl<'a, T> Dims for &'a T
+where
+    T: Dims,
+{
+    fn dims_of<U: Shape>(&self, shape: &U) -> Vec<usize> {
+        (*self).dims_of(shape)
     }
 }
 
@@ -355,26 +334,6 @@ impl Shape for Vec<usize> {
     }
 }
 
-impl Shape for &Vec<usize> {
-    fn shape(&self) -> &[usize] {
-        self.as_slice()
-    }
-
-    fn ndim(&self) -> usize {
-        self.len()
-    }
-}
-
-impl Shape for &[usize] {
-    fn shape(&self) -> &[usize] {
-        self
-    }
-
-    fn ndim(&self) -> usize {
-        self.len()
-    }
-}
-
 impl<const N: usize> Shape for [usize; N] {
     fn shape(&self) -> &[usize] {
         self.as_slice()
@@ -385,9 +344,29 @@ impl<const N: usize> Shape for [usize; N] {
     }
 }
 
-impl<const N: usize> Shape for &[usize; N] {
+impl<'a> Shape for &'a Vec<usize> {
     fn shape(&self) -> &[usize] {
         self.as_slice()
+    }
+
+    fn ndim(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<'a, const N: usize> Shape for &'a [usize; N] {
+    fn shape(&self) -> &[usize] {
+        self.as_slice()
+    }
+
+    fn ndim(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<'a> Shape for &'a [usize] {
+    fn shape(&self) -> &[usize] {
+        self
     }
 
     fn ndim(&self) -> usize {

@@ -95,7 +95,7 @@ fn test_matmul_2() {
 #[test]
 fn test_sum() {
     let backend = &Cpu;
-    let func = |x: &Tensor| x.sum();
+    let func = |x: &Tensor| x.sum(..);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
     let (outs, grads) = vg_func([a]);
@@ -107,7 +107,7 @@ fn test_sum() {
 #[test]
 fn test_softmax() {
     let backend = &Cpu;
-    let func = |x: &Tensor| x.softmax(-1);
+    let func = |x: &Tensor| x.softmax(1);
     let vg_func = value_and_grad(func);
 
     let a = &Tensor::normal([2, 3], DType::F32, backend);
@@ -119,6 +119,6 @@ fn test_softmax() {
 
     println!("{}", a);
     println!("{}", outs[0]);
-    println!("sum {}", outs[0].reduce_sum([-1]));
+    println!("sum {}", outs[0].sum([1]));
     println!("{}", grads[0]);
 }

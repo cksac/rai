@@ -1,4 +1,7 @@
-use std::{fmt::Debug, ops::Neg};
+use std::{
+    fmt::Debug,
+    ops::{Neg, RangeFull},
+};
 use tracing::Level;
 
 use crate::{
@@ -703,27 +706,65 @@ pub trait ReduceArgs: Debug {
 
 impl<T> ReduceArgs for T
 where
-    for<'a> &'a T: Dims,
     T: Debug,
+    for<'a> &'a T: Dims,
 {
     fn dims(&self) -> impl Dims {
         self
     }
+    fn keep_dim(&self) -> bool {
+        false
+    }
 }
 
-impl<'a, T> ReduceArgs for (&'a T, bool)
-where
-    &'a T: Dims,
-    T: Debug,
-{
+impl<'a> ReduceArgs for (&'a [usize], bool) {
     fn dims(&self) -> impl Dims {
-        self.0
+        &self.0
     }
-
     fn keep_dim(&self) -> bool {
         self.1
     }
 }
+
+impl ReduceArgs for (Vec<usize>, bool) {
+    fn dims(&self) -> impl Dims {
+        &self.0
+    }
+    fn keep_dim(&self) -> bool {
+        self.1
+    }
+}
+
+impl<const N: usize> ReduceArgs for ([usize; N], bool) {
+    fn dims(&self) -> impl Dims {
+        &self.0
+    }
+    fn keep_dim(&self) -> bool {
+        self.1
+    }
+}
+
+impl ReduceArgs for (RangeFull, bool) {
+    fn dims(&self) -> impl Dims {
+        &self.0
+    }
+    fn keep_dim(&self) -> bool {
+        self.1
+    }
+}
+
+// impl<T> ReduceArgs for (T, bool)
+// where
+//     T: Debug,
+//     for<'a> &'a T: Dims,
+// {
+//     fn dims(&self) -> impl Dims {
+//         &self.0
+//     }
+//     fn keep_dim(&self) -> bool {
+//         self.1
+//     }
+// }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {

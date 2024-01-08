@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::utils::dot_graph;
-use rai::{eval, Aux, WithTensors};
+use rai::{eval, Aux, Shape, WithTensors};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -18,12 +18,13 @@ impl Mlp {
     pub fn new(
         image_dim: usize,
         label_dim: usize,
+        hidden_dim: usize,
         dtype: DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Self {
         let backend = &backend.into();
-        let ln1 = Linear::new(image_dim, 100, true, dtype, backend);
-        let ln2 = Linear::new(100, label_dim, true, dtype, backend);
+        let ln1 = Linear::new(image_dim, hidden_dim, true, dtype, backend);
+        let ln2 = Linear::new(hidden_dim, label_dim, true, dtype, backend);
         Self { ln1, ln2 }
     }
 }
@@ -45,18 +46,24 @@ impl Module for Mlp {
     }
 }
 
-fn loss_fn(model: &Mlp, input: &Tensor, labels: &Tensor) -> (Tensor, Aux<Tensor>) {
+fn loss_fn<M: Module + 'static>(
+    model: &M,
+    input: &Tensor,
+    labels: &Tensor,
+) -> (Tensor, Aux<Tensor>) {
     let logits = model.forward(input);
     let loss = softmax_cross_entropy(&logits, labels).mean(..);
     (loss, Aux(logits))
 }
 
-fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
+fn train<M: Module + 'static>(model: &M, input: &Tensor, label: &Tensor) {
     let vg_fn = value_and_grad(loss_fn);
     let ((loss, Aux(logits)), grads) = vg_fn((model, input, label));
 
-    println!("{:?}", model.parameters());
-    println!("{:?}", grads);
+    // println!("{:?}", model.parameters());
+    // println!("{:?}", grads);
+    // println!("{}", loss.dot_graph());
+    // println!("{}", dot_graph(grads.values().cloned().collect::<Vec<_>>()));
 
     // TODO: Optimizer to get new params
     let mut new_params: BTreeMap<usize, Tensor> = model
@@ -65,9 +72,12 @@ fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
         .map(|t| {
             let id = t.id();
             let grad = grads.get(&id).unwrap();
-            let new_t = t - grad * 0.01;
-            // dbg!(id, t, grad, &new_t);
-            // println!("{}", dot_graph([t, grad, &new_t]));
+            let new_t = if t.shape_eq(grad) {
+                t - grad * 0.01
+            } else {
+                // TODO: check why grad of Linear.bias is [BATCH_SIZE, LABEL_DIM] instead of [LABEL_DIM], bug in vjp?
+                t - grad.mean([0]) * 0.01
+            };
             (id, new_t)
         })
         .collect();
@@ -78,25 +88,30 @@ fn train(model: &Mlp, input: &Tensor, label: &Tensor) {
 }
 
 fn main() {
-    let subscriber = Registry::default().with(HierarchicalLayer::new(2));
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    // let subscriber = Registry::default().with(HierarchicalLayer::new(2));
+    // tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    let num_iters = 1;
-    let batch_size = 5;
+    let num_epochs = 10;
+    let batch_size = 256;
     let backend = &Cpu;
     let dtype = DType::F32;
 
-    let model = Mlp::new(784, 10, dtype, backend);
+    //let model = Mlp::new(784, 10, 32, dtype, backend);
+    let model = Linear::new(784, 10, true, dtype, backend);
 
     let start = Instant::now();
-    for _ in 0..num_iters {
+    for i in 0..num_epochs {
+        let start = Instant::now();
         // todo: get image input and label
         let input = Tensor::normal([batch_size, 784], dtype, backend);
         let labels = Tensor::full(0.123, [batch_size, 10], dtype, backend);
         train(&model, &input, &labels);
+        let elapsed = start.elapsed();
+        println!("Epoch {i}: Time: {:?}", elapsed);
     }
+
     let elapsed = start.elapsed();
-    let throughput = num_iters as f64 / elapsed.as_secs_f64();
+    let throughput = num_epochs as f64 / elapsed.as_secs_f64();
     println!(
         "elapsed: {:?}, throughput: {:?} iters/sec",
         elapsed, throughput

@@ -307,7 +307,6 @@ where
         let (output, vjp_fn) = vjp(self.func.clone(), input);
         let mut cotagents = BTreeMap::new();
         for t in output.tensors() {
-            dbg!(&t);
             cotagents.insert(t.id(), t.ones_like());
         }
         let tangents = vjp_fn(F::Cotangent::from_tensor_map(cotagents));
