@@ -13,8 +13,8 @@ Note: It required `Rust nightly` with following features [`fn_traits`, `unboxed_
 cargo add rai
 ```
 
-## Examples
-### transformations (eval, grad, jvp, value_and_grad, vjp)
+## Code snippets
+### Function transformations (jvp, vjp, grad, valud_and_grad)
 ```rust
 use rai::backend::Cpu;
 use rai::{grad, DType, Tensor};
@@ -35,77 +35,39 @@ fn main() {
 }
 ```
 
-### linear regression
-`cargo run --bin linear_regression --release`
+### NN Modules, Optimizer and loss functions
 ```rust
-use rai::{backend::Cpu, eval, grad, DType, Tensor};
-use std::time::Instant;
+fn loss_fn<M: Module + 'static>(
+    model: &M,
+    input: &Tensor,
+    labels: &Tensor,
+) -> (Tensor, Aux<Tensor>) {
+    let logits = model.forward(input);
+    let loss = softmax_cross_entropy(&logits, labels).mean(..);
+    (loss, Aux(logits))
+}
 
-fn main() {
-    let num_features = 100;
-    let num_samples = 1000;
-    let num_iters = 1000;
-    let learning_rate = 0.01f32;
-
-    let backend = &Cpu;
-    // True parameters
-    let w_star = Tensor::normal([num_features], DType::F32, backend);
-
-    // The input examples (design matrix)
-    let x = Tensor::normal([num_samples, num_features], DType::F32, backend);
-
-    // Noisy labels
-    let eps = Tensor::normal([num_samples], DType::F32, backend) * 1e-2f32;
-    let y = x.matmul(&w_star) + eps;
-
-    // Initialize random parameters
-    let w = &(Tensor::normal([num_features], DType::F32, backend) * 1e-2f32);
-
-    let loss_fn = move |w: &Tensor| {
-        let y = &y;
-        let y_hat = x.matmul(&w);
-        let loss = (y_hat - y).square().sum(..) * (0.5f32 / num_samples as f32);
-        loss
-    };
-
-    let grad_fn = grad(loss_fn.clone());
-
-    let start = Instant::now();
-    for _ in 0..num_iters {
-        let grads = grad_fn([w.clone()]);
-        let grad = &grads[0];
-        let new_w = w - grad * learning_rate;
-        eval(&new_w);
-        w.replace_data(new_w);
-    }
-    let elapsed = start.elapsed();
-    let loss = loss_fn(w);
-    let throughput = num_iters as f64 / elapsed.as_secs_f64();
-    println!(
-        "loss: {}, elapsed: {:?}, throughput: {:?} iters/sec",
-        loss, elapsed, throughput
-    );
+fn train_step<O: Optimizer, M: Module + 'static>(
+    optimizer: &mut O,
+    model: &M,
+    input: &Tensor,
+    labels: &Tensor,
+) {
+    let vg_fn = value_and_grad(loss_fn);
+    let ((_loss, Aux(_logits)), grads) = vg_fn((model, input, labels));
+    let mut params = optimizer.step(model.parameters(), &grads);
+    eval(&params);
+    model.update(&mut params);
 }
 ```
 
-### Neuron network modules with transformation (grad, jvp, value_and_grad, vjp)
-```rust
-#[test]
-fn test_linear_grad() {
-    let backend = &Cpu;
+## Examples
+- [linear_regression](https://github.com/cksac/rai/blob/main/examples/linear_regression/src/main.rs)
+    - `cargo run --bin linear_regression --release`
+- [mnist](https://github.com/cksac/rai/blob/main/examples/mnist/src/main.rs)
+    - `cargo run --bin mnist --release`
 
-    let linear = Linear::new(5, 2, true, DType::F32, backend);
-    let input = Tensor::normal([5], DType::F32, backend);
 
-    let grad_fn = grad(linear);
-    let grads = grad_fn(input);
-    println!("{:?}", &grads);
-
-    let grads = grads.tensors();
-    println!("{}", grads[0]); // grad of linear.weight
-    println!("{}", grads[1]); // grad of linear.bias
-}
-```
 
 # LICENSE
 

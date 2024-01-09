@@ -66,10 +66,10 @@ fn train_step<O: Optimizer, M: Module + 'static>(
     optimizer: &mut O,
     model: &M,
     input: &Tensor,
-    label: &Tensor,
+    labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), grads) = vg_fn((model, input, label));
+    let ((_loss, Aux(_logits)), grads) = vg_fn((model, input, labels));
     let mut params = optimizer.step(model.parameters(), &grads);
     eval(&params);
     model.update(&mut params);
