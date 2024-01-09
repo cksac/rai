@@ -242,6 +242,21 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn log(&self) -> Tensor {
+        ops::log(self)
+    }
+
+    #[inline]
+    pub fn log2(&self) -> Tensor {
+        ops::log2(self)
+    }
+
+    #[inline]
+    pub fn log10(&self) -> Tensor {
+        ops::log10(self)
+    }
+
+    #[inline]
     pub fn softmax<T: Dim>(&self, dim: T) -> Tensor {
         ops::softmax(self, dim)
     }

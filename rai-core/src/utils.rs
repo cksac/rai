@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::RandomState, HashSet, BTreeMap, HashMap},
+    collections::{hash_map::RandomState, BTreeMap, HashMap, HashSet},
     fmt::Debug,
     ops::Deref,
 };
@@ -67,6 +67,30 @@ impl TensorIter for &[Tensor] {
 impl TensorIter for &[&Tensor] {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
         self.iter().map(Deref::deref)
+    }
+}
+
+impl TensorIter for HashMap<usize, Tensor> {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.values()
+    }
+}
+
+impl TensorIter for BTreeMap<usize, Tensor> {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.values()
+    }
+}
+
+impl TensorIter for &HashMap<usize, Tensor> {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.values()
+    }
+}
+
+impl TensorIter for &BTreeMap<usize, Tensor> {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.values()
     }
 }
 

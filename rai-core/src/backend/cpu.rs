@@ -370,6 +370,36 @@ impl Eval<Cpu, primitives::Exp> for Dispatch<Cpu, primitives::Exp> {
     }
 }
 
+impl Eval<Cpu, primitives::Log> for Dispatch<Cpu, primitives::Log> {
+    fn eval(&self, _: &Cpu, _: &primitives::Log, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.log().unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::Log2> for Dispatch<Cpu, primitives::Log2> {
+    fn eval(&self, _: &Cpu, _: &primitives::Log2, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = (t.log().unwrap() / 2.0f64.ln()).unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::Log10> for Dispatch<Cpu, primitives::Log10> {
+    fn eval(&self, _: &Cpu, _: &primitives::Log10, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = (t.log().unwrap() / 10.0f64.ln()).unwrap();
+        output.set_data(t)
+    }
+}
+
 impl Eval<Cpu, primitives::Greater> for Dispatch<Cpu, primitives::Greater> {
     fn eval(&self, _: &Cpu, _: &primitives::Greater, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];

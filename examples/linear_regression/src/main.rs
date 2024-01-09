@@ -41,7 +41,7 @@ fn main() {
     let loss = loss_fn(w);
     let throughput = num_iters as f64 / elapsed.as_secs_f64();
     println!(
-        "loss: {}, elapsed: {:?}, throughput: {:?} iters/sec",
+        "loss: {}, elapsed: {:?}, throughput: {:.2} iters/sec",
         loss, elapsed, throughput
     );
 }

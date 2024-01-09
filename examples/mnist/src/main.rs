@@ -1,48 +1,54 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
-use rai::utils::dot_graph;
-use rai::{eval, Aux, Shape, WithTensors};
+use rai::opt::optimizers::{Optimizer, SDG};
+use rai::{eval, Aux};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::time::Instant;
-use tracing_subscriber::{prelude::*, Registry};
-use tracing_tree::HierarchicalLayer;
+
 #[derive(Debug, Clone)]
 struct Mlp {
-    ln1: Linear,
-    ln2: Linear,
+    layers: Vec<Linear>,
 }
 
 impl Mlp {
     pub fn new(
-        image_dim: usize,
-        label_dim: usize,
+        num_layers: usize,
+        input_dim: usize,
         hidden_dim: usize,
+        output_dim: usize,
         dtype: DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Self {
         let backend = &backend.into();
-        let ln1 = Linear::new(image_dim, hidden_dim, true, dtype, backend);
-        let ln2 = Linear::new(hidden_dim, label_dim, true, dtype, backend);
-        Self { ln1, ln2 }
+        let mut layers = Vec::with_capacity(num_layers);
+        layers.push(Linear::new(input_dim, hidden_dim, true, dtype, backend));
+        for _ in 1..num_layers - 2 {
+            layers.push(Linear::new(hidden_dim, hidden_dim, true, dtype, backend));
+        }
+        layers.push(Linear::new(hidden_dim, output_dim, true, dtype, backend));
+        Self { layers }
     }
 }
 
 impl Module for Mlp {
     fn forward(&self, x: &Tensor) -> Tensor {
-        let x = &self.ln1.forward(x);
-        let x = &x.relu();
-        self.ln2.forward(x)
+        let mut x = x.clone();
+        for l in self.layers[0..self.layers.len() - 1].iter() {
+            x = l.forward(&x).relu();
+        }
+        self.layers[self.layers.len() - 1].forward(&x)
     }
 
     fn parameters(&self) -> Vec<Tensor> {
-        [self.ln1.parameters(), self.ln2.parameters()].concat()
+        self.layers.iter().flat_map(|l| l.parameters()).collect()
     }
 
     fn update(&self, params: &mut BTreeMap<usize, Tensor>) {
-        self.ln1.update(params);
-        self.ln2.update(params);
+        for layer in self.layers.iter() {
+            layer.update(params);
+        }
     }
 }
 
@@ -56,48 +62,32 @@ fn loss_fn<M: Module + 'static>(
     (loss, Aux(logits))
 }
 
-fn train<M: Module + 'static>(model: &M, input: &Tensor, label: &Tensor) {
+fn train_step<O: Optimizer, M: Module + 'static>(
+    optimizer: &mut O,
+    model: &M,
+    input: &Tensor,
+    label: &Tensor,
+) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((loss, Aux(logits)), grads) = vg_fn((model, input, label));
-
-    // println!("{:?}", model.parameters());
-    // println!("{:?}", grads);
-    // println!("{}", loss.dot_graph());
-    // println!("{}", dot_graph(grads.values().cloned().collect::<Vec<_>>()));
-
-    // TODO: Optimizer to get new params
-    let mut new_params: BTreeMap<usize, Tensor> = model
-        .parameters()
-        .iter()
-        .map(|t| {
-            let id = t.id();
-            let grad = grads.get(&id).unwrap();
-            let new_t = if t.shape_eq(grad) {
-                t - grad * 0.01
-            } else {
-                // TODO: check why grad of Linear.bias is [BATCH_SIZE, LABEL_DIM] instead of [LABEL_DIM], bug in vjp?
-                t - grad.mean([0]) * 0.01
-            };
-            (id, new_t)
-        })
-        .collect();
-    eval(new_params.tensors());
-
-    // apply param update
-    model.update(&mut new_params);
+    let ((_loss, Aux(_logits)), grads) = vg_fn((model, input, label));
+    let mut params = optimizer.step(model.parameters(), &grads);
+    eval(&params);
+    model.update(&mut params);
 }
 
 fn main() {
-    // let subscriber = Registry::default().with(HierarchicalLayer::new(2));
-    // tracing::subscriber::set_global_default(subscriber).unwrap();
-
-    let num_epochs = 10;
+    let num_layers = 2;
+    let hidden_dim = 32;
+    let num_classes = 10;
     let batch_size = 256;
+    let num_epochs = 10;
+    let learning_rate = 1e-1;
+
     let backend = &Cpu;
     let dtype = DType::F32;
 
-    //let model = Mlp::new(784, 10, 32, dtype, backend);
-    let model = Linear::new(784, 10, true, dtype, backend);
+    let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
+    let mut optimizer = SDG::new(learning_rate);
 
     let start = Instant::now();
     for i in 0..num_epochs {
@@ -105,7 +95,7 @@ fn main() {
         // todo: get image input and label
         let input = Tensor::normal([batch_size, 784], dtype, backend);
         let labels = Tensor::full(0.123, [batch_size, 10], dtype, backend);
-        train(&model, &input, &labels);
+        train_step(&mut optimizer, &model, &input, &labels);
         let elapsed = start.elapsed();
         println!("Epoch {i}: Time: {:?}", elapsed);
     }
@@ -113,7 +103,7 @@ fn main() {
     let elapsed = start.elapsed();
     let throughput = num_epochs as f64 / elapsed.as_secs_f64();
     println!(
-        "elapsed: {:?}, throughput: {:?} iters/sec",
+        "elapsed: {:?}, throughput: {:.2} iters/sec",
         elapsed, throughput
     );
     // todo: save model

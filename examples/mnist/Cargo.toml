@@ -11,6 +11,3 @@ publish = false
 
 [dependencies]
 rai = { workspace = true }
-tracing = { workspace = true }
-tracing-tree = { workspace = true }
-tracing-subscriber = { workspace = true }

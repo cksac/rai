@@ -4,8 +4,8 @@ use tracing::Level;
 use crate::{
     primitives::{
         Abs, Add, Arange, AsType, Broadcast, Cos, Div, Exp, Full, Greater, GreaterEqual, Less,
-        LessEqual, MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape, Rsqrt, Sign, Sin,
-        Softmax, Sqrt, Square, Sub, Transpose,
+        LessEqual, Log, Log10, Log2, MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape,
+        Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
     },
     shape::Dims,
     utils::dot_graph,
@@ -21,23 +21,23 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl std::ops::$op<&Tensor> for Tensor {
+        impl<'a> std::ops::$op<&'a Tensor> for Tensor {
             type Output = Tensor;
-            fn $func(self, rhs: &Tensor) -> Tensor {
+            fn $func(self, rhs: &'a Tensor) -> Tensor {
                 $func(&self, rhs)
             }
         }
 
-        impl std::ops::$op<Tensor> for &Tensor {
+        impl<'a> std::ops::$op<Tensor> for &'a Tensor {
             type Output = Tensor;
             fn $func(self, rhs: Tensor) -> Tensor {
                 $func(self, &rhs)
             }
         }
 
-        impl std::ops::$op<&Tensor> for &Tensor {
+        impl<'a, 'b> std::ops::$op<&'b Tensor> for &'a Tensor {
             type Output = Tensor;
-            fn $func(self, rhs: &Tensor) -> Tensor {
+            fn $func(self, rhs: &'b Tensor) -> Tensor {
                 $func(self, rhs)
             }
         }
@@ -54,7 +54,7 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl<T> std::ops::$op<T> for &Tensor
+        impl<'a, T> std::ops::$op<T> for &'a Tensor
         where
             T: 'static + crate::ElemType,
         {
@@ -75,10 +75,10 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl std::ops::$op<&Tensor> for f64 {
+        impl<'a> std::ops::$op<&'a Tensor> for f64 {
             type Output = Tensor;
 
-            fn $func(self, rhs: &Tensor) -> Self::Output {
+            fn $func(self, rhs: &'a Tensor) -> Self::Output {
                 let lhs = rhs.full_like(self);
                 $func(&lhs, &rhs)
             }
@@ -93,10 +93,10 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl std::ops::$op<&Tensor> for f32 {
+        impl<'a> std::ops::$op<&'a Tensor> for f32 {
             type Output = Tensor;
 
-            fn $func(self, rhs: &Tensor) -> Self::Output {
+            fn $func(self, rhs: &'a Tensor) -> Self::Output {
                 let lhs = rhs.full_like(self as f64);
                 $func(&lhs, &rhs)
             }
@@ -580,6 +580,33 @@ pub fn exp(x: &Tensor) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, Exp, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn log(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Log, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn log2(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Log2, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn log10(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Log10, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
