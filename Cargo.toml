@@ -9,18 +9,18 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 categories = ["science"]
 
 [workspace.dependencies]
-rai = { path = "rai", version = "0.4.0" }
-rai-core = { path = "rai-core", version = "0.4.0" }
-rai-nn = { path = "rai-nn", version = "0.4.0" }
-rai-opt = { path = "rai-opt", version = "0.4.0" }
-candle-core = "0.3.1"
+rai = { path = "rai", version = "0.5.0" }
+rai-core = { path = "rai-core", version = "0.5.0" }
+rai-nn = { path = "rai-nn", version = "0.5.0" }
+rai-opt = { path = "rai-opt", version = "0.5.0" }
+candle-core = "0.3.2"
 dyn-clone = "1.0.16"
 once_cell = "1.19.0"
 thiserror = "1.0.51"
