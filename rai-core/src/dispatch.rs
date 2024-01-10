@@ -107,6 +107,8 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Laz
 
     // reduce
     _register::<Cpu, primitives::ReduceSum>(&mut rules);
+    _register::<Cpu, primitives::ReduceMax>(&mut rules);
+    _register::<Cpu, primitives::ReduceMin>(&mut rules);
 
     Mutex::new(rules)
 });

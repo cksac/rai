@@ -269,11 +269,43 @@ impl Eval<Cpu, primitives::ReduceSum> for Dispatch<Cpu, primitives::ReduceSum> {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let dims = primitive.dims.as_slice();
+        let dims = primitive.dims();
         let t = if primitive.keep_dim {
             t.sum_keepdim(dims).unwrap()
         } else {
             t.sum(dims).unwrap()
+        };
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::ReduceMax> for Dispatch<Cpu, primitives::ReduceMax> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::ReduceMax, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let dims = primitive.dims();
+        assert!(dims.len() == 1, "only support reduce max with single dim");
+        let t = if primitive.keep_dim {
+            t.max_keepdim(dims[0]).unwrap()
+        } else {
+            t.max(dims[0]).unwrap()
+        };
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::ReduceMin> for Dispatch<Cpu, primitives::ReduceMin> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::ReduceMin, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let dims = primitive.dims();
+        assert!(dims.len() == 1, "only support reduce min with single dim");
+        let t = if primitive.keep_dim {
+            t.min_keepdim(dims[0]).unwrap()
+        } else {
+            t.min(dims[0]).unwrap()
         };
         output.set_data(t)
     }

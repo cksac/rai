@@ -277,6 +277,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn min<T: ReduceArgs>(&self, args: T) -> Tensor {
+        ops::min(self, args)
+    }
+
+    #[inline]
     pub fn mean<T: ReduceArgs>(&self, args: T) -> Tensor {
         ops::mean(self, args)
     }

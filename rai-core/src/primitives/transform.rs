@@ -34,8 +34,9 @@ impl Primitive for Broadcast {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
-        todo!()
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let tangent_x = &tangents[0];
+        tangent_x.broadcast_to(self.shape())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]

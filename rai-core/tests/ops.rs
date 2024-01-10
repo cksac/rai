@@ -1,4 +1,4 @@
-use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, DType, Tensor};
+use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, DType, Tensor, jvp};
 
 #[test]
 fn test_dot_graph() {
@@ -100,6 +100,35 @@ fn test_sum() {
     let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
     let (outs, grads) = vg_func([a]);
     println!("{}", dot_graph([&outs, &grads]));
+    println!("{}", outs[0]);
+    println!("{}", grads[0]);
+}
+
+#[test]
+fn test_max() {
+    let backend = &Cpu;
+    let func = |x: &Tensor| x.max(0);
+    let vg_func = value_and_grad(func);
+    let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
+    let (outs, grads) = vg_func([a]);
+    println!("{}", dot_graph([&outs, &grads]));
+    println!("{}", outs[0]);
+    println!("{}", grads[0]);
+}
+
+#[test]
+fn test_min() {
+    let backend = &Cpu;
+    let func = |x: &Tensor| x.min(0);
+    let vg_func = value_and_grad(func);
+    let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
+    let (outs, grads) = vg_func([a.clone()]);
+    println!("{}", dot_graph([&outs, &grads]));
+    println!("{}", outs[0]);
+    println!("{}", grads[0]);
+
+    let at = a.ones_like();
+    let (outs, grads) = jvp(func, [a], [at]);
     println!("{}", outs[0]);
     println!("{}", grads[0]);
 }

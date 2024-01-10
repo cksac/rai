@@ -5,8 +5,8 @@ use crate::{
     primitives::{
         Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, Full, Greater, GreaterEqual,
         Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Negative, Normal,
-        NotEqual, ReduceMax, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub,
-        Transpose,
+        NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt,
+        Square, Sub, Transpose,
     },
     shape::Dims,
     utils::dot_graph,
@@ -802,6 +802,22 @@ pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
         dtype,
         shape,
         ReduceMax::new(dims, args.keep_dim()),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let dims = x.dims(args.dims());
+    let shape = x.shape_reduce(&dims, args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        backend,
+        dtype,
+        shape,
+        ReduceMin::new(dims, args.keep_dim()),
         inputs,
     )
 }
