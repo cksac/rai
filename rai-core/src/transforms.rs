@@ -1,7 +1,7 @@
 use crate::dispatch::eval_rule;
 use crate::utils::TensorIter;
 use crate::{Module, Shape, Tensor};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
 pub trait Func<IN, OUT>
@@ -9,12 +9,11 @@ where
     IN: WithTensors,
     OUT: WithTensors,
 {
-    type Tangent: WithTensors + FromTensorMap;
-    type Cotangent: WithTensors + FromTensorMap;
+    type Tangent: ToTensorGrads + FromTensorGrads;
+    type Cotangent: ToTensorGrads + FromTensorGrads;
     fn call(&self, input: IN) -> OUT;
-    fn capture_inputs(&self, input: &IN) -> Vec<Tensor> {
-        input.tensors()
-    }
+    fn self_captured_tensors(&self, _tensors: &mut Vec<Tensor>) {}
+    fn extract_input_tensors(&self, input: &IN, tensors: &mut Vec<Tensor>);
 }
 
 pub trait WithTensors {
@@ -57,7 +56,7 @@ impl WithTensors for (Tensor, Tensor) {
     }
 }
 
-impl WithTensors for BTreeMap<usize, Tensor> {
+impl WithTensors for HashMap<usize, Tensor> {
     fn tensors(&self) -> Vec<Tensor> {
         self.values().cloned().collect()
     }
@@ -99,14 +98,15 @@ where
     }
 }
 
-pub trait FromTensorMap {
-    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self;
+pub trait FromTensorGrads {
+    fn from_tensor_grads(tensors: &[Tensor], grads: HashMap<usize, Tensor>) -> Self;
 }
 
-impl<const N: usize> FromTensorMap for [Tensor; N] {
-    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
+impl<const N: usize> FromTensorGrads for [Tensor; N] {
+    fn from_tensor_grads(tensors: &[Tensor], mut grads: HashMap<usize, Tensor>) -> Self {
         tensors
-            .into_values()
+            .iter()
+            .map(|t| grads.remove(&t.id()).unwrap())
             .collect::<Vec<Tensor>>()
             .try_into()
             .unwrap_or_else(|v: Vec<Tensor>| {
@@ -115,15 +115,31 @@ impl<const N: usize> FromTensorMap for [Tensor; N] {
     }
 }
 
-impl FromTensorMap for Vec<Tensor> {
-    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
-        tensors.into_values().collect()
+impl FromTensorGrads for HashMap<usize, Tensor> {
+    fn from_tensor_grads(tensors: &[Tensor], grads: HashMap<usize, Tensor>) -> Self {
+        debug_assert!(tensors.len() == grads.len());
+        // TODO: check id list match?
+        grads
     }
 }
 
-impl FromTensorMap for BTreeMap<usize, Tensor> {
-    fn from_tensor_map(tensors: BTreeMap<usize, Tensor>) -> Self {
-        tensors
+pub trait ToTensorGrads {
+    fn to_tensor_grads(self, tensors: &[Tensor]) -> HashMap<usize, Tensor>;
+}
+
+impl ToTensorGrads for HashMap<usize, Tensor> {
+    fn to_tensor_grads(self, tensors: &[Tensor]) -> HashMap<usize, Tensor> {
+        debug_assert!(self.len() == tensors.len());
+        self
+    }
+}
+
+impl<const N: usize> ToTensorGrads for [Tensor; N] {
+    fn to_tensor_grads(self, tensors: &[Tensor]) -> HashMap<usize, Tensor> {
+        self.into_iter()
+            .enumerate()
+            .map(|(i, t)| (tensors[i].id(), t))
+            .collect()
     }
 }
 
@@ -133,20 +149,17 @@ where
     IN: WithTensors,
     OUT: WithTensors,
 {
-    let mut tangent_map = HashMap::new();
-    let inputs = func.capture_inputs(&input);
-    for (p, t) in inputs.iter().zip(tangents.tensors()) {
-        tangent_map.insert(p.id(), t.clone());
-    }
+    let mut input_tensors = Vec::new();
+    func.self_captured_tensors(&mut input_tensors);
+    func.extract_input_tensors(&input, &mut input_tensors);
+    let mut tangent_map = tangents.to_tensor_grads(&input_tensors);
     let output = func.call(input);
-
     let out_tensors = output.tensors();
-    let mut jvps = BTreeMap::new();
-    for t in out_tensors {
+    let mut jvps = HashMap::new();
+    for t in &out_tensors {
         jvps.insert(t.id(), t.jvp(&mut tangent_map));
     }
-    let jvps = F::Cotangent::from_tensor_map(jvps);
-
+    let jvps = F::Cotangent::from_tensor_grads(&out_tensors, jvps);
     (output, jvps)
 }
 
@@ -158,23 +171,18 @@ where
     IN: WithTensors,
     OUT: WithTensors,
 {
-    let inputs = func.capture_inputs(&input);
+    let mut input_tensors = Vec::new();
+    func.self_captured_tensors(&mut input_tensors);
+    func.extract_input_tensors(&input, &mut input_tensors);
     let output = func.call(input);
     let out_tensors = output.tensors();
-
     let vjps_fn = move |cotangents: F::Cotangent| {
-        let mut cotangent_map = HashMap::new();
-
-        for (p, c) in out_tensors.iter().zip(cotangents.tensors()) {
-            cotangent_map.insert(p.id(), c);
-        }
-
+        let mut cotangent_map = cotangents.to_tensor_grads(&out_tensors);
         for t in out_tensors.iter() {
             t.vjp(&mut cotangent_map);
         }
-
-        let mut vjps = BTreeMap::new();
-        for t in inputs.iter() {
+        let mut vjps = HashMap::new();
+        for t in input_tensors.iter() {
             let id = t.id();
             let c = cotangent_map.get(&id).unwrap().clone();
             if c.shape_eq(t) {
@@ -185,9 +193,8 @@ where
                 vjps.insert(id, c.sum(..t.ndim()));
             }
         }
-        F::Tangent::from_tensor_map(vjps)
+        F::Tangent::from_tensor_grads(&input_tensors, vjps)
     };
-
     (output, Box::new(vjps_fn))
 }
 
@@ -217,11 +224,12 @@ where
 
     fn apply(&self, input: IN) -> F::Tangent {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
-        let mut cotagents = BTreeMap::new();
-        for t in output.tensors() {
+        let mut cotagents = HashMap::new();
+        let out_tensors = output.tensors();
+        for t in &out_tensors {
             cotagents.insert(t.id(), t.ones_like());
         }
-        vjp_fn(F::Cotangent::from_tensor_map(cotagents))
+        vjp_fn(F::Cotangent::from_tensor_grads(&out_tensors, cotagents))
     }
 }
 
@@ -237,8 +245,12 @@ where
         self.func.call(input)
     }
 
-    fn capture_inputs(&self, input: &IN) -> Vec<Tensor> {
-        self.func.capture_inputs(input)
+    fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
+        self.func.self_captured_tensors(tensors)
+    }
+
+    fn extract_input_tensors(&self, input: &IN, tensors: &mut Vec<Tensor>) {
+        self.func.extract_input_tensors(input, tensors)
     }
 }
 
@@ -311,11 +323,12 @@ where
 
     fn apply(&self, input: IN) -> (OUT, F::Tangent) {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
-        let mut cotagents = BTreeMap::new();
-        for t in output.tensors() {
+        let mut cotagents = HashMap::new();
+        let out_tensors = output.tensors();
+        for t in &out_tensors {
             cotagents.insert(t.id(), t.ones_like());
         }
-        let tangents = vjp_fn(F::Cotangent::from_tensor_map(cotagents));
+        let tangents = vjp_fn(F::Cotangent::from_tensor_grads(&out_tensors, cotagents));
         (output, tangents)
     }
 }
@@ -332,8 +345,12 @@ where
         self.func.call(input)
     }
 
-    fn capture_inputs(&self, input: &IN) -> Vec<Tensor> {
-        self.func.capture_inputs(input)
+    fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
+        self.func.self_captured_tensors(tensors)
+    }
+
+    fn extract_input_tensors(&self, input: &IN, tensors: &mut Vec<Tensor>) {
+        self.func.extract_input_tensors(input, tensors)
     }
 }
 
@@ -390,6 +407,10 @@ where
     fn call(&self, input: [Tensor; 1]) -> [Tensor; 1] {
         [self(&input[0])]
     }
+
+    fn extract_input_tensors(&self, input: &[Tensor; 1], inputs: &mut Vec<Tensor>) {
+        inputs.extend(input.iter().cloned());
+    }
 }
 
 impl<F> Func<[Tensor; 2], [Tensor; 1]> for F
@@ -401,6 +422,10 @@ where
     fn call(&self, input: [Tensor; 2]) -> [Tensor; 1] {
         [self(&input[0], &input[1])]
     }
+
+    fn extract_input_tensors(&self, input: &[Tensor; 2], inputs: &mut Vec<Tensor>) {
+        inputs.extend(input.iter().cloned());
+    }
 }
 
 impl<F> Func<[Tensor; 3], [Tensor; 1]> for F
@@ -411,6 +436,10 @@ where
     type Cotangent = [Tensor; 1];
     fn call(&self, input: [Tensor; 3]) -> [Tensor; 1] {
         [self(&input[0], &input[1], &input[2])]
+    }
+
+    fn extract_input_tensors(&self, input: &[Tensor; 3], inputs: &mut Vec<Tensor>) {
+        inputs.extend(input.iter().cloned());
     }
 }
 

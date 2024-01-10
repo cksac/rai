@@ -19,7 +19,9 @@ pub mod backend;
 pub use backend::Backend;
 
 mod transforms;
-pub use transforms::{eval, grad, jvp, value_and_grad, vjp, FromTensorMap, Func, WithTensors};
+pub use transforms::{
+    eval, grad, jvp, value_and_grad, vjp, FromTensorGrads, Func, ToTensorGrads, WithTensors,
+};
 
 pub mod dispatch;
 

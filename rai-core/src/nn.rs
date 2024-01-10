@@ -1,28 +1,33 @@
 use crate::{transforms::Func, Tensor, WithTensors};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 pub trait Module {
     fn forward(&self, input: &Tensor) -> Tensor;
+    fn gather_parameters(&self, out: &mut Vec<Tensor>);
     fn parameters(&self) -> Vec<Tensor> {
-        vec![]
+        let mut params = Vec::new();
+        self.gather_parameters(&mut params);
+        params
     }
-    fn update(&self, _params: &mut BTreeMap<usize, Tensor>) {}
+    fn update(&self, _params: &mut HashMap<usize, Tensor>) {}
 }
 
 impl<T> Func<Tensor, Tensor> for T
 where
     T: Module,
 {
-    type Tangent = BTreeMap<usize, Tensor>;
-    type Cotangent = BTreeMap<usize, Tensor>;
+    type Tangent = HashMap<usize, Tensor>;
+    type Cotangent = HashMap<usize, Tensor>;
 
     fn call(&self, input: Tensor) -> Tensor {
         self.forward(&input)
     }
 
-    fn capture_inputs(&self, _input: &Tensor) -> Vec<Tensor> {
-        self.parameters()
+    fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
+        self.gather_parameters(tensors)
     }
+
+    fn extract_input_tensors(&self, _input: &Tensor, _tensors: &mut Vec<Tensor>) {}
 }
 
 pub struct Aux<T>(pub T);
@@ -39,14 +44,14 @@ where
     M: Module,
     F: Fn(&'m M, &'i Tensor) -> Tensor,
 {
-    type Tangent = BTreeMap<usize, Tensor>;
-    type Cotangent = BTreeMap<usize, Tensor>;
+    type Tangent = HashMap<usize, Tensor>;
+    type Cotangent = HashMap<usize, Tensor>;
     fn call(&self, input: (&'m M, &'i Tensor)) -> Tensor {
         self(input.0, input.1)
     }
 
-    fn capture_inputs(&self, input: &(&'m M, &'i Tensor)) -> Vec<Tensor> {
-        input.0.parameters()
+    fn extract_input_tensors(&self, input: &(&'m M, &'i Tensor), inputs: &mut Vec<Tensor>) {
+        inputs.extend(input.0.parameters())
     }
 }
 
@@ -56,14 +61,18 @@ where
     M: Module,
     F: Fn(&'m M, &'i Tensor, &'l Tensor) -> Tensor,
 {
-    type Tangent = BTreeMap<usize, Tensor>;
-    type Cotangent = BTreeMap<usize, Tensor>;
+    type Tangent = HashMap<usize, Tensor>;
+    type Cotangent = HashMap<usize, Tensor>;
     fn call(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> Tensor {
         self(input.0, input.1, input.2)
     }
 
-    fn capture_inputs(&self, input: &(&'m M, &'i Tensor, &'l Tensor)) -> Vec<Tensor> {
-        input.0.parameters()
+    fn extract_input_tensors(
+        &self,
+        input: &(&'m M, &'i Tensor, &'l Tensor),
+        inputs: &mut Vec<Tensor>,
+    ) {
+        inputs.extend(input.0.parameters())
     }
 }
 
@@ -73,14 +82,14 @@ where
     M: Module,
     F: Fn(&'m M, &'i Tensor) -> (Tensor, Aux<T>),
 {
-    type Tangent = BTreeMap<usize, Tensor>;
-    type Cotangent = BTreeMap<usize, Tensor>;
+    type Tangent = HashMap<usize, Tensor>;
+    type Cotangent = HashMap<usize, Tensor>;
     fn call(&self, input: (&'m M, &'i Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1)
     }
 
-    fn capture_inputs(&self, input: &(&'m M, &'i Tensor)) -> Vec<Tensor> {
-        input.0.parameters()
+    fn extract_input_tensors(&self, input: &(&'m M, &'i Tensor), inputs: &mut Vec<Tensor>) {
+        inputs.extend(input.0.parameters())
     }
 }
 
@@ -90,13 +99,17 @@ where
     M: Module,
     F: Fn(&'m M, &'i Tensor, &'l Tensor) -> (Tensor, Aux<T>),
 {
-    type Tangent = BTreeMap<usize, Tensor>;
-    type Cotangent = BTreeMap<usize, Tensor>;
+    type Tangent = HashMap<usize, Tensor>;
+    type Cotangent = HashMap<usize, Tensor>;
     fn call(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1, input.2)
     }
 
-    fn capture_inputs(&self, input: &(&'m M, &'i Tensor, &'l Tensor)) -> Vec<Tensor> {
-        input.0.parameters()
+    fn extract_input_tensors(
+        &self,
+        input: &(&'m M, &'i Tensor, &'l Tensor),
+        inputs: &mut Vec<Tensor>,
+    ) {
+        inputs.extend(input.0.parameters())
     }
 }

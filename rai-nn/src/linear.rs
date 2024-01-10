@@ -1,5 +1,5 @@
 use rai_core::{Backend, DType, Module, Tensor};
-use std::{collections::BTreeMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug};
 
 #[derive(Clone, Debug)]
 pub struct Linear {
@@ -35,15 +35,15 @@ impl Module for Linear {
         }
     }
 
-    fn parameters(&self) -> Vec<Tensor> {
-        match &self.bias {
-            Some(bias) => vec![self.weight.clone(), bias.clone()],
-            None => vec![self.weight.clone()],
+    fn gather_parameters(&self, out: &mut Vec<Tensor>) {
+        out.push(self.weight.clone());
+        if let Some(bias) = &self.bias {
+            out.push(bias.clone());
         }
     }
 
     #[track_caller]
-    fn update(&self, params: &mut BTreeMap<usize, Tensor>) {
+    fn update(&self, params: &mut HashMap<usize, Tensor>) {
         if let Some(weight) = params.remove(&self.weight.id()) {
             self.weight.replace_data(weight);
         }

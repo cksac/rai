@@ -1,13 +1,9 @@
 use rai_core::Tensor;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 pub trait Optimizer {
     /// return new value for the parameters
-    fn step(
-        &mut self,
-        params: Vec<Tensor>,
-        grads: &BTreeMap<usize, Tensor>,
-    ) -> BTreeMap<usize, Tensor>;
+    fn step(&mut self, grads: &HashMap<usize, Tensor>) -> HashMap<usize, Tensor>;
 }
 
 mod sdg;

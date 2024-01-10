@@ -1,10 +1,11 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use rai_core::Tensor;
 
 use super::Optimizer;
 
 pub struct SDG {
+    params: Vec<Tensor>,
     lr: f32,
     momentum: Option<f32>,
     weight_decay: Option<f32>,
@@ -14,8 +15,9 @@ pub struct SDG {
 }
 
 impl SDG {
-    pub fn new(lr: f32) -> Self {
+    pub fn new(params: Vec<Tensor>, lr: f32) -> Self {
         Self {
+            params,
             lr,
             momentum: None,
             weight_decay: None,
@@ -47,13 +49,9 @@ impl SDG {
 }
 
 impl Optimizer for SDG {
-    fn step(
-        &mut self,
-        params: Vec<Tensor>,
-        grads: &BTreeMap<usize, Tensor>,
-    ) -> BTreeMap<usize, Tensor> {
-        let mut new_params = BTreeMap::new();
-        for p in params.iter() {
+    fn step(&mut self, grads: &HashMap<usize, Tensor>) -> HashMap<usize, Tensor> {
+        let mut new_params = HashMap::new();
+        for p in self.params.iter() {
             let id = p.id();
             let mut g: Tensor = grads.get(&id).cloned().unwrap();
             let new_p = match self.momentum {

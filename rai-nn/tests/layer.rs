@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use rai_core::{
     backend::Cpu, grad, jvp, utils::dot_graph, value_and_grad, Aux, DType, Module, Tensor,
@@ -13,7 +13,7 @@ fn test_linear_jvp() {
     let linear = Linear::new(100, 10, true, DType::F32, backend);
     let input = Tensor::normal([100], DType::F32, backend);
 
-    let tangents: BTreeMap<usize, Tensor> = linear
+    let tangents: HashMap<usize, Tensor> = linear
         .parameters()
         .iter()
         .map(|t| (t.id(), t.ones_like()))

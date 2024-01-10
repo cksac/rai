@@ -3,7 +3,7 @@ use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
 use rai::{eval, Aux};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Instant;
 
@@ -41,11 +41,13 @@ impl Module for Mlp {
         self.layers[self.layers.len() - 1].forward(&x)
     }
 
-    fn parameters(&self) -> Vec<Tensor> {
-        self.layers.iter().flat_map(|l| l.parameters()).collect()
+    fn gather_parameters(&self, out: &mut Vec<Tensor>) {
+        for l in &self.layers {
+            l.gather_parameters(out)
+        }
     }
 
-    fn update(&self, params: &mut BTreeMap<usize, Tensor>) {
+    fn update(&self, params: &mut HashMap<usize, Tensor>) {
         for layer in self.layers.iter() {
             layer.update(params);
         }
@@ -70,7 +72,7 @@ fn train_step<O: Optimizer, M: Module + 'static>(
 ) {
     let vg_fn = value_and_grad(loss_fn);
     let ((_loss, Aux(_logits)), grads) = vg_fn((model, input, labels));
-    let mut params = optimizer.step(model.parameters(), &grads);
+    let mut params = optimizer.step(&grads);
     eval(&params);
     model.update(&mut params);
 }
@@ -87,7 +89,7 @@ fn main() {
     let dtype = DType::F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
-    let mut optimizer = SDG::new(learning_rate);
+    let mut optimizer = SDG::new(model.parameters(), learning_rate);
 
     let start = Instant::now();
     for i in 0..num_epochs {
