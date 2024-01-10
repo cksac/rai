@@ -5,6 +5,7 @@
         "keepdim",
         "logits",
         "matmul",
+        "mnist",
         "primals",
         "recip",
         "relu",

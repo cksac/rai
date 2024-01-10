@@ -14,7 +14,7 @@ cargo add rai
 ```
 
 ## Code snippets
-### Function transformations (jvp, vjp, grad, valud_and_grad)
+### Function transformations (jvp, vjp, grad, value_and_grad)
 ```rust
 use rai::backend::Cpu;
 use rai::{grad, DType, Tensor};
