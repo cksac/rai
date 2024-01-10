@@ -90,7 +90,7 @@ impl Primitive for ReduceMax {
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
-        reduce_chooser_jvp_rule(tangent_x, output,  x, self.dims())
+        reduce_chooser_jvp_rule(tangent_x, output, x, self.dims())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
@@ -143,7 +143,7 @@ impl Primitive for ReduceMin {
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
-        reduce_chooser_jvp_rule(tangent_x, output,  x, self.dims())
+        reduce_chooser_jvp_rule(tangent_x, output, x, self.dims())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
@@ -159,7 +159,6 @@ impl Primitive for ReduceMin {
         vec![cotangent_x]
     }
 }
-
 
 fn reduce_chooser_jvp_rule(g: &Tensor, ans: &Tensor, operand: &Tensor, dims: &[usize]) -> Tensor {
     let mut shape = operand.shape().to_vec();
