@@ -400,6 +400,40 @@ impl Eval<Cpu, primitives::Log10> for Dispatch<Cpu, primitives::Log10> {
     }
 }
 
+impl Eval<Cpu, primitives::Equal> for Dispatch<Cpu, primitives::Equal> {
+    fn eval(&self, _: &Cpu, _: &primitives::Equal, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.eq(t2).unwrap()
+        } else {
+            t1.broadcast_eq(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::NotEqual> for Dispatch<Cpu, primitives::NotEqual> {
+    fn eval(&self, _: &Cpu, _: &primitives::NotEqual, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.ne(t2).unwrap()
+        } else {
+            t1.broadcast_ne(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
 impl Eval<Cpu, primitives::Greater> for Dispatch<Cpu, primitives::Greater> {
     fn eval(&self, _: &Cpu, _: &primitives::Greater, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
@@ -485,22 +519,64 @@ impl Eval<Cpu, primitives::Maximum> for Dispatch<Cpu, primitives::Maximum> {
     }
 }
 
-impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
-    fn eval(&self, _: &Cpu, primitive: &primitives::Softmax, inputs: &[Tensor], output: &Tensor) {
-        let x = &inputs[0];
-        let t = x.get_data::<Data>().unwrap();
-        let t = t.deref();
-        let t = candle_nn::ops::softmax(t, primitive.dim).unwrap();
-        output.set_data(t)
-    }
-}
-
 impl Eval<Cpu, primitives::AsType> for Dispatch<Cpu, primitives::AsType> {
     fn eval(&self, _: &Cpu, primitive: &primitives::AsType, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
         let t = t.to_dtype(primitive.dtype.into()).unwrap();
+        output.set_data(t)
+    }
+}
+
+// from candle_nn::ops
+fn softmax<D: candle_core::shape::Dim>(
+    xs: &candle_core::Tensor,
+    dim: D,
+) -> candle_core::Result<candle_core::Tensor> {
+    let dim = dim.to_index(xs.shape(), "softmax")?;
+    let max = xs.max_keepdim(dim)?;
+    let diff = xs.broadcast_sub(&max)?;
+    let num = diff.exp()?;
+    let den = num.sum_keepdim(dim)?;
+    num.broadcast_div(&den)
+}
+
+// from candle_nn::ops
+fn log_softmax<D: candle_core::shape::Dim>(
+    xs: &candle_core::Tensor,
+    d: D,
+) -> candle_core::Result<candle_core::Tensor> {
+    let d = d.to_index(xs.shape(), "log-softmax")?;
+    let max = xs.max_keepdim(d)?;
+    let diff = xs.broadcast_sub(&max)?;
+    let sum_exp = diff.exp()?.sum_keepdim(d)?;
+    let log_sm = diff.broadcast_sub(&sum_exp.log()?)?;
+    Ok(log_sm)
+}
+
+impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Softmax, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = softmax(t, primitive.dim).unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::LogSoftmax> for Dispatch<Cpu, primitives::LogSoftmax> {
+    fn eval(
+        &self,
+        _: &Cpu,
+        primitive: &primitives::LogSoftmax,
+        inputs: &[Tensor],
+        output: &Tensor,
+    ) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = log_softmax(t, primitive.dim).unwrap();
         output.set_data(t)
     }
 }

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use rai_core::{Shape, Tensor};
+use rai_core::Tensor;
 
 use super::Optimizer;
 
@@ -56,11 +56,6 @@ impl Optimizer for SDG {
         for p in params.iter() {
             let id = p.id();
             let mut g: Tensor = grads.get(&id).cloned().unwrap();
-            // TODO: check why grad of Linear.bias is [BATCH_SIZE, LABEL_DIM] instead of [LABEL_DIM] where input is batched, bug in vjp?
-            if !g.shape_eq(p) {
-                g = g.mean(..p.ndim());
-            }
-
             let new_p = match self.momentum {
                 Some(momentum) => {
                     let mut v: Tensor =

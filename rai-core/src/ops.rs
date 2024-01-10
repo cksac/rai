@@ -3,9 +3,10 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Exp, Full, Greater, GreaterEqual, Less,
-        LessEqual, Log, Log10, Log2, MatMul, Maximum, Mul, Negative, Normal, ReduceSum, Reshape,
-        Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
+        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, Full, Greater, GreaterEqual,
+        Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Negative, Normal,
+        NotEqual, ReduceMax, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub,
+        Transpose,
     },
     shape::Dims,
     utils::dot_graph,
@@ -610,12 +611,48 @@ pub fn log10(x: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
-            "greater({:?}, {:?}) with error {:?}\n{}",
+            "eq({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
+
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, Equal, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = DType::U8;
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "ne({:?}, {:?}) with error {:?}\n{}",
+            lhs,
+            rhs,
+            e,
+            dot_graph([lhs, rhs])
+        )
+    });
+
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(backend, dtype, shape, NotEqual, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let backend = lhs.backend();
+    let dtype = DType::U8;
+    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
+        panic!(
+            "gt({:?}, {:?}) with error {:?}\n{}",
             lhs,
             rhs,
             e,
@@ -628,12 +665,12 @@ pub fn greater(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
-            "greater_equal({:?}, {:?}) with error {:?}\n{}",
+            "ge({:?}, {:?}) with error {:?}\n{}",
             lhs,
             rhs,
             e,
@@ -645,12 +682,12 @@ pub fn greater_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
-            "less({:?}, {:?}) with error {:?}\n{}",
+            "lt({:?}, {:?}) with error {:?}\n{}",
             lhs,
             rhs,
             e,
@@ -662,12 +699,12 @@ pub fn less(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn less_equal(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+pub fn le(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = DType::U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
-            "less_equal({:?}, {:?}) with error {:?}\n{}",
+            "le({:?}, {:?}) with error {:?}\n{}",
             lhs,
             rhs,
             e,
@@ -693,21 +730,6 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     });
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Maximum, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn relu(x: &Tensor) -> Tensor {
-    x.maximum(x.zeros_like())
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn softmax<T: Dim>(x: &Tensor, dim: T) -> Tensor {
-    let backend = x.backend();
-    let dtype = x.dtype();
-    let shape = x.shape().to_vec();
-    let inputs = vec![x.clone()];
-    let dim = shape.dim(dim);
-    Tensor::new(backend, dtype, shape, Softmax::new(dim), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -769,7 +791,48 @@ pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let dims = x.dims(args.dims());
+    let shape = x.shape_reduce(&dims, args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        backend,
+        dtype,
+        shape,
+        ReduceMax::new(dims, args.keep_dim()),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn mean<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let elem_count = x.size_of_dims(args.dims()) as f64;
     x.sum(args) / elem_count
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let dim = shape.dim(d);
+    Tensor::new(backend, dtype, shape, Softmax::new(dim), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let dim = shape.dim(d);
+    Tensor::new(backend, dtype, shape, LogSoftmax::new(dim), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn relu(x: &Tensor) -> Tensor {
+    x.maximum(x.zeros_like())
 }

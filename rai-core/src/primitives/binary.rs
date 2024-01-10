@@ -102,20 +102,18 @@ impl Primitive for Div {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        let lhs = &primals[0];
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let rhs = &primals[1];
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
-        (tangent_lhs - lhs * tangent_rhs) / rhs
+        tangent_lhs / rhs - output * tangent_rhs
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        let lhs = &primals[0];
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let rhs = &primals[1];
         let cotangent_lhs = cotangent * rhs;
-        let cotangent_rhs = cotangent * -lhs / rhs;
+        let cotangent_rhs = cotangent * -output;
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
@@ -148,6 +146,60 @@ impl Primitive for MatMul {
         let dims = dims.as_slice();
         let cotangent_lhs = cotangent.matmul(rhs.transpose(dims));
         let cotangent_rhs = lhs.transpose(dims).matmul(cotangent);
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Equal;
+
+impl Primitive for Equal {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.zeros_like()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = lhs.zeros_like();
+        let cotangent_rhs = rhs.zeros_like();
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NotEqual;
+
+impl Primitive for NotEqual {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.zeros_like()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = lhs.zeros_like();
+        let cotangent_rhs = rhs.zeros_like();
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
@@ -280,8 +332,7 @@ impl Primitive for Maximum {
         let tangent_rhs = &tangents[1];
         let dtype_lhs = tangent_lhs.dtype();
         let dtype_rhs = tangent_lhs.dtype();
-        tangent_lhs * lhs.greater(rhs).as_type(dtype_lhs)
-            + tangent_rhs * lhs.less_equal(rhs).as_type(dtype_rhs)
+        tangent_lhs * lhs.gt(rhs).as_type(dtype_lhs) + tangent_rhs * lhs.le(rhs).as_type(dtype_rhs)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
@@ -289,8 +340,8 @@ impl Primitive for Maximum {
         let lhs = &primals[0];
         let rhs = &primals[1];
         let dtype = cotangent.dtype();
-        let cotangent_lhs = cotangent * lhs.greater(rhs).as_type(dtype);
-        let cotangent_rhs = cotangent * lhs.less_equal(rhs).as_type(dtype);
+        let cotangent_lhs = cotangent * lhs.gt(rhs).as_type(dtype);
+        let cotangent_rhs = cotangent * lhs.le(rhs).as_type(dtype);
         vec![cotangent_lhs, cotangent_rhs]
     }
 }

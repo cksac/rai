@@ -322,47 +322,6 @@ impl Primitive for Log10 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Softmax {
-    pub dim: usize,
-}
-
-impl Softmax {
-    pub fn new(dim: usize) -> Self {
-        Self { dim }
-    }
-}
-
-impl Primitive for Softmax {
-    fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
-    }
-
-    fn dot_label(&self) -> String {
-        format!("Softmax({:?})", &self.dim)
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        // TODO: use primals instead of output?
-        let tangent_x = &tangents[0];
-        let sv = &(output * tangent_x);
-        sv - output * sv.sum((.., true))
-    }
-
-    #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        // TODO: use primals instead of output?
-        let sv = &(output * cotangent);
-        let cotangent_x = sv - output * sv.sum((.., true));
-        vec![cotangent_x]
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AsType {
     pub dtype: DType,
 }
@@ -395,6 +354,82 @@ impl Primitive for AsType {
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent.as_type(x.dtype());
+        vec![cotangent_x]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Softmax {
+    pub dim: usize,
+}
+
+impl Softmax {
+    pub fn new(dim: usize) -> Self {
+        Self { dim }
+    }
+}
+
+impl Primitive for Softmax {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("Softmax({:?})", &self.dim)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let tangent_x = &tangents[0];
+        let sv = &(output * tangent_x);
+        sv - output * sv.sum((self.dim, true))
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let sv = &(output * cotangent);
+        let cotangent_x = sv - output * sv.sum((self.dim, true));
+        vec![cotangent_x]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct LogSoftmax {
+    pub dim: usize,
+}
+
+impl LogSoftmax {
+    pub fn new(dim: usize) -> Self {
+        Self { dim }
+    }
+}
+
+impl Primitive for LogSoftmax {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("LogSoftmax({:?})", &self.dim)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let tangent_x = &tangents[0];
+        tangent_x - tangent_x.sum((self.dim, true)) * output.exp()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let cotangent_x = cotangent - cotangent.sum((self.dim, true)) * output.exp();
         vec![cotangent_x]
     }
 }

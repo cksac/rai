@@ -9,6 +9,7 @@ pub struct ReduceSum {
     pub dims: Vec<usize>,
     pub keep_dim: bool,
 }
+
 impl ReduceSum {
     pub fn new(dims: impl Into<Vec<usize>>, keep_dim: bool) -> Self {
         Self {
@@ -50,5 +51,50 @@ impl Primitive for ReduceSum {
         }
         let cotangent_x = cotangent.reshape(&shape).broadcast_to(x);
         vec![cotangent_x]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReduceMax {
+    pub dims: Vec<usize>,
+    pub keep_dim: bool,
+}
+
+impl ReduceMax {
+    pub fn new(dims: impl Into<Vec<usize>>, keep_dim: bool) -> Self {
+        Self {
+            dims: dims.into(),
+            keep_dim,
+        }
+    }
+
+    pub fn dims(&self) -> &[usize] {
+        &self.dims
+    }
+}
+
+impl Primitive for ReduceMax {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("ReduceMax({:?}, {})", &self.dims, &self.keep_dim)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let tangent_x = &tangents[0];
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let x = &primals[0];
+        todo!()
     }
 }

@@ -1,6 +1,6 @@
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
-use std::fmt::{Debug, Display};
+use std::fmt::{format, Debug, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
@@ -137,23 +137,33 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn greater<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        ops::greater(self, rhs.as_ref())
+    pub fn eq<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::eq(self, rhs.as_ref())
     }
 
     #[inline]
-    pub fn greater_equal<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        ops::greater_equal(self, rhs.as_ref())
+    pub fn ne<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::ne(self, rhs.as_ref())
     }
 
     #[inline]
-    pub fn less<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        ops::less(self, rhs.as_ref())
+    pub fn gt<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::gt(self, rhs.as_ref())
     }
 
     #[inline]
-    pub fn less_equal<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        ops::less_equal(self, rhs.as_ref())
+    pub fn ge<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::ge(self, rhs.as_ref())
+    }
+
+    #[inline]
+    pub fn lt<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::lt(self, rhs.as_ref())
+    }
+
+    #[inline]
+    pub fn le<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::le(self, rhs.as_ref())
     }
 
     #[inline]
@@ -257,18 +267,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn softmax<T: Dim>(&self, dim: T) -> Tensor {
-        ops::softmax(self, dim)
-    }
-
-    #[inline]
-    pub fn relu(&self) -> Tensor {
-        ops::relu(self)
-    }
-
-    #[inline]
     pub fn sum<T: ReduceArgs>(&self, args: T) -> Tensor {
         ops::sum(self, args)
+    }
+
+    #[inline]
+    pub fn max<T: ReduceArgs>(&self, args: T) -> Tensor {
+        ops::max(self, args)
     }
 
     #[inline]
@@ -279,6 +284,21 @@ impl Tensor {
     #[inline]
     pub fn as_type(&self, dtype: DType) -> Tensor {
         ops::as_type(self, dtype)
+    }
+
+    #[inline]
+    pub fn softmax<D: Dim>(&self, d: D) -> Tensor {
+        ops::softmax(self, d)
+    }
+
+    #[inline]
+    pub fn log_softmax<D: Dim>(&self, d: D) -> Tensor {
+        ops::log_softmax(self, d)
+    }
+
+    #[inline]
+    pub fn relu(&self) -> Tensor {
+        ops::relu(self)
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
@@ -444,7 +464,18 @@ impl Display for Tensor {
             eval((self, true));
         }
         let data = self.0.data.borrow();
-        f.write_fmt(format_args!("{}", data.as_deref().unwrap()))
+        f.debug_struct("Tensor")
+            .field("id", &self.id())
+            .field("shape", &self.shape().shape())
+            .field("dtype", &self.dtype())
+            .field("backend", &self.backend())
+            .field("primitive", &self.primitive())
+            .field(
+                "inputs",
+                &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
+            )
+            .field("data", &format_args!("{}", data.as_deref().unwrap()))
+            .finish()
     }
 }
 

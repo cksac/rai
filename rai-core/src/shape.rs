@@ -70,6 +70,24 @@ where
     }
 }
 
+impl Dims for usize {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        vec![shape.dim(*self)]
+    }
+}
+
+impl Dims for isize {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        vec![shape.dim(*self)]
+    }
+}
+
+impl Dims for i32 {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        vec![shape.dim(*self)]
+    }
+}
+
 impl Dims for Vec<usize> {
     fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
         self.iter().map(|d| shape.dim(*d)).collect()

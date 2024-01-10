@@ -1,6 +1,6 @@
 use crate::dispatch::eval_rule;
 use crate::utils::TensorIter;
-use crate::{Module, Tensor};
+use crate::{Module, Shape, Tensor};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -159,7 +159,6 @@ where
     OUT: WithTensors,
 {
     let inputs = func.capture_inputs(&input);
-    let input_ids: Vec<usize> = inputs.iter().map(|v| v.id()).collect();
     let output = func.call(input);
     let out_tensors = output.tensors();
 
@@ -175,9 +174,16 @@ where
         }
 
         let mut vjps = BTreeMap::new();
-        for id in input_ids.iter() {
-            let t = cotangent_map.get(id).unwrap().clone();
-            vjps.insert(*id, t);
+        for t in inputs.iter() {
+            let id = t.id();
+            let c = cotangent_map.get(&id).unwrap().clone();
+            if c.shape_eq(t) {
+                vjps.insert(id, c);
+            } else {
+                // reduce sum cotangent to its input shape
+                // TODO: will cotangent ndim always > input ndim?
+                vjps.insert(id, c.sum(..t.ndim()));
+            }
         }
         F::Tangent::from_tensor_map(vjps)
     };
@@ -394,6 +400,17 @@ where
     type Cotangent = [Tensor; 1];
     fn call(&self, input: [Tensor; 2]) -> [Tensor; 1] {
         [self(&input[0], &input[1])]
+    }
+}
+
+impl<F> Func<[Tensor; 3], [Tensor; 1]> for F
+where
+    F: Fn(&Tensor, &Tensor, &Tensor) -> Tensor,
+{
+    type Tangent = [Tensor; 3];
+    type Cotangent = [Tensor; 1];
+    fn call(&self, input: [Tensor; 3]) -> [Tensor; 1] {
+        [self(&input[0], &input[1], &input[2])]
     }
 }
 

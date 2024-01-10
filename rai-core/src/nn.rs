@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
 use crate::{transforms::Func, Tensor, WithTensors};
+use std::collections::BTreeMap;
 
 pub trait Module {
     fn forward(&self, input: &Tensor) -> Tensor;
