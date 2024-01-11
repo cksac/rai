@@ -12,7 +12,7 @@ where
 {
     type Tangent: ToTensorGrads + FromTensorGrads;
     type Cotangent: ToTensorGrads + FromTensorGrads;
-    fn call(&self, input: IN) -> OUT;
+    fn apply(&self, input: IN) -> OUT;
     fn self_captured_tensors(&self, _tensors: &mut Vec<Tensor>) {}
     fn extract_input_tensors(&self, input: &IN, tensors: &mut Vec<Tensor>);
 }
@@ -21,53 +21,59 @@ pub trait WithTensors {
     fn tensors(&self) -> Vec<Tensor>;
 }
 
-// impl<const N: usize> WithTensors for [Tensor; N] {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         self.to_vec()
-//     }
-// }
+impl<const N: usize> WithTensors for [Tensor; N] {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.to_vec()
+    }
+}
 
-// impl<const N: usize> WithTensors for &[Tensor; N] {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         self.to_vec()
-//     }
-// }
+impl<const N: usize> WithTensors for &[Tensor; N] {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.to_vec()
+    }
+}
 
-// impl WithTensors for Vec<Tensor> {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         self.clone()
-//     }
-// }
+impl WithTensors for Vec<Tensor> {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.clone()
+    }
+}
 
-// impl WithTensors for Tensor {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         vec![self.clone()]
-//     }
-// }
+impl WithTensors for Tensor {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![self.clone()]
+    }
+}
 
-// impl WithTensors for &Tensor {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         vec![(*self).clone()]
-//     }
-// }
+impl WithTensors for &Tensor {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![(*self).clone()]
+    }
+}
 
-// impl WithTensors for (Tensor, Tensor) {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         vec![self.0.clone(), self.1.clone()]
-//     }
-// }
+impl WithTensors for (Tensor, Tensor) {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![self.0.clone(), self.1.clone()]
+    }
+}
 
-// impl WithTensors for HashMap<usize, Tensor> {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         self.values().cloned().collect()
-//     }
-// }
+impl WithTensors for (&Tensor, &Tensor) {
+    fn tensors(&self) -> Vec<Tensor> {
+        vec![self.0.clone(), self.1.clone()]
+    }
+}
 
-// impl<const N: usize, const M: usize> WithTensors for ([Tensor; N], [Tensor; M]) {
-//     fn tensors(&self) -> Vec<Tensor> {
-//         self.0.iter().chain(self.1.iter()).cloned().collect()
-//     }
-// }
+impl WithTensors for HashMap<usize, Tensor> {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.values().cloned().collect()
+    }
+}
+
+impl<const N: usize, const M: usize> WithTensors for ([Tensor; N], [Tensor; M]) {
+    fn tensors(&self) -> Vec<Tensor> {
+        self.0.iter().chain(self.1.iter()).cloned().collect()
+    }
+}
 
 impl<T> WithTensors for (Tensor, Aux<T>) {
     fn tensors(&self) -> Vec<Tensor> {
@@ -75,7 +81,7 @@ impl<T> WithTensors for (Tensor, Aux<T>) {
     }
 }
 
-impl<M, T> WithTensors for (&M, Aux<T>)
+impl<'m, M, T> WithTensors for (&'m M, Aux<T>)
 where
     M: Module,
 {
@@ -84,7 +90,7 @@ where
     }
 }
 
-impl<M> WithTensors for (&M, Tensor)
+impl<'m, M> WithTensors for (&'m M, Tensor)
 where
     M: Module,
 {
@@ -93,7 +99,7 @@ where
     }
 }
 
-impl<M> WithTensors for (&M, &Tensor)
+impl<'m, 't, M> WithTensors for (&'m M, &'t Tensor)
 where
     M: Module,
 {
@@ -102,7 +108,7 @@ where
     }
 }
 
-impl<M> WithTensors for (&M, Tensor, Tensor)
+impl<'m, M> WithTensors for (&'m M, Tensor, Tensor)
 where
     M: Module,
 {
@@ -111,7 +117,7 @@ where
     }
 }
 
-impl<M> WithTensors for (&M, &Tensor, &Tensor)
+impl<'m, 't, 'l, M> WithTensors for (&'m M, &'t Tensor, &'l Tensor)
 where
     M: Module,
 {
@@ -120,12 +126,38 @@ where
     }
 }
 
-impl<T> WithTensors for T
-where
-    T: TensorIter,
-{
+impl<T> WithTensors for ((Tensor, Aux<T>), HashMap<usize, Tensor>) {
     fn tensors(&self) -> Vec<Tensor> {
-        self.tensor_iter().cloned().collect()
+        let mut v: Vec<Tensor> = self.1.values().cloned().collect();
+        v.push(self.0 .0.clone());
+        v
+    }
+}
+
+impl WithTensors for (Tensor, HashMap<usize, Tensor>) {
+    fn tensors(&self) -> Vec<Tensor> {
+        let mut v: Vec<Tensor> = self.1.values().cloned().collect();
+        v.push(self.0.clone());
+        v
+    }
+}
+
+impl WithTensors for ((Tensor, Tensor), HashMap<usize, Tensor>) {
+    fn tensors(&self) -> Vec<Tensor> {
+        let mut v: Vec<Tensor> = self.1.values().cloned().collect();
+        v.push(self.0 .0.clone());
+        v.push(self.0 .1.clone());
+        v
+    }
+}
+
+impl WithTensors for ((Tensor, Tensor, Tensor), HashMap<usize, Tensor>) {
+    fn tensors(&self) -> Vec<Tensor> {
+        let mut v: Vec<Tensor> = self.1.values().cloned().collect();
+        v.push(self.0 .0.clone());
+        v.push(self.0 .1.clone());
+        v.push(self.0 .2.clone());
+        v
     }
 }
 
@@ -184,7 +216,7 @@ where
     func.self_captured_tensors(&mut input_tensors);
     func.extract_input_tensors(&input, &mut input_tensors);
     let mut tangent_map = tangents.to_tensor_grads(&input_tensors);
-    let output = func.call(input);
+    let output = func.apply(input);
     let out_tensors = output.tensors();
     let mut jvps = HashMap::new();
     for t in &out_tensors {
@@ -205,7 +237,7 @@ where
     let mut input_tensors = Vec::new();
     func.self_captured_tensors(&mut input_tensors);
     func.extract_input_tensors(&input, &mut input_tensors);
-    let output = func.call(input);
+    let output = func.apply(input);
     let out_tensors = output.tensors();
     let vjps_fn = move |cotangents: F::Cotangent| {
         let mut cotangent_map = cotangents.to_tensor_grads(&out_tensors);
@@ -252,16 +284,6 @@ where
             phantom: std::marker::PhantomData,
         }
     }
-
-    fn apply(&self, input: IN) -> F::Tangent {
-        let (output, vjp_fn) = vjp(self.func.clone(), input);
-        let mut cotagents = HashMap::new();
-        let out_tensors = output.tensors();
-        for t in &out_tensors {
-            cotagents.insert(t.id(), t.ones_like());
-        }
-        vjp_fn(F::Cotangent::from_tensor_grads(&out_tensors, cotagents))
-    }
 }
 
 impl<IN, OUT, F> Func<IN, F::Tangent> for GradFunc<IN, OUT, F>
@@ -273,8 +295,14 @@ where
 {
     type Tangent = F::Tangent;
     type Cotangent = F::Cotangent;
-    fn call(&self, input: IN) -> F::Tangent {
-        self.apply(input)
+    fn apply(&self, input: IN) -> F::Tangent {
+        let (output, vjp_fn) = vjp(self.func.clone(), input);
+        let mut cotagents = HashMap::new();
+        let out_tensors = output.tensors();
+        for t in &out_tensors {
+            cotagents.insert(t.id(), t.ones_like());
+        }
+        vjp_fn(F::Cotangent::from_tensor_grads(&out_tensors, cotagents))
     }
 
     fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
@@ -352,17 +380,6 @@ where
             phantom: std::marker::PhantomData,
         }
     }
-
-    fn apply(&self, input: IN) -> (OUT, F::Tangent) {
-        let (output, vjp_fn) = vjp(self.func.clone(), input);
-        let mut cotagents = HashMap::new();
-        let out_tensors = output.tensors();
-        for t in &out_tensors {
-            cotagents.insert(t.id(), t.ones_like());
-        }
-        let tangents = vjp_fn(F::Cotangent::from_tensor_grads(&out_tensors, cotagents));
-        (output, tangents)
-    }
 }
 
 impl<IN, OUT, F> Func<IN, (OUT, F::Tangent)> for ValueAndGradFunc<IN, OUT, F>
@@ -374,8 +391,15 @@ where
 {
     type Tangent = F::Tangent;
     type Cotangent = F::Cotangent;
-    fn call(&self, input: IN) -> (OUT, F::Tangent) {
-        self.apply(input)
+    fn apply(&self, input: IN) -> (OUT, F::Tangent) {
+        let (output, vjp_fn) = vjp(self.func.clone(), input);
+        let mut cotagents = HashMap::new();
+        let out_tensors = output.tensors();
+        for t in &out_tensors {
+            cotagents.insert(t.id(), t.ones_like());
+        }
+        let tangents = vjp_fn(F::Cotangent::from_tensor_grads(&out_tensors, cotagents));
+        (output, tangents)
     }
 
     fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
@@ -437,7 +461,7 @@ where
 {
     type Tangent = [Tensor; 1];
     type Cotangent = [Tensor; 1];
-    fn call(&self, input: [Tensor; 1]) -> [Tensor; 1] {
+    fn apply(&self, input: [Tensor; 1]) -> [Tensor; 1] {
         [self(&input[0])]
     }
 
@@ -452,7 +476,7 @@ where
 {
     type Tangent = [Tensor; 2];
     type Cotangent = [Tensor; 1];
-    fn call(&self, input: [Tensor; 2]) -> [Tensor; 1] {
+    fn apply(&self, input: [Tensor; 2]) -> [Tensor; 1] {
         [self(&input[0], &input[1])]
     }
 
@@ -467,7 +491,7 @@ where
 {
     type Tangent = [Tensor; 3];
     type Cotangent = [Tensor; 1];
-    fn call(&self, input: [Tensor; 3]) -> [Tensor; 1] {
+    fn apply(&self, input: [Tensor; 3]) -> [Tensor; 1] {
         [self(&input[0], &input[1], &input[2])]
     }
 
@@ -590,10 +614,10 @@ where
 
     pub fn raiexpr_of(&self, input: IN) -> String {
         let in_tensors = input.tensors();
-        let output = self.func.call(input);
+        let output = self.func.apply(input);
         let out_tensors = output.tensors();
         eval(([in_tensors, out_tensors], true, RaiExpr));
-        format!("rai_expr")
+        "todo raiexpr_of".to_string()
     }
 }
 

@@ -56,9 +56,23 @@ fn test_grad() {
 
     let a = Tensor::full(10.0, [1], DType::F32, backend);
     let b = Tensor::full(5.0, [1], DType::F32, backend);
-    let grads = grad_func.call([a, b]);
+    let grads = grad_func.apply([a, b]);
     eval(&grads);
 
     println!("{}", grads[0]);
     println!("{}", grads[1]);
 }
+
+// #[test]
+// fn test_grad_grad() {
+//     let backend = &Cpu;
+//     let grad_func = grad(grad(f));
+
+//     let a = Tensor::full(10.0, [1], DType::F32, backend);
+//     let b = Tensor::full(5.0, [1], DType::F32, backend);
+//     let grads = grad_func.apply([a, b]);
+//     eval(&grads);
+
+//     println!("{}", grads[0]);
+//     println!("{}", grads[1]);
+// }

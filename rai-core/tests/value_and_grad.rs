@@ -19,7 +19,7 @@ fn test_linear_grad() {
     let b = Tensor::ones([out_dim], F32, backend);
     let x = Tensor::ones([batch_dim, in_dim], F32, backend);
 
-    let (v, g) = vg_func.call([w, b, x]);
+    let (v, g) = vg_func.apply([w, b, x]);
     eval(((&v, &g), true));
     println!("output = {}", v[0]);
     println!("grad_w = {}", g[0]);

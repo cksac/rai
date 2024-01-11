@@ -1,4 +1,4 @@
-use crate::{transforms::Func, Tensor, WithTensors};
+use crate::{transforms::Func, Tensor};
 use std::collections::HashMap;
 
 pub trait Module {
@@ -19,7 +19,7 @@ where
     type Tangent = HashMap<usize, Tensor>;
     type Cotangent = HashMap<usize, Tensor>;
 
-    fn call(&self, input: Tensor) -> Tensor {
+    fn apply(&self, input: Tensor) -> Tensor {
         self.forward(&input)
     }
 
@@ -40,7 +40,7 @@ where
 {
     type Tangent = HashMap<usize, Tensor>;
     type Cotangent = HashMap<usize, Tensor>;
-    fn call(&self, input: (&'m M, &'i Tensor)) -> Tensor {
+    fn apply(&self, input: (&'m M, &'i Tensor)) -> Tensor {
         self(input.0, input.1)
     }
 
@@ -57,7 +57,7 @@ where
 {
     type Tangent = HashMap<usize, Tensor>;
     type Cotangent = HashMap<usize, Tensor>;
-    fn call(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> Tensor {
+    fn apply(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> Tensor {
         self(input.0, input.1, input.2)
     }
 
@@ -74,11 +74,11 @@ where
 impl<'m, 'i, M, F, T> Func<(&'m M, &'i Tensor), (Tensor, Aux<T>)> for F
 where
     M: Module,
-    F: Fn(&'m M, &'i Tensor) -> (Tensor, Aux<T>),
+    for<'n, 'u> F: Fn(&'n M, &'u Tensor) -> (Tensor, Aux<T>),
 {
     type Tangent = HashMap<usize, Tensor>;
     type Cotangent = HashMap<usize, Tensor>;
-    fn call(&self, input: (&'m M, &'i Tensor)) -> (Tensor, Aux<T>) {
+    fn apply(&self, input: (&'m M, &'i Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1)
     }
 
@@ -95,7 +95,7 @@ where
 {
     type Tangent = HashMap<usize, Tensor>;
     type Cotangent = HashMap<usize, Tensor>;
-    fn call(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> (Tensor, Aux<T>) {
+    fn apply(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> (Tensor, Aux<T>) {
         self(input.0, input.1, input.2)
     }
 

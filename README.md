@@ -6,7 +6,6 @@
 
 ML framework with Ergonomic APIs in Rust. Lazy computation and composable transformations.
 ---
-Note: It required `Rust nightly` with following features [`fn_traits`, `unboxed_closures`]
 
 ## Installation
 ```sh
