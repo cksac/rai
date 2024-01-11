@@ -527,7 +527,13 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
         let backend = x.backend();
         let dtype = x.dtype();
         let inputs = vec![x.clone()];
-        Tensor::new(backend, dtype, shape, Reshape, inputs)
+        Tensor::new(
+            backend,
+            dtype,
+            shape.shape().to_owned(),
+            Reshape::new(shape),
+            inputs,
+        )
     } else {
         panic!(
             "reshape({:?}, {:?}) with error\n{}",

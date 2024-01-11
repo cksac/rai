@@ -6,7 +6,7 @@ use rai_core::{
 use rai_core::{raiexpr, Tensor};
 
 #[test]
-fn test_add() {
+fn test_add_expr() {
     let backend = &Cpu;
     let a = &Tensor::ones([2, 3], F32, backend);
     let b = &Tensor::ones([2, 3], F32, backend);
@@ -18,7 +18,7 @@ fn test_add() {
 }
 
 #[test]
-fn test_linear_grad() {
+fn test_linear_grad_expr() {
     let backend = &Cpu;
 
     // need explicit type annotations

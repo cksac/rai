@@ -55,22 +55,39 @@ impl Primitive for Broadcast {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Reshape;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Reshape {
+    pub shape: Vec<usize>,
+}
+impl Reshape {
+    pub fn new(shape: impl Shape) -> Self {
+        Self {
+            shape: shape.shape().to_vec(),
+        }
+    }
+
+    pub fn shape(&self) -> &[usize] {
+        &self.shape
+    }
+}
+
 impl Primitive for Reshape {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(*self)
+        Box::new(self.clone())
     }
 
     fn as_any(&self) -> &dyn Any {
         self
     }
 
+    fn dot_label(&self) -> String {
+        format!("Reshape({:?})", self.shape)
+    }
+
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
-        // capture request shape in Reshape, instead of using the shape from output?
-        tangent_x.reshape(output)
+        tangent_x.reshape(self.shape())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]

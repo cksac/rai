@@ -352,11 +352,11 @@ impl Eval<Cpu, primitives::Transpose> for Dispatch<Cpu, primitives::Transpose> {
 }
 
 impl Eval<Cpu, primitives::Reshape> for Dispatch<Cpu, primitives::Reshape> {
-    fn eval(&self, _: &Cpu, _: &primitives::Reshape, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Reshape, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.reshape(output.shape()).unwrap();
+        let t = t.reshape(primitive.shape()).unwrap();
         output.set_data(t)
     }
 }
