@@ -1,6 +1,6 @@
 use rai_core::backend::Cpu;
 
-use rai_core::{eval, grad, jvp, vjp, DType, Tensor};
+use rai_core::{eval, grad, jvp, vjp, DType, Func, Tensor};
 
 fn func(a: &Tensor, b: &Tensor) -> Tensor {
     a + b
@@ -56,7 +56,7 @@ fn test_grad() {
 
     let a = Tensor::full(10.0, [1], DType::F32, backend);
     let b = Tensor::full(5.0, [1], DType::F32, backend);
-    let grads = grad_func([a, b]);
+    let grads = grad_func.call([a, b]);
     eval(&grads);
 
     println!("{}", grads[0]);

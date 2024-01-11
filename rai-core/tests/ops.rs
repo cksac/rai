@@ -1,4 +1,4 @@
-use rai_core::{backend::Cpu, jvp, utils::dot_graph, value_and_grad, DType, Tensor};
+use rai_core::{backend::Cpu, jvp, utils::dot_graph, value_and_grad, DType, Func, Tensor};
 
 #[test]
 fn test_dot_graph() {
@@ -34,7 +34,7 @@ fn test_reshape() {
     let func = |x: &Tensor| x.reshape([6]);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a]);
+    let (outs, grads) = vg_func.call([a]);
     println!("{}", dot_graph([&outs, &grads]));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -46,7 +46,7 @@ fn test_broadcast_to() {
     let func = |x: &Tensor| x.broadcast_to([3, 2, 3]);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a]);
+    let (outs, grads) = vg_func.call([a]);
     println!("{}", dot_graph([&outs, &grads]));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -58,7 +58,7 @@ fn test_transpose() {
     let func = |x: &Tensor| x.t();
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a]);
+    let (outs, grads) = vg_func.call([a]);
     println!("{}", dot_graph([&outs, &grads]));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -71,7 +71,7 @@ fn test_matmul() {
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], DType::F32, backend);
     let b = Tensor::ones([3, 2], DType::F32, backend);
-    let (outs, grads) = vg_func([a, b]);
+    let (outs, grads) = vg_func.call([a, b]);
     println!("{}", dot_graph((&outs, &grads)));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -85,7 +85,7 @@ fn test_matmul_2() {
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], DType::F32, backend);
     let b = Tensor::ones([3], DType::F32, backend);
-    let (outs, grads) = vg_func([a, b]);
+    let (outs, grads) = vg_func.call([a, b]);
     println!("{}", dot_graph((&outs, &grads)));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -98,7 +98,7 @@ fn test_sum() {
     let func = |x: &Tensor| x.sum(..);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a]);
+    let (outs, grads) = vg_func.call([a]);
     println!("{}", dot_graph([&outs, &grads]));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -110,7 +110,7 @@ fn test_max() {
     let func = |x: &Tensor| x.max(0);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a]);
+    let (outs, grads) = vg_func.call([a]);
     println!("{}", dot_graph([&outs, &grads]));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -122,7 +122,7 @@ fn test_min() {
     let func = |x: &Tensor| x.min(0);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a.clone()]);
+    let (outs, grads) = vg_func.call([a.clone()]);
     println!("{}", dot_graph([&outs, &grads]));
     println!("{}", outs[0]);
     println!("{}", grads[0]);
@@ -140,7 +140,7 @@ fn test_softmax() {
     let vg_func = value_and_grad(func);
 
     let a = &Tensor::normal([2, 3], DType::F32, backend);
-    let (outs, grads) = vg_func([a.clone()]);
+    let (outs, grads) = vg_func.call([a.clone()]);
     println!("{}", dot_graph([&outs, &grads]));
 
     println!("{:?}", outs[0]);

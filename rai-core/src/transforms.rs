@@ -1,6 +1,7 @@
+use crate::backend::RaiExpr;
 use crate::dispatch::eval_rule;
 use crate::utils::TensorIter;
-use crate::{Module, Shape, Tensor};
+use crate::{Aux, Backend, Module, Shape, Tensor};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -20,45 +21,66 @@ pub trait WithTensors {
     fn tensors(&self) -> Vec<Tensor>;
 }
 
-impl<const N: usize> WithTensors for [Tensor; N] {
+// impl<const N: usize> WithTensors for [Tensor; N] {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         self.to_vec()
+//     }
+// }
+
+// impl<const N: usize> WithTensors for &[Tensor; N] {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         self.to_vec()
+//     }
+// }
+
+// impl WithTensors for Vec<Tensor> {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         self.clone()
+//     }
+// }
+
+// impl WithTensors for Tensor {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         vec![self.clone()]
+//     }
+// }
+
+// impl WithTensors for &Tensor {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         vec![(*self).clone()]
+//     }
+// }
+
+// impl WithTensors for (Tensor, Tensor) {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         vec![self.0.clone(), self.1.clone()]
+//     }
+// }
+
+// impl WithTensors for HashMap<usize, Tensor> {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         self.values().cloned().collect()
+//     }
+// }
+
+// impl<const N: usize, const M: usize> WithTensors for ([Tensor; N], [Tensor; M]) {
+//     fn tensors(&self) -> Vec<Tensor> {
+//         self.0.iter().chain(self.1.iter()).cloned().collect()
+//     }
+// }
+
+impl<T> WithTensors for (Tensor, Aux<T>) {
     fn tensors(&self) -> Vec<Tensor> {
-        self.to_vec()
+        vec![self.0.clone()]
     }
 }
 
-impl<const N: usize> WithTensors for &[Tensor; N] {
+impl<M, T> WithTensors for (&M, Aux<T>)
+where
+    M: Module,
+{
     fn tensors(&self) -> Vec<Tensor> {
-        self.to_vec()
-    }
-}
-
-impl WithTensors for Vec<Tensor> {
-    fn tensors(&self) -> Vec<Tensor> {
-        self.clone()
-    }
-}
-
-impl WithTensors for Tensor {
-    fn tensors(&self) -> Vec<Tensor> {
-        vec![self.clone()]
-    }
-}
-
-impl WithTensors for &Tensor {
-    fn tensors(&self) -> Vec<Tensor> {
-        vec![(*self).clone()]
-    }
-}
-
-impl WithTensors for (Tensor, Tensor) {
-    fn tensors(&self) -> Vec<Tensor> {
-        vec![self.0.clone(), self.1.clone()]
-    }
-}
-
-impl WithTensors for HashMap<usize, Tensor> {
-    fn tensors(&self) -> Vec<Tensor> {
-        self.values().cloned().collect()
+        self.0.parameters()
     }
 }
 
@@ -95,6 +117,15 @@ where
 {
     fn tensors(&self) -> Vec<Tensor> {
         self.0.parameters()
+    }
+}
+
+impl<T> WithTensors for T
+where
+    T: TensorIter,
+{
+    fn tensors(&self) -> Vec<Tensor> {
+        self.tensor_iter().cloned().collect()
     }
 }
 
@@ -233,16 +264,17 @@ where
     }
 }
 
-impl<IN, OUT, F> Func<IN, OUT> for GradFunc<IN, OUT, F>
+impl<IN, OUT, F> Func<IN, F::Tangent> for GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
     IN: WithTensors,
     OUT: WithTensors,
+    F::Tangent: WithTensors,
 {
     type Tangent = F::Tangent;
     type Cotangent = F::Cotangent;
-    fn call(&self, input: IN) -> OUT {
-        self.func.call(input)
+    fn call(&self, input: IN) -> F::Tangent {
+        self.apply(input)
     }
 
     fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
@@ -254,39 +286,39 @@ where
     }
 }
 
-impl<IN, OUT, F> FnOnce<(IN,)> for GradFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT> + Clone + 'static,
-    IN: WithTensors,
-    OUT: WithTensors,
-{
-    type Output = F::Tangent;
-    extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
-        self.apply(args.0)
-    }
-}
+// impl<IN, OUT, F> FnOnce<(IN,)> for GradFunc<IN, OUT, F>
+// where
+//     F: Func<IN, OUT> + Clone + 'static,
+//     IN: WithTensors,
+//     OUT: WithTensors,
+// {
+//     type Output = F::Tangent;
+//     extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
+//         self.apply(args.0)
+//     }
+// }
 
-impl<IN, OUT, F> FnMut<(IN,)> for GradFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT> + Clone + 'static,
-    IN: WithTensors,
-    OUT: WithTensors,
-{
-    extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
-        self.apply(args.0)
-    }
-}
+// impl<IN, OUT, F> FnMut<(IN,)> for GradFunc<IN, OUT, F>
+// where
+//     F: Func<IN, OUT> + Clone + 'static,
+//     IN: WithTensors,
+//     OUT: WithTensors,
+// {
+//     extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
+//         self.apply(args.0)
+//     }
+// }
 
-impl<IN, OUT, F> Fn<(IN,)> for GradFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT> + Clone + 'static,
-    IN: WithTensors,
-    OUT: WithTensors,
-{
-    extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
-        self.apply(args.0)
-    }
-}
+// impl<IN, OUT, F> Fn<(IN,)> for GradFunc<IN, OUT, F>
+// where
+//     F: Func<IN, OUT> + Clone + 'static,
+//     IN: WithTensors,
+//     OUT: WithTensors,
+// {
+//     extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
+//         self.apply(args.0)
+//     }
+// }
 
 pub fn grad<IN, OUT, F>(func: F) -> GradFunc<IN, OUT, F>
 where
@@ -333,16 +365,17 @@ where
     }
 }
 
-impl<IN, OUT, F> Func<IN, OUT> for ValueAndGradFunc<IN, OUT, F>
+impl<IN, OUT, F> Func<IN, (OUT, F::Tangent)> for ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone + 'static,
     IN: WithTensors,
     OUT: WithTensors,
+    (OUT, F::Tangent): WithTensors,
 {
     type Tangent = F::Tangent;
     type Cotangent = F::Cotangent;
-    fn call(&self, input: IN) -> OUT {
-        self.func.call(input)
+    fn call(&self, input: IN) -> (OUT, F::Tangent) {
+        self.apply(input)
     }
 
     fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
@@ -354,39 +387,39 @@ where
     }
 }
 
-impl<IN, OUT, F> FnOnce<(IN,)> for ValueAndGradFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT> + Clone + 'static,
-    IN: WithTensors,
-    OUT: WithTensors,
-{
-    type Output = (OUT, F::Tangent);
-    extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
-        self.apply(args.0)
-    }
-}
+// impl<IN, OUT, F> FnOnce<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+// where
+//     F: Func<IN, OUT> + Clone + 'static,
+//     IN: WithTensors,
+//     OUT: WithTensors,
+// {
+//     type Output = (OUT, F::Tangent);
+//     extern "rust-call" fn call_once(self, args: (IN,)) -> Self::Output {
+//         self.apply(args.0)
+//     }
+// }
 
-impl<IN, OUT, F> FnMut<(IN,)> for ValueAndGradFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT> + Clone + 'static,
-    IN: WithTensors,
-    OUT: WithTensors,
-{
-    extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
-        self.apply(args.0)
-    }
-}
+// impl<IN, OUT, F> FnMut<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+// where
+//     F: Func<IN, OUT> + Clone + 'static,
+//     IN: WithTensors,
+//     OUT: WithTensors,
+// {
+//     extern "rust-call" fn call_mut(&mut self, args: (IN,)) -> Self::Output {
+//         self.apply(args.0)
+//     }
+// }
 
-impl<IN, OUT, F> Fn<(IN,)> for ValueAndGradFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT> + Clone + 'static,
-    IN: WithTensors,
-    OUT: WithTensors,
-{
-    extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
-        self.apply(args.0)
-    }
-}
+// impl<IN, OUT, F> Fn<(IN,)> for ValueAndGradFunc<IN, OUT, F>
+// where
+//     F: Func<IN, OUT> + Clone + 'static,
+//     IN: WithTensors,
+//     OUT: WithTensors,
+// {
+//     extern "rust-call" fn call(&self, args: (IN,)) -> Self::Output {
+//         self.apply(args.0)
+//     }
+// }
 
 pub fn value_and_grad<IN, OUT, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
 where
@@ -448,7 +481,11 @@ pub trait EvalArgs: Debug {
     fn retain_graph(&self) -> bool {
         false
     }
+    fn backend(&self) -> Option<Box<dyn Backend>> {
+        None
+    }
 }
+
 impl<T> EvalArgs for T
 where
     T: TensorIter,
@@ -471,6 +508,24 @@ where
     }
 }
 
+impl<T, B> EvalArgs for (T, bool, B)
+where
+    T: TensorIter,
+    B: Backend,
+{
+    fn outputs(&self) -> impl Iterator<Item = &Tensor> {
+        self.0.tensor_iter()
+    }
+
+    fn retain_graph(&self) -> bool {
+        self.1
+    }
+
+    fn backend(&self) -> Option<Box<dyn Backend>> {
+        Some(self.2.clone_boxed())
+    }
+}
+
 pub fn eval<T: EvalArgs>(args: T) {
     let mut tape = BTreeSet::new();
     for output in args.outputs() {
@@ -478,7 +533,7 @@ pub fn eval<T: EvalArgs>(args: T) {
     }
     for t in tape.into_iter() {
         {
-            let backend = t.backend().clone_boxed();
+            let backend = args.backend().unwrap_or(t.backend().clone_boxed());
             let backend = backend.as_ref();
             let primitive = t.primitive().clone_boxed();
             let primitive = primitive.as_ref();
@@ -507,4 +562,46 @@ fn topological_sort(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
         return;
     }
     tape.insert(t.clone());
+}
+
+#[derive(Clone)]
+pub struct RaiExprFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    func: F,
+    phantom: std::marker::PhantomData<(IN, OUT)>,
+}
+
+impl<IN, OUT, F> RaiExprFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT> + 'static,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn raiexpr_of(&self, input: IN) -> String {
+        let in_tensors = input.tensors();
+        let output = self.func.call(input);
+        let out_tensors = output.tensors();
+        eval(([in_tensors, out_tensors], true, RaiExpr));
+        format!("rai_expr")
+    }
+}
+
+pub fn raiexpr<IN, OUT, F>(func: F) -> RaiExprFunc<IN, OUT, F>
+where
+    F: Func<IN, OUT>,
+    IN: WithTensors,
+    OUT: WithTensors,
+{
+    RaiExprFunc::new(func)
 }

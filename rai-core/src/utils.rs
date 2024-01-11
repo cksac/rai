@@ -156,6 +156,30 @@ impl TensorIter for (Tensor, HashMap<usize, Tensor>) {
     }
 }
 
+impl<const N: usize> TensorIter for [Vec<Tensor>; N] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().flat_map(|v| v.iter())
+    }
+}
+
+impl<const N: usize> TensorIter for [&Vec<Tensor>; N] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().flat_map(|v| v.iter())
+    }
+}
+
+impl TensorIter for [Vec<Tensor>] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().flat_map(|v| v.iter())
+    }
+}
+
+impl TensorIter for [&Vec<Tensor>] {
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.iter().flat_map(|v| v.iter())
+    }
+}
+
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
     let mut tape = Vec::new();
     for output in args.tensor_iter() {

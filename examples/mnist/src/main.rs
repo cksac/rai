@@ -2,7 +2,7 @@ use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
 use rai::{eval, Aux};
-use rai::{nn::Linear, value_and_grad, Backend, DType, Module, Tensor};
+use rai::{nn::Linear, value_and_grad, Backend, DType, Func, Module, Tensor};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Instant;
@@ -71,7 +71,7 @@ fn train_step<O: Optimizer, M: Module + 'static>(
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), grads) = vg_fn((model, input, labels));
+    let ((_loss, Aux(_logits)), grads) = vg_fn.call((model, input, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update(&mut params);

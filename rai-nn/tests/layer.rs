@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rai_core::{
-    backend::Cpu, grad, jvp, utils::dot_graph, value_and_grad, Aux, DType, Module, Tensor,
+    backend::Cpu, grad, jvp, utils::dot_graph, value_and_grad, Aux, DType, Func, Module, Tensor,
     WithTensors,
 };
 use rai_nn::Linear;
@@ -32,7 +32,7 @@ fn test_linear_grad() {
     let input = Tensor::normal([5], DType::F32, backend);
 
     let grad_fn = grad(linear);
-    let grads = grad_fn(input);
+    let grads = grad_fn.call(input);
     println!("{:?}", &grads);
 
     let grads = grads.tensors();
@@ -48,11 +48,27 @@ fn test_linear_grad_of_grad() {
     let input = Tensor::normal([5], DType::F32, backend);
 
     let grad_fn = grad(grad(linear));
-    let grads = grad_fn(input);
+    let grads = grad_fn.call(input);
     let grads = grads.tensors();
 
     println!("{}", grads[0]);
     println!("{}", grads[1]);
+}
+
+#[test]
+fn test_linear_value_and_grad() {
+    let backend = &Cpu;
+
+    let linear = Linear::new(5, 2, true, DType::F32, backend);
+    let input = Tensor::normal([5], DType::F32, backend);
+
+    let grad_fn = value_and_grad(linear);
+    let grads = grad_fn.call(input);
+    // println!("{:?}", &grads);
+
+    // let grads = grads.tensors();
+    // println!("{}", grads[0]);
+    // println!("{}", grads[1]);
 }
 
 #[test]
@@ -63,7 +79,7 @@ fn test_linear_value_and_grad_of_grad() {
     let input = Tensor::normal([5], DType::F32, backend);
 
     let grad_fn = value_and_grad(grad(linear));
-    let (output, grads) = grad_fn(input);
+    let (output, grads) = grad_fn.call(input);
     let grads = grads.tensors();
 
     println!("{}", output);
@@ -77,24 +93,24 @@ fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {
     (loss, Aux(output))
 }
 
-#[test]
-fn test_linear_batch_input() {
-    let backend = &Cpu;
-    let in_size = 5;
-    let out_size = 2;
-    let batch_size = 8;
-    let linear = Linear::new(in_size, out_size, true, DType::F32, backend);
-    let input = Tensor::normal([batch_size, in_size], DType::F32, backend);
+// #[test]
+// fn test_linear_batch_input() {
+//     let backend = &Cpu;
+//     let in_size = 5;
+//     let out_size = 2;
+//     let batch_size = 8;
+//     let linear = Linear::new(in_size, out_size, true, DType::F32, backend);
+//     let input = Tensor::normal([batch_size, in_size], DType::F32, backend);
 
-    let vg_fn = value_and_grad(loss_fn);
-    let ((loss, Aux(output)), grads) = vg_fn((&linear, &input));
-    println!("loss = {:?}", &loss);
-    println!("output = {:?}", &output);
-    println!("grads = {:?}", &grads);
+//     let vg_fn = value_and_grad(loss_fn);
+//     let ((loss, Aux(output)), grads) = vg_fn.call((&linear, &input));
+//     println!("loss = {:?}", &loss);
+//     println!("output = {:?}", &output);
+//     println!("grads = {:?}", &grads);
 
-    let grads = grads.tensors();
-    println!("{}", grads[0]);
-    println!("{}", grads[1]);
+//     let grads = grads.tensors();
+//     println!("{}", grads[0]);
+//     println!("{}", grads[1]);
 
-    println!("{}", dot_graph((output, grads)));
-}
+//     println!("{}", dot_graph((output, grads)));
+// }

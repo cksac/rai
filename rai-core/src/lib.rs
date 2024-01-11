@@ -1,6 +1,3 @@
-#![feature(fn_traits)]
-#![feature(unboxed_closures)]
-
 pub mod ops;
 pub mod primitives;
 
@@ -20,7 +17,8 @@ pub use backend::Backend;
 
 mod transforms;
 pub use transforms::{
-    eval, grad, jvp, value_and_grad, vjp, FromTensorGrads, Func, ToTensorGrads, WithTensors,
+    eval, grad, jvp, raiexpr, value_and_grad, vjp, FromTensorGrads, Func, ToTensorGrads,
+    WithTensors,
 };
 
 pub mod dispatch;

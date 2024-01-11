@@ -3,7 +3,10 @@ use std::{any::TypeId, collections::HashMap, sync::Mutex};
 use dyn_clone::DynClone;
 use once_cell::sync::Lazy;
 
-use crate::{backend::Cpu, primitives, Backend, Primitive, Tensor};
+use crate::{
+    backend::{Cpu, RaiExpr},
+    primitives, Backend, Primitive, Tensor,
+};
 
 pub trait Eval<B, P>: DynClone + Sync + Send + 'static
 where
@@ -61,54 +64,61 @@ where
 
 type ErasedEval = Box<dyn Eval<dyn Backend, dyn Primitive>>;
 
+macro_rules! register_backend {
+    ($backend:ident, $rules:expr) => {
+        // creation
+        _register::<$backend, primitives::Full>(&mut $rules);
+        _register::<$backend, primitives::Normal>(&mut $rules);
+        _register::<$backend, primitives::Arange>(&mut $rules);
+
+        // binary
+        _register::<$backend, primitives::Add>(&mut $rules);
+        _register::<$backend, primitives::Sub>(&mut $rules);
+        _register::<$backend, primitives::Mul>(&mut $rules);
+        _register::<$backend, primitives::Div>(&mut $rules);
+        _register::<$backend, primitives::MatMul>(&mut $rules);
+        _register::<$backend, primitives::Equal>(&mut $rules);
+        _register::<$backend, primitives::NotEqual>(&mut $rules);
+        _register::<$backend, primitives::Greater>(&mut $rules);
+        _register::<$backend, primitives::GreaterEqual>(&mut $rules);
+        _register::<$backend, primitives::Less>(&mut $rules);
+        _register::<$backend, primitives::LessEqual>(&mut $rules);
+        _register::<$backend, primitives::Maximum>(&mut $rules);
+
+        // unary
+        _register::<$backend, primitives::Sin>(&mut $rules);
+        _register::<$backend, primitives::Cos>(&mut $rules);
+        _register::<$backend, primitives::Negative>(&mut $rules);
+        _register::<$backend, primitives::Square>(&mut $rules);
+        _register::<$backend, primitives::Sqrt>(&mut $rules);
+        _register::<$backend, primitives::Rsqrt>(&mut $rules);
+        _register::<$backend, primitives::Sign>(&mut $rules);
+        _register::<$backend, primitives::Abs>(&mut $rules);
+        _register::<$backend, primitives::Exp>(&mut $rules);
+        _register::<$backend, primitives::Log>(&mut $rules);
+        _register::<$backend, primitives::Log2>(&mut $rules);
+        _register::<$backend, primitives::Log10>(&mut $rules);
+        _register::<$backend, primitives::AsType>(&mut $rules);
+        _register::<$backend, primitives::Softmax>(&mut $rules);
+        _register::<$backend, primitives::LogSoftmax>(&mut $rules);
+
+        // transform
+        _register::<$backend, primitives::Transpose>(&mut $rules);
+        _register::<$backend, primitives::Reshape>(&mut $rules);
+        _register::<$backend, primitives::Broadcast>(&mut $rules);
+
+        // reduce
+        _register::<$backend, primitives::ReduceSum>(&mut $rules);
+        _register::<$backend, primitives::ReduceMax>(&mut $rules);
+        _register::<$backend, primitives::ReduceMin>(&mut $rules);
+    };
+}
+
 static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Lazy::new(|| {
     let mut rules: HashMap<(TypeId, TypeId), ErasedEval> = HashMap::new();
 
-    // creation
-    _register::<Cpu, primitives::Full>(&mut rules);
-    _register::<Cpu, primitives::Normal>(&mut rules);
-    _register::<Cpu, primitives::Arange>(&mut rules);
-
-    // binary
-    _register::<Cpu, primitives::Add>(&mut rules);
-    _register::<Cpu, primitives::Sub>(&mut rules);
-    _register::<Cpu, primitives::Mul>(&mut rules);
-    _register::<Cpu, primitives::Div>(&mut rules);
-    _register::<Cpu, primitives::MatMul>(&mut rules);
-    _register::<Cpu, primitives::Equal>(&mut rules);
-    _register::<Cpu, primitives::NotEqual>(&mut rules);
-    _register::<Cpu, primitives::Greater>(&mut rules);
-    _register::<Cpu, primitives::GreaterEqual>(&mut rules);
-    _register::<Cpu, primitives::Less>(&mut rules);
-    _register::<Cpu, primitives::LessEqual>(&mut rules);
-    _register::<Cpu, primitives::Maximum>(&mut rules);
-
-    // unary
-    _register::<Cpu, primitives::Sin>(&mut rules);
-    _register::<Cpu, primitives::Cos>(&mut rules);
-    _register::<Cpu, primitives::Negative>(&mut rules);
-    _register::<Cpu, primitives::Square>(&mut rules);
-    _register::<Cpu, primitives::Sqrt>(&mut rules);
-    _register::<Cpu, primitives::Rsqrt>(&mut rules);
-    _register::<Cpu, primitives::Sign>(&mut rules);
-    _register::<Cpu, primitives::Abs>(&mut rules);
-    _register::<Cpu, primitives::Exp>(&mut rules);
-    _register::<Cpu, primitives::Log>(&mut rules);
-    _register::<Cpu, primitives::Log2>(&mut rules);
-    _register::<Cpu, primitives::Log10>(&mut rules);
-    _register::<Cpu, primitives::AsType>(&mut rules);
-    _register::<Cpu, primitives::Softmax>(&mut rules);
-    _register::<Cpu, primitives::LogSoftmax>(&mut rules);
-
-    // transform
-    _register::<Cpu, primitives::Transpose>(&mut rules);
-    _register::<Cpu, primitives::Reshape>(&mut rules);
-    _register::<Cpu, primitives::Broadcast>(&mut rules);
-
-    // reduce
-    _register::<Cpu, primitives::ReduceSum>(&mut rules);
-    _register::<Cpu, primitives::ReduceMax>(&mut rules);
-    _register::<Cpu, primitives::ReduceMin>(&mut rules);
+    register_backend!(Cpu, rules);
+    register_backend!(RaiExpr, rules);
 
     Mutex::new(rules)
 });

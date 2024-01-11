@@ -31,7 +31,7 @@ fn main() {
 
     let start = Instant::now();
     for _ in 0..num_iters {
-        let grads = grad_fn([w.clone()]);
+        let grads = grad_fn.call([w.clone()]);
         let grad = &grads[0];
         let new_w = w - grad * learning_rate;
         eval(&new_w);

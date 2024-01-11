@@ -43,6 +43,9 @@ impl<'a> PartialEq for &'a dyn Backend {
     }
 }
 
+mod raiexpr;
+pub use raiexpr::RaiExpr;
+
 mod cpu;
 pub use cpu::Cpu;
 

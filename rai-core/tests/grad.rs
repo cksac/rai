@@ -1,4 +1,4 @@
-use rai_core::{backend::Cpu, value_and_grad, DType, Tensor};
+use rai_core::{backend::Cpu, value_and_grad, DType, Func, Tensor};
 
 #[test]
 fn test_add_grad() {
@@ -11,7 +11,7 @@ fn test_add_grad() {
     let a = Tensor::ones([1], DType::F32, backend);
     let b = Tensor::ones([1], DType::F32, backend);
 
-    let (v, g) = vg_func([a, b]);
+    let (v, g) = vg_func.call([a, b]);
     println!("{}", v[0]);
     println!("{}", g[0]);
     println!("{}", g[1]);
@@ -28,7 +28,7 @@ fn test_sub_grad() {
     let a = Tensor::ones([1], DType::F32, backend);
     let b = Tensor::ones([1], DType::F32, backend);
 
-    let (v, g) = vg_func([a, b]);
+    let (v, g) = vg_func.call([a, b]);
     println!("{}", v[0]);
     println!("{}", g[0]);
     println!("{}", g[1]);
@@ -45,7 +45,7 @@ fn test_mul_grad() {
     let a = Tensor::full(3.0, [1], DType::F32, backend);
     let b = Tensor::full(4.0, [1], DType::F32, backend);
 
-    let (v, g) = vg_func([a, b]);
+    let (v, g) = vg_func.call([a, b]);
     println!("{}", v[0]);
     println!("{}", g[0]);
     println!("{}", g[1]);
@@ -62,7 +62,7 @@ fn test_div_grad() {
     let a = Tensor::ones([1], DType::F32, backend);
     let b = Tensor::ones([1], DType::F32, backend);
 
-    let (v, g) = vg_func([a, b]);
+    let (v, g) = vg_func.call([a, b]);
     println!("{}", v[0]);
     println!("{}", g[0]);
     println!("{}", g[1]);

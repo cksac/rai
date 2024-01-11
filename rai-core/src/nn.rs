@@ -32,12 +32,6 @@ where
 
 pub struct Aux<T>(pub T);
 
-impl<T> WithTensors for (Tensor, Aux<T>) {
-    fn tensors(&self) -> Vec<Tensor> {
-        vec![self.0.clone()]
-    }
-}
-
 // for loss fn (module, input) -> loss
 impl<'m, 'i, M, F> Func<(&'m M, &'i Tensor), Tensor> for F
 where
