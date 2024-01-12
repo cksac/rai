@@ -45,7 +45,7 @@ impl<'a, const N: usize> TensorIter for [&'a Tensor; N] {
     }
 }
 
-macro_rules! impl_tuple_tensor_tter {
+macro_rules! impl_tuple_tensor_iter {
     ($($T:tt)*) => {
         paste::paste! {
             impl<$($T,)*> TensorIter for ($($T,)*)
@@ -61,15 +61,15 @@ macro_rules! impl_tuple_tensor_tter {
     };
 }
 
-impl_tuple_tensor_tter!(A);
-impl_tuple_tensor_tter!(A B);
-impl_tuple_tensor_tter!(A B C);
-impl_tuple_tensor_tter!(A B C D);
-impl_tuple_tensor_tter!(A B C D E);
-impl_tuple_tensor_tter!(A B C D E F);
-impl_tuple_tensor_tter!(A B C D E F G);
-impl_tuple_tensor_tter!(A B C D E F G H);
-impl_tuple_tensor_tter!(A B C D E F G H I);
-impl_tuple_tensor_tter!(A B C D E F G H I J);
-impl_tuple_tensor_tter!(A B C D E F G H I J K);
-impl_tuple_tensor_tter!(A B C D E F G H I J K L);
+impl_tuple_tensor_iter!(A);
+impl_tuple_tensor_iter!(A B);
+impl_tuple_tensor_iter!(A B C);
+impl_tuple_tensor_iter!(A B C D);
+impl_tuple_tensor_iter!(A B C D E);
+impl_tuple_tensor_iter!(A B C D E F);
+impl_tuple_tensor_iter!(A B C D E F G);
+impl_tuple_tensor_iter!(A B C D E F G H);
+impl_tuple_tensor_iter!(A B C D E F G H I);
+impl_tuple_tensor_iter!(A B C D E F G H I J);
+impl_tuple_tensor_iter!(A B C D E F G H I J K);
+impl_tuple_tensor_iter!(A B C D E F G H I J K L);
