@@ -14,6 +14,28 @@ use crate::{
     Backend, DType, Dim, ElemType, Shape, Tensor,
 };
 
+macro_rules! impl_std_ops_for_scalar {
+    ($T:ty, $op:ident, $func:ident) => {
+        impl std::ops::$op<Tensor> for $T {
+            type Output = Tensor;
+
+            fn $func(self, rhs: Tensor) -> Self::Output {
+                let lhs = rhs.full_like(self);
+                $func(&lhs, &rhs)
+            }
+        }
+
+        impl<'a> std::ops::$op<&'a Tensor> for $T {
+            type Output = Tensor;
+
+            fn $func(self, rhs: &'a Tensor) -> Self::Output {
+                let lhs = rhs.full_like(self);
+                $func(&lhs, &rhs)
+            }
+        }
+    };
+}
+
 macro_rules! impl_std_ops {
     ($op:ident, $func:ident) => {
         impl std::ops::$op<Tensor> for Tensor {
@@ -46,76 +68,43 @@ macro_rules! impl_std_ops {
 
         impl<T> std::ops::$op<T> for Tensor
         where
-            T: 'static + crate::ElemType,
+            T: crate::ElemType,
         {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs = self.full_like(rhs.into_f64());
+                let rhs = self.full_like(rhs);
                 $func(&self, &rhs)
             }
         }
 
         impl<'a, T> std::ops::$op<T> for &'a Tensor
         where
-            T: 'static + crate::ElemType,
+            T: crate::ElemType,
         {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs = self.full_like(rhs.into_f64());
+                let rhs = self.full_like(rhs);
                 $func(self, &rhs)
             }
         }
 
-        impl std::ops::$op<Tensor> for f64 {
-            type Output = Tensor;
-
-            fn $func(self, rhs: Tensor) -> Self::Output {
-                let lhs = rhs.full_like(self);
-                $func(&lhs, &rhs)
-            }
-        }
-
-        impl<'a> std::ops::$op<&'a Tensor> for f64 {
-            type Output = Tensor;
-
-            fn $func(self, rhs: &'a Tensor) -> Self::Output {
-                let lhs = rhs.full_like(self);
-                $func(&lhs, &rhs)
-            }
-        }
-
-        impl std::ops::$op<Tensor> for f32 {
-            type Output = Tensor;
-
-            fn $func(self, rhs: Tensor) -> Self::Output {
-                let lhs = rhs.full_like(self as f64);
-                $func(&lhs, &rhs)
-            }
-        }
-
-        impl<'a> std::ops::$op<&'a Tensor> for f32 {
-            type Output = Tensor;
-
-            fn $func(self, rhs: &'a Tensor) -> Self::Output {
-                let lhs = rhs.full_like(self as f64);
-                $func(&lhs, &rhs)
-            }
-        }
+        impl_std_ops_for_scalar!(f32, $op, $func);
+        impl_std_ops_for_scalar!(f64, $op, $func);
+        impl_std_ops_for_scalar!(u8, $op, $func);
     };
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn full(
-    val: f64,
+pub fn full<T: ElemType>(
+    val: T,
     shape: impl Shape,
-    dtype: DType,
     backend: impl Into<Box<dyn Backend>> + Debug,
 ) -> Tensor {
     let backend = backend.into();
     let inputs = vec![];
-    Tensor::new(backend, dtype, shape, Full::new(val), inputs)
+    Tensor::new(backend, T::DTYPE, shape, Full::new(val), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

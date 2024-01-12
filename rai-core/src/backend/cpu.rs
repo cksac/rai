@@ -90,19 +90,31 @@ impl From<&dyn Backend> for candle_core::Device {
     }
 }
 
-impl Eval<Cpu, primitives::Full> for Dispatch<Cpu, primitives::Full> {
-    fn eval(&self, _: &Cpu, primitive: &primitives::Full, _: &[Tensor], output: &Tensor) {
-        let t = candle_core::Tensor::ones(
-            output.shape(),
-            output.dtype().into(),
-            &output.backend().into(),
-        )
-        .unwrap()
-            * primitive.val;
-        let t = t.unwrap();
-        output.set_data(t);
-    }
+macro_rules! impl_full {
+    ($T:ty) => {
+        impl Eval<Cpu, primitives::Full<$T>> for Dispatch<Cpu, primitives::Full<$T>> {
+            fn eval(
+                &self,
+                _: &Cpu,
+                primitive: &primitives::Full<$T>,
+                _: &[Tensor],
+                output: &Tensor,
+            ) {
+                let t = candle_core::Tensor::full(
+                    primitive.val,
+                    output.shape(),
+                    &output.backend().into(),
+                )
+                .unwrap();
+                output.set_data(t);
+            }
+        }
+    };
 }
+
+impl_full!(u8);
+impl_full!(f32);
+impl_full!(f64);
 
 impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
     fn eval(&self, _: &Cpu, _: &primitives::Normal, _: &[Tensor], output: &Tensor) {

@@ -5,10 +5,10 @@ fn test_dot_graph() {
     let backend = &Cpu;
 
     let a = &Tensor::ones([2, 3], DType::F32, backend);
-    let b = &Tensor::full(1.4, [2, 3], DType::F32, backend);
-    let c = &Tensor::full(1.4, [2, 3], DType::F32, backend);
-    let d = &Tensor::full(1.4, [2, 3], DType::F32, backend);
-    let e = &Tensor::full(1.4, [2, 3], DType::F32, backend);
+    let b = &Tensor::full(1.4f32, [2, 3], backend);
+    let c = &Tensor::full(1.4f32, [2, 3], backend);
+    let d = &Tensor::full(1.4f32, [2, 3], backend);
+    let e = &Tensor::full(1.4f32, [2, 3], backend);
 
     let z = a + (a * b - 2.5f32) - c / d + e;
     println!("{}", z.dot_graph());
@@ -97,7 +97,7 @@ fn test_sum() {
     let backend = &Cpu;
     let func = |x: &Tensor| x.sum(..);
     let vg_func = value_and_grad(func);
-    let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
+    let a = Tensor::full(2.3f32, [2, 3], backend);
     let (out, grad) = vg_func.apply((&a,));
     println!("{}", dot_graph([&out, &grad]));
     println!("{}", out);
@@ -109,7 +109,7 @@ fn test_max() {
     let backend = &Cpu;
     let func = |x: &Tensor| x.max(0);
     let vg_func = value_and_grad(func);
-    let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
+    let a = Tensor::full(2.3f32, [2, 3], backend);
     let (out, grad) = vg_func.apply((&a,));
     println!("{}", dot_graph([&out, &grad]));
     println!("{}", out);
@@ -121,7 +121,7 @@ fn test_min() {
     let backend = &Cpu;
     let func = |x: &Tensor| x.min(0);
     let vg_func = value_and_grad(func);
-    let a = Tensor::full(2.3, [2, 3], DType::F32, backend);
+    let a = Tensor::full(2.3f32, [2, 3], backend);
     let (out, grad) = vg_func.apply((&a,));
     println!("{}", dot_graph([&out, &grad]));
     println!("{}", out);

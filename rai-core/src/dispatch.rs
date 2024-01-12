@@ -67,7 +67,9 @@ type ErasedEval = Box<dyn Eval<dyn Backend, dyn Primitive>>;
 macro_rules! register_backend {
     ($backend:ident, $rules:expr) => {
         // creation
-        _register::<$backend, primitives::Full>(&mut $rules);
+        _register::<$backend, primitives::Full<u8>>(&mut $rules);
+        _register::<$backend, primitives::Full<f32>>(&mut $rules);
+        _register::<$backend, primitives::Full<f64>>(&mut $rules);
         _register::<$backend, primitives::Normal>(&mut $rules);
         _register::<$backend, primitives::Arange>(&mut $rules);
         _register::<$backend, primitives::FromArray<u8>>(&mut $rules);

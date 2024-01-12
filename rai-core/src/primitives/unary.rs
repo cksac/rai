@@ -96,13 +96,13 @@ impl Primitive for Square {
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
-        x * 2.0 * tangent_x
+        2 * x * tangent_x
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let cotangent_x = cotangent * x * 2.0;
+        let cotangent_x = 2 * cotangent * x;
         vec![cotangent_x]
     }
 }
@@ -123,13 +123,13 @@ impl Primitive for Sqrt {
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
-        tangent_x * 0.5 / x.sqrt()
+        0.5 * tangent_x / x.sqrt()
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let cotangent_x = cotangent * 0.5 / x.sqrt();
+        let cotangent_x = 0.5 * cotangent / x.sqrt();
         vec![cotangent_x]
     }
 }

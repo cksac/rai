@@ -79,13 +79,12 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn full(
-        val: f64,
+    pub fn full<T: ElemType>(
+        val: T,
         shape: impl Shape,
-        dtype: DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full(val, shape, dtype, backend)
+        ops::full(val, shape, backend)
     }
 
     #[inline]
@@ -94,7 +93,11 @@ impl Tensor {
         dtype: DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full(1.0, shape, dtype, backend)
+        match dtype {
+            DType::U8 => ops::full(1u8, shape, backend),
+            DType::F32 => ops::full(1.0f32, shape, backend),
+            DType::F64 => ops::full(1.0f64, shape, backend),
+        }
     }
 
     #[inline]
@@ -103,22 +106,39 @@ impl Tensor {
         dtype: DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full(0.0, shape, dtype, backend)
+        match dtype {
+            DType::U8 => ops::full(0u8, shape, backend),
+            DType::F32 => ops::full(0.0f32, shape, backend),
+            DType::F64 => ops::full(0.0f64, shape, backend),
+        }
     }
 
     #[inline]
-    pub fn full_like(&self, val: f64) -> Tensor {
-        ops::full(val, self.shape(), self.dtype(), self.backend())
+    pub fn full_like<T: ElemType>(&self, val: T) -> Tensor {
+        if self.dtype() == T::DTYPE {
+            ops::full(val, self.shape(), self.backend())
+        } else {
+            // TODO: check is type can be convert/promoted to self dtype?
+            ops::full(val, self.shape(), self.backend()).as_type(self.dtype())
+        }
     }
 
     #[inline]
     pub fn zeros_like(&self) -> Tensor {
-        ops::full(0.0, self.shape(), self.dtype(), self.backend())
+        match self.dtype() {
+            DType::U8 => ops::full(0u8, self.shape(), self.backend()),
+            DType::F32 => ops::full(0.0f32, self.shape(), self.backend()),
+            DType::F64 => ops::full(0.0f64, self.shape(), self.backend()),
+        }
     }
 
     #[inline]
     pub fn ones_like(&self) -> Tensor {
-        ops::full(1.0, self.shape(), self.dtype(), self.backend())
+        match self.dtype() {
+            DType::U8 => ops::full(1u8, self.shape(), self.backend()),
+            DType::F32 => ops::full(1.0f32, self.shape(), self.backend()),
+            DType::F64 => ops::full(1.0f64, self.shape(), self.backend()),
+        }
     }
 
     #[inline]

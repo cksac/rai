@@ -97,7 +97,7 @@ fn main() {
         let start = Instant::now();
         // todo: get image input and label
         let input = Tensor::normal([batch_size, 784], dtype, backend);
-        let labels = Tensor::full(0.123, [batch_size, 10], dtype, backend);
+        let labels = Tensor::full(0.123f32, [batch_size, 10], backend);
         train_step(&mut optimizer, &model, &input, &labels);
         let elapsed = start.elapsed();
         println!("Epoch {i}: Time: {:?}", elapsed);

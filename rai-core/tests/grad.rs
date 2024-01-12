@@ -42,8 +42,8 @@ fn test_mul_grad() {
     let func = |x: &Tensor, y: &Tensor| x * y;
     let vg_func = value_and_grad(func);
 
-    let a = Tensor::full(3.0, [1], DType::F32, backend);
-    let b = Tensor::full(4.0, [1], DType::F32, backend);
+    let a = Tensor::full(3.0f32, [1], backend);
+    let b = Tensor::full(4.0f32, [1], backend);
 
     let (v, (g1, g2)) = vg_func.apply((&a, &b));
     println!("{}", v);

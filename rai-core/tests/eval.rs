@@ -16,10 +16,10 @@ fn test_add2() {
     let backend = &Cpu;
 
     let a = &Tensor::ones([2, 3], DType::F32, backend);
-    let b = &Tensor::full(1.4, [2, 3], DType::F32, backend);
-    let c = &Tensor::full(1.4, [2, 3], DType::F32, backend);
-    let d = &Tensor::full(1.4, [2, 3], DType::F32, backend);
-    let e = &Tensor::full(1.4, [2, 3], DType::F32, backend);
+    let b = &Tensor::full(1.4f32, [2, 3], backend);
+    let c = &Tensor::full(1.4f32, [2, 3], backend);
+    let d = &Tensor::full(1.4f32, [2, 3], backend);
+    let e = &Tensor::full(1.4f32, [2, 3], backend);
 
     let z = a + (a * b - 3.2f32) - c / d + e;
     println!("{}", z);
@@ -28,12 +28,12 @@ fn test_add2() {
 #[test]
 fn test_eval() {
     let backend = &Cpu;
-    let a = &Tensor::full(1.0, [2, 3], DType::F32, backend);
-    let b = &Tensor::full(2.0, [2, 3], DType::F32, backend);
-    let c = &Tensor::full(3.0, [2, 3], DType::F32, backend);
+    let a = &Tensor::full(1.0f32, [2, 3], backend);
+    let b = &Tensor::full(2.0f32, [2, 3], backend);
+    let c = &Tensor::full(3.0f32, [2, 3], backend);
     let d = &{
-        let a = &Tensor::full(3.1, [2, 3], DType::F32, backend);
-        let b = &Tensor::full(3.2, [2, 3], DType::F32, backend);
+        let a = &Tensor::full(3.1f32, [2, 3], backend);
+        let b = &Tensor::full(3.2f32, [2, 3], backend);
         a + b
     };
     println!("{}", d);

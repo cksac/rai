@@ -5,22 +5,31 @@ use tracing::Level;
 use crate::{ElemType, Primitive, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Full {
-    pub val: f64,
+pub struct Full<T>
+where
+    T: ElemType,
+{
+    pub val: T,
 }
-impl Full {
-    pub fn new(val: f64) -> Self {
+impl<T> Full<T>
+where
+    T: ElemType,
+{
+    pub fn new(val: T) -> Self {
         Full { val }
     }
 }
 
-impl Primitive for Full {
+impl<T> Primitive for Full<T>
+where
+    T: ElemType,
+{
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(*self)
+        Box::new(self.clone())
     }
 
     fn dot_label(&self) -> String {
-        format!("Full({})", self.val)
+        format!("Full({:?})", self.val)
     }
 
     fn as_any(&self) -> &dyn Any {
