@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{eval, Aux};
+use rai::{differentiable_module, eval, Aux, DifferentiableModule};
 use rai::{nn::Linear, value_and_grad, Backend, DType, Func, Module, Tensor};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -41,7 +41,7 @@ impl Module for Mlp {
         self.layers[self.layers.len() - 1].forward(&x)
     }
 
-    fn gather_parameters(&self, out: &mut Vec<Tensor>) {
+    fn gather_parameters(&self, out: &mut HashMap<usize, Tensor>) {
         for l in &self.layers {
             l.gather_parameters(out)
         }
@@ -53,8 +53,9 @@ impl Module for Mlp {
         }
     }
 }
+differentiable_module!(Mlp);
 
-fn loss_fn<M: Module + 'static>(
+fn loss_fn<M: DifferentiableModule + 'static>(
     model: &M,
     input: &Tensor,
     labels: &Tensor,
@@ -64,14 +65,14 @@ fn loss_fn<M: Module + 'static>(
     (loss, Aux(logits))
 }
 
-fn train_step<O: Optimizer, M: Module + 'static>(
+fn train_step<O: Optimizer, M: DifferentiableModule + 'static>(
     optimizer: &mut O,
     model: &M,
     input: &Tensor,
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), grads) = vg_fn.apply((model, input, labels));
+    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, input, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update(&mut params);

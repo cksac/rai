@@ -17,8 +17,7 @@ pub use backend::Backend;
 
 mod transforms;
 pub use transforms::{
-    eval, grad, jvp, raiexpr, value_and_grad, vjp, FromTensorGrads, Func, ToTensorGrads,
-    WithTensors,
+    eval, grad, jvp, raiexpr, value_and_grad, vjp, Aux, Differentiable, Func, TensorIter,
 };
 
 pub mod dispatch;
@@ -29,4 +28,7 @@ mod error;
 pub use error::{Error, Result};
 
 mod nn;
-pub use nn::{Aux, Module};
+pub use nn::{DifferentiableModule, Module};
+
+#[macro_use]
+mod macros;

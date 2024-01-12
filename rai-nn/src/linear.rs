@@ -1,4 +1,4 @@
-use rai_core::{Backend, DType, Module, Tensor};
+use rai_core::{differentiable_module, Backend, DType, Module, Tensor};
 use std::{collections::HashMap, fmt::Debug};
 
 #[derive(Clone, Debug)]
@@ -35,10 +35,10 @@ impl Module for Linear {
         }
     }
 
-    fn gather_parameters(&self, out: &mut Vec<Tensor>) {
-        out.push(self.weight.clone());
+    fn gather_parameters(&self, out: &mut HashMap<usize, Tensor>) {
+        out.insert(self.weight.id(), self.weight.clone());
         if let Some(bias) = &self.bias {
-            out.push(bias.clone());
+            out.insert(bias.id(), bias.clone());
         }
     }
 
@@ -54,3 +54,5 @@ impl Module for Linear {
         }
     }
 }
+
+differentiable_module!(Linear);

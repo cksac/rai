@@ -1,109 +1,40 @@
-use crate::{transforms::Func, Tensor};
 use std::collections::HashMap;
 
+use crate::{Differentiable, Tensor};
+
+#[allow(unused_variables)]
 pub trait Module {
     fn forward(&self, input: &Tensor) -> Tensor;
-    fn gather_parameters(&self, out: &mut Vec<Tensor>);
-    fn parameters(&self) -> Vec<Tensor> {
-        let mut params = Vec::new();
-        self.gather_parameters(&mut params);
-        params
+
+    fn gather_parameters(&self, params: &mut HashMap<usize, Tensor>) {}
+
+    fn parameters(&self) -> HashMap<usize, Tensor> {
+        let mut out = HashMap::new();
+        self.gather_parameters(&mut out);
+        out
     }
-    fn update(&self, _params: &mut HashMap<usize, Tensor>) {}
+
+    fn update(&self, params: &mut HashMap<usize, Tensor>) {}
 }
 
-impl<T> Func<Tensor, Tensor> for T
+pub trait DifferentiableModule:
+    Module + Differentiable<Tensors = HashMap<usize, Tensor>, Gradient = HashMap<usize, Tensor>>
+{
+}
+
+impl<'a, T> Module for &'a T
 where
     T: Module,
 {
-    type Tangent = HashMap<usize, Tensor>;
-    type Cotangent = HashMap<usize, Tensor>;
-
-    fn apply(&self, input: Tensor) -> Tensor {
-        self.forward(&input)
+    fn forward(&self, input: &Tensor) -> Tensor {
+        (*self).forward(input)
     }
 
-    fn self_captured_tensors(&self, tensors: &mut Vec<Tensor>) {
-        self.gather_parameters(tensors)
+    fn gather_parameters(&self, out: &mut HashMap<usize, Tensor>) {
+        (*self).gather_parameters(out)
     }
 
-    fn extract_input_tensors(&self, _input: &Tensor, _tensors: &mut Vec<Tensor>) {}
-}
-
-pub struct Aux<T>(pub T);
-
-// for loss fn (module, input) -> loss
-impl<'m, 'i, M, F> Func<(&'m M, &'i Tensor), Tensor> for F
-where
-    M: Module,
-    F: Fn(&'m M, &'i Tensor) -> Tensor,
-{
-    type Tangent = HashMap<usize, Tensor>;
-    type Cotangent = HashMap<usize, Tensor>;
-    fn apply(&self, input: (&'m M, &'i Tensor)) -> Tensor {
-        self(input.0, input.1)
-    }
-
-    fn extract_input_tensors(&self, input: &(&'m M, &'i Tensor), inputs: &mut Vec<Tensor>) {
-        inputs.extend(input.0.parameters())
-    }
-}
-
-// for loss fn (module, input, label) -> loss
-impl<'m, 'i, 'l, M, F> Func<(&'m M, &'i Tensor, &'l Tensor), Tensor> for F
-where
-    M: Module,
-    F: Fn(&'m M, &'i Tensor, &'l Tensor) -> Tensor,
-{
-    type Tangent = HashMap<usize, Tensor>;
-    type Cotangent = HashMap<usize, Tensor>;
-    fn apply(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> Tensor {
-        self(input.0, input.1, input.2)
-    }
-
-    fn extract_input_tensors(
-        &self,
-        input: &(&'m M, &'i Tensor, &'l Tensor),
-        inputs: &mut Vec<Tensor>,
-    ) {
-        inputs.extend(input.0.parameters())
-    }
-}
-
-// for loss fn  (module, input) -> (loss, Aux<T>)
-impl<'m, 'i, M, F, T> Func<(&'m M, &'i Tensor), (Tensor, Aux<T>)> for F
-where
-    M: Module,
-    for<'n, 'u> F: Fn(&'n M, &'u Tensor) -> (Tensor, Aux<T>),
-{
-    type Tangent = HashMap<usize, Tensor>;
-    type Cotangent = HashMap<usize, Tensor>;
-    fn apply(&self, input: (&'m M, &'i Tensor)) -> (Tensor, Aux<T>) {
-        self(input.0, input.1)
-    }
-
-    fn extract_input_tensors(&self, input: &(&'m M, &'i Tensor), inputs: &mut Vec<Tensor>) {
-        inputs.extend(input.0.parameters())
-    }
-}
-
-// for loss fn (module, input, label) -> (loss, Aux<T>)
-impl<'m, 'i, 'l, M, F, T> Func<(&'m M, &'i Tensor, &'l Tensor), (Tensor, Aux<T>)> for F
-where
-    M: Module,
-    F: Fn(&'m M, &'i Tensor, &'l Tensor) -> (Tensor, Aux<T>),
-{
-    type Tangent = HashMap<usize, Tensor>;
-    type Cotangent = HashMap<usize, Tensor>;
-    fn apply(&self, input: (&'m M, &'i Tensor, &'l Tensor)) -> (Tensor, Aux<T>) {
-        self(input.0, input.1, input.2)
-    }
-
-    fn extract_input_tensors(
-        &self,
-        input: &(&'m M, &'i Tensor, &'l Tensor),
-        inputs: &mut Vec<Tensor>,
-    ) {
-        inputs.extend(input.0.parameters())
+    fn update(&self, params: &mut HashMap<usize, Tensor>) {
+        (*self).update(params)
     }
 }

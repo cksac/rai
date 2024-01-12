@@ -34,6 +34,6 @@ fn test_linear_grad_expr() {
     let b = Tensor::ones([out_dim], F32, backend);
     let x = Tensor::ones([batch_dim, in_dim], F32, backend);
 
-    let exprs = ir_func.raiexpr_of([w, b, x]);
+    let exprs = ir_func.raiexpr_of((&w, &b, &x));
     println!("{}", exprs);
 }

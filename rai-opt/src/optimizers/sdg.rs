@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rai_core::Tensor;
+use rai_core::{Tensor, TensorIter};
 
 use super::Optimizer;
 
@@ -15,9 +15,9 @@ pub struct SDG {
 }
 
 impl SDG {
-    pub fn new(params: Vec<Tensor>, lr: f32) -> Self {
+    pub fn new(params: impl TensorIter, lr: f32) -> Self {
         Self {
-            params,
+            params: params.tensor_iter().cloned().collect(),
             lr,
             momentum: None,
             weight_decay: None,
