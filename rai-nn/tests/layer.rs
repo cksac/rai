@@ -1,4 +1,5 @@
 use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, Aux, DType, Func, Module, Tensor};
+
 use rai_nn::Linear;
 
 fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {

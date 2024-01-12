@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rai_core::{Tensor, TensorIter};
 
-use super::Optimizer;
+use crate::optimizers::Optimizer;
 
 pub struct SDG {
     params: Vec<Tensor>,

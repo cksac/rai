@@ -1,5 +1,7 @@
-use rai_core::{differentiable_module, Backend, DType, Module, Tensor};
 use std::{collections::HashMap, fmt::Debug};
+
+use rai_core::{differentiable_module, Backend, DType, Module, Tensor};
+
 
 #[derive(Clone, Debug)]
 pub struct Linear {

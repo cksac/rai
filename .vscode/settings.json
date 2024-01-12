@@ -2,15 +2,19 @@
     "cSpell.words": [
         "Arange",
         "dtype",
+        "jvps",
         "keepdim",
         "logits",
         "matmul",
         "mnist",
+        "nesterov",
         "primals",
+        "raiexpr",
         "recip",
         "relu",
         "rsqrt",
         "softmax",
+        "thiserror",
         "vjps"
     ],
     "rust-analyzer.linkedProjects": [

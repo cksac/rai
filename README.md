@@ -15,8 +15,7 @@ cargo add rai
 ## Code snippets
 ### Function transformations (jvp, vjp, grad, value_and_grad)
 ```rust
-use rai::backend::Cpu;
-use rai::{grad, DType, Tensor, Func};
+use rai::{backend::Cpu, grad, DType, Func, Tensor};
 
 fn f(x: &Tensor) -> Tensor {
     x.sin()
@@ -27,16 +26,16 @@ fn main() {
 
     let backend = &Cpu;
     let x = Tensor::ones([1], DType::F32, backend);
-    let grads = grad_fn.apply([x]);
+    let grad = grad_fn.apply((&x,));
 
-    println!("{}", grads[0].dot_graph());
-    println!("{}", grads[0]);
+    println!("{}", grad.dot_graph());
+    println!("{}", grad);
 }
 ```
 
 ### NN Modules, Optimizer and loss functions
 ```rust
-fn loss_fn<M: Module + 'static>(
+fn loss_fn<M: DifferentiableModule + 'static>(
     model: &M,
     input: &Tensor,
     labels: &Tensor,
@@ -46,14 +45,14 @@ fn loss_fn<M: Module + 'static>(
     (loss, Aux(logits))
 }
 
-fn train_step<O: Optimizer, M: Module + 'static>(
+fn train_step<O: Optimizer, M: DifferentiableModule + 'static>(
     optimizer: &mut O,
     model: &M,
     input: &Tensor,
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), grads) = vg_fn.apply((model, input, labels));
+    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, input, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update(&mut params);

@@ -1,7 +1,8 @@
+use std::any::Any;
+
 use tracing::Level;
 
 use crate::{DType, Primitive, Tensor};
-use std::any::Any;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Negative;

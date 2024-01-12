@@ -1,8 +1,9 @@
-use crate::{Error, Result};
 use std::{
     fmt::Debug,
     ops::{RangeFull, RangeTo},
 };
+
+use crate::{Error, Result};
 
 pub trait Dim: Debug {
     fn dim_of<T: Shape + ?Sized>(&self, shape: &T) -> usize;

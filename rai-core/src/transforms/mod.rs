@@ -101,12 +101,12 @@ where
 {
     fn apply(&self, input: IN) -> IN::Gradient {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
-        let mut cotagents = HashMap::new();
+        let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();
         for t in output_tensors.tensor_iter() {
-            cotagents.insert(t.id(), t.ones_like());
+            cotangents.insert(t.id(), t.ones_like());
         }
-        vjp_fn(OUT::grad(&output_tensors, &cotagents))
+        vjp_fn(OUT::grad(&output_tensors, &cotangents))
     }
 }
 
@@ -148,12 +148,12 @@ where
 {
     fn apply(&self, input: IN) -> (OUT, IN::Gradient) {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
-        let mut cotagents = HashMap::new();
+        let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();
         for t in output_tensors.tensor_iter() {
-            cotagents.insert(t.id(), t.ones_like());
+            cotangents.insert(t.id(), t.ones_like());
         }
-        (output, vjp_fn(OUT::grad(&output_tensors, &cotagents)))
+        (output, vjp_fn(OUT::grad(&output_tensors, &cotangents)))
     }
 }
 

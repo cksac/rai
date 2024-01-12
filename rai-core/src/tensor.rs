@@ -1,15 +1,19 @@
-use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
-use std::fmt::{Debug, Display};
-use std::hash::{Hash, Hasher};
-use std::ops::Deref;
-use std::rc::Rc;
-use std::sync::atomic;
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    fmt::{Debug, Display},
+    hash::{Hash, Hasher},
+    ops::Deref,
+    rc::Rc,
+    sync::atomic,
+};
 
-use crate::ops::{ArangeArgs, ReduceArgs};
-use crate::utils::dot_graph;
-use crate::{eval, utils, Dim};
-use crate::{ops, Backend, DType, Primitive, Shape};
+use crate::{
+    eval,
+    ops::{self, ArangeArgs, ReduceArgs},
+    utils::{self, dot_graph},
+    Backend, DType, Dim, Primitive, Shape,
+};
 
 pub trait TensorLike: Debug + Display {
     fn as_any(&self) -> &dyn std::any::Any;

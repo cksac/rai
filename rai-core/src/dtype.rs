@@ -1,5 +1,4 @@
-use std::fmt::Debug;
-use std::hash::Hash;
+use std::{hash::Hash, fmt::Debug};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DType {
