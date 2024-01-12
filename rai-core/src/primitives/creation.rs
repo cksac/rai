@@ -2,7 +2,7 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{Primitive, Tensor};
+use crate::{ElemType, Primitive, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Full {
@@ -85,6 +85,52 @@ impl Primitive for Arange {
 
     fn dot_label(&self) -> String {
         format!("Arange({}, {}, {})", self.start, self.stop, self.step)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    #[inline]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.ones_like()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    #[inline]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        vec![]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FromArray<T>
+where
+    T: ElemType,
+{
+    pub data: Vec<T>,
+}
+
+impl<T> FromArray<T>
+where
+    T: ElemType,
+{
+    pub fn new(data: impl Into<Vec<T>>) -> Self {
+        Self { data: data.into() }
+    }
+}
+
+impl<T> Primitive for FromArray<T>
+where
+    T: ElemType,
+{
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("FromArray({:?})", self.data)
     }
 
     fn as_any(&self) -> &dyn Any {

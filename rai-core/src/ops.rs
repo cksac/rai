@@ -4,14 +4,14 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, Full, Greater, GreaterEqual,
-        Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Negative, Normal,
-        NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt,
-        Square, Sub, Transpose,
+        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, FromArray, Full, Greater,
+        GreaterEqual, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul,
+        Negative, Normal, NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin,
+        Softmax, Sqrt, Square, Sub, Transpose,
     },
     shape::Dims,
     utils::dot_graph,
-    Backend, DType, Dim, Shape, Tensor,
+    Backend, DType, Dim, ElemType, Shape, Tensor,
 };
 
 macro_rules! impl_std_ops {
@@ -325,6 +325,19 @@ pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Deb
         Arange::new(start, stop, step),
         inputs,
     )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn from_array<T: ElemType>(
+    data: impl Into<Vec<T>> + Debug,
+    shape: impl Shape,
+    backend: impl Into<Box<dyn Backend>> + Debug,
+) -> Tensor {
+    let data = data.into();
+    assert!(data.len() == shape.size());
+    let backend = backend.into();
+    let inputs = vec![];
+    Tensor::new(backend, T::DTYPE, shape, FromArray::new(data), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

@@ -141,6 +141,28 @@ impl Eval<Cpu, primitives::Arange> for Dispatch<Cpu, primitives::Arange> {
     }
 }
 
+macro_rules! impl_from_array {
+    ($T:ty) => {
+        impl Eval<Cpu, primitives::FromArray<$T>> for Dispatch<Cpu, primitives::FromArray<$T>> {
+            fn eval(
+                &self,
+                _: &Cpu,
+                primitive: &primitives::FromArray<$T>,
+                _: &[Tensor],
+                output: &Tensor,
+            ) {
+                let device = &output.backend().into();
+                let t = candle_core::Tensor::new(primitive.data.as_slice(), device).unwrap();
+                output.set_data(t);
+            }
+        }
+    };
+}
+
+impl_from_array!(u8);
+impl_from_array!(f32);
+impl_from_array!(f64);
+
 impl Eval<Cpu, primitives::Add> for Dispatch<Cpu, primitives::Add> {
     fn eval(&self, _: &Cpu, _: &primitives::Add, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];

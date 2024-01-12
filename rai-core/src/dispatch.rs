@@ -70,6 +70,9 @@ macro_rules! register_backend {
         _register::<$backend, primitives::Full>(&mut $rules);
         _register::<$backend, primitives::Normal>(&mut $rules);
         _register::<$backend, primitives::Arange>(&mut $rules);
+        _register::<$backend, primitives::FromArray<u8>>(&mut $rules);
+        _register::<$backend, primitives::FromArray<f32>>(&mut $rules);
+        _register::<$backend, primitives::FromArray<f64>>(&mut $rules);
 
         // binary
         _register::<$backend, primitives::Add>(&mut $rules);

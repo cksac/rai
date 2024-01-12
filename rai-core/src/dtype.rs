@@ -7,7 +7,7 @@ pub enum DType {
     F64,
 }
 
-pub trait ElemType: Debug + Clone + PartialEq {
+pub trait ElemType: Debug + Clone + PartialEq + Send + Sync + 'static {
     const DTYPE: DType;
     fn one() -> Self;
     fn zero() -> Self;

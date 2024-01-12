@@ -12,7 +12,7 @@ use crate::{
     eval,
     ops::{self, ArangeArgs, ReduceArgs},
     utils::{self, dot_graph},
-    Backend, DType, Dim, Primitive, Shape,
+    Backend, DType, Dim, ElemType, Primitive, Shape,
 };
 
 pub trait TensorLike: Debug + Display {
@@ -133,6 +133,15 @@ impl Tensor {
     #[inline]
     pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
         ops::arange(args, backend)
+    }
+
+    #[inline]
+    pub fn from_array<T: ElemType>(
+        data: impl Into<Vec<T>> + Debug,
+        shape: impl Shape,
+        backend: impl Into<Box<dyn Backend>> + Debug,
+    ) -> Tensor {
+        ops::from_array(data, shape, backend)
     }
 
     #[inline]
