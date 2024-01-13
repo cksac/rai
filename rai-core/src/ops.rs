@@ -11,7 +11,7 @@ use crate::{
     },
     shape::Dims,
     utils::dot_graph,
-    Backend, DType, Dim, ElemType, Shape, Tensor,
+    Backend, DType, DTypeRepr, Dim, ElemType, Primitive, Shape, Tensor, F32, F64, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -104,13 +104,13 @@ pub fn full<T: ElemType>(
 ) -> Tensor {
     let backend = backend.into();
     let inputs = vec![];
-    Tensor::new(backend, T::DTYPE, shape, Full::new(val), inputs)
+    Tensor::new(backend, T::dtype(), shape, Full::new(val), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn normal(
     shape: impl Shape,
-    dtype: DType,
+    dtype: impl DTypeRepr,
     backend: impl Into<Box<dyn Backend>> + Debug,
 ) -> Tensor {
     let backend = backend.into();
@@ -126,7 +126,7 @@ pub trait ArangeArgs: Debug {
     fn step(&self) -> f64 {
         1.0
     }
-    fn dtype(&self) -> DType;
+    fn dtype(&self) -> impl DTypeRepr;
 }
 
 impl ArangeArgs for f64 {
@@ -134,17 +134,17 @@ impl ArangeArgs for f64 {
         *self
     }
 
-    fn dtype(&self) -> DType {
-        DType::F64
+    fn dtype(&self) -> impl DTypeRepr {
+        F64
     }
 }
 
-impl ArangeArgs for (f64, DType) {
+impl<D: DTypeRepr> ArangeArgs for (f64, D) {
     fn stop(&self) -> f64 {
         self.0
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> impl DTypeRepr {
         self.1
     }
 }
@@ -158,12 +158,12 @@ impl ArangeArgs for (f64, f64) {
         self.1
     }
 
-    fn dtype(&self) -> DType {
-        DType::F64
+    fn dtype(&self) -> impl DTypeRepr {
+        F64
     }
 }
 
-impl ArangeArgs for (f64, f64, DType) {
+impl<D: DTypeRepr> ArangeArgs for (f64, f64, D) {
     fn start(&self) -> f64 {
         self.0
     }
@@ -172,7 +172,7 @@ impl ArangeArgs for (f64, f64, DType) {
         self.1
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> impl DTypeRepr {
         self.2
     }
 }
@@ -190,12 +190,12 @@ impl ArangeArgs for (f64, f64, f64) {
         self.2
     }
 
-    fn dtype(&self) -> DType {
-        DType::F64
+    fn dtype(&self) -> impl DTypeRepr {
+        F64
     }
 }
 
-impl ArangeArgs for (f64, f64, f64, DType) {
+impl<D: DTypeRepr> ArangeArgs for (f64, f64, f64, D) {
     fn start(&self) -> f64 {
         self.0
     }
@@ -208,7 +208,7 @@ impl ArangeArgs for (f64, f64, f64, DType) {
         self.2
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> impl DTypeRepr {
         self.3
     }
 }
@@ -218,17 +218,17 @@ impl ArangeArgs for f32 {
         *self as f64
     }
 
-    fn dtype(&self) -> DType {
-        DType::F32
+    fn dtype(&self) -> impl DTypeRepr {
+        F32
     }
 }
 
-impl ArangeArgs for (f32, DType) {
+impl<D: DTypeRepr> ArangeArgs for (f32, D) {
     fn stop(&self) -> f64 {
         self.0 as f64
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> impl DTypeRepr {
         self.1
     }
 }
@@ -242,12 +242,12 @@ impl ArangeArgs for (f32, f32) {
         self.1 as f64
     }
 
-    fn dtype(&self) -> DType {
-        DType::F32
+    fn dtype(&self) -> impl DTypeRepr {
+        F32
     }
 }
 
-impl ArangeArgs for (f32, f32, DType) {
+impl<D: DTypeRepr> ArangeArgs for (f32, f32, D) {
     fn start(&self) -> f64 {
         self.0 as f64
     }
@@ -256,7 +256,7 @@ impl ArangeArgs for (f32, f32, DType) {
         self.1 as f64
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> impl DTypeRepr {
         self.2
     }
 }
@@ -274,12 +274,12 @@ impl ArangeArgs for (f32, f32, f32) {
         self.2 as f64
     }
 
-    fn dtype(&self) -> DType {
-        DType::F32
+    fn dtype(&self) -> impl DTypeRepr {
+        F32
     }
 }
 
-impl ArangeArgs for (f32, f32, f32, DType) {
+impl<D: DTypeRepr> ArangeArgs for (f32, f32, f32, D) {
     fn start(&self) -> f64 {
         self.0 as f64
     }
@@ -292,7 +292,7 @@ impl ArangeArgs for (f32, f32, f32, DType) {
         self.2 as f64
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> impl DTypeRepr {
         self.3
     }
 }
@@ -326,7 +326,7 @@ pub fn from_array<T: ElemType>(
     assert!(data.len() == shape.size());
     let backend = backend.into();
     let inputs = vec![];
-    Tensor::new(backend, T::DTYPE, shape, FromArray::new(data), inputs)
+    Tensor::new(backend, T::dtype(), shape, FromArray::new(data), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -622,7 +622,7 @@ pub fn log10(x: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = DType::U8;
+    let dtype = U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "eq({:?}, {:?}) with error {:?}\n{}",
@@ -640,7 +640,7 @@ pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = DType::U8;
+    let dtype = U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "ne({:?}, {:?}) with error {:?}\n{}",
@@ -658,7 +658,7 @@ pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = DType::U8;
+    let dtype = U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "gt({:?}, {:?}) with error {:?}\n{}",
@@ -676,7 +676,7 @@ pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = DType::U8;
+    let dtype = U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "ge({:?}, {:?}) with error {:?}\n{}",
@@ -693,7 +693,7 @@ pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = DType::U8;
+    let dtype = U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "lt({:?}, {:?}) with error {:?}\n{}",
@@ -710,7 +710,7 @@ pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn le(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
-    let dtype = DType::U8;
+    let dtype = U8;
     let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
         panic!(
             "le({:?}, {:?}) with error {:?}\n{}",
@@ -742,14 +742,28 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn as_type(x: &Tensor, dtype: DType) -> Tensor {
-    if x.dtype() == dtype {
+pub fn as_type(x: &Tensor, dtype: impl DTypeRepr) -> Tensor {
+    if x.dtype() == &dtype {
         return x.clone();
     }
     let backend = x.backend();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, AsType::new(dtype), inputs)
+}
+
+//  todo: merge with as_type using generic?
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn as_type_of(x: &Tensor, rhs: &Tensor) -> Tensor {
+    if x.dtype() == rhs.dtype() {
+        return x.clone();
+    }
+    let backend = x.backend();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let dtype: &dyn DType = rhs.dtype();
+    let primitive = dtype.as_self_dtype();
+    Tensor::new(backend, dtype, shape, primitive, inputs)
 }
 
 pub trait ReduceArgs: Debug {

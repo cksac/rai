@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     backend::{Cpu, RaiExpr},
-    primitives, Backend, Primitive, Tensor,
+    primitives, Backend, Primitive, Tensor, F32, F64, U8,
 };
 
 pub trait Eval<B, P>: DynClone + Sync + Send + 'static
@@ -103,7 +103,9 @@ macro_rules! register_backend {
         _register::<$backend, primitives::Log>(&mut $rules);
         _register::<$backend, primitives::Log2>(&mut $rules);
         _register::<$backend, primitives::Log10>(&mut $rules);
-        _register::<$backend, primitives::AsType>(&mut $rules);
+        _register::<$backend, primitives::AsType<U8>>(&mut $rules);
+        _register::<$backend, primitives::AsType<F32>>(&mut $rules);
+        _register::<$backend, primitives::AsType<F64>>(&mut $rules);
         _register::<$backend, primitives::Softmax>(&mut $rules);
         _register::<$backend, primitives::LogSoftmax>(&mut $rules);
 

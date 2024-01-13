@@ -1,7 +1,6 @@
 use rai_core::{
     backend::{Cpu, RaiExpr},
-    eval, value_and_grad,
-    DType::F32,
+    eval, value_and_grad, F32,
 };
 use rai_core::{raiexpr, Tensor};
 

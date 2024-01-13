@@ -100,7 +100,7 @@ impl Primitive for ReduceMax {
         for dim in self.dims() {
             shape[*dim] = 1;
         }
-        let mask = x.eq(output).as_type(x.dtype());
+        let mask = x.eq(output).as_type_of(x);
         let normalizer = mask.sum((self.dims(), true));
         let cotangent_x = (cotangent.reshape(shape) / normalizer) * mask;
         vec![cotangent_x]
@@ -153,7 +153,7 @@ impl Primitive for ReduceMin {
         for dim in self.dims() {
             shape[*dim] = 1;
         }
-        let mask = x.eq(output).as_type(x.dtype());
+        let mask = x.eq(output).as_type_of(x);
         let normalizer = mask.sum((self.dims(), true));
         let cotangent_x = (cotangent.reshape(shape) / normalizer) * mask;
         vec![cotangent_x]
@@ -165,7 +165,7 @@ fn reduce_chooser_jvp_rule(g: &Tensor, ans: &Tensor, operand: &Tensor, dims: &[u
     for dim in dims {
         shape[*dim] = 1;
     }
-    let location_indicators = operand.eq(ans.reshape(shape)).as_type(g.dtype());
+    let location_indicators = operand.eq(ans.reshape(shape)).as_type_of(g);
     let counts = location_indicators.sum(dims);
     (g * location_indicators).sum(dims) / counts
 }

@@ -1,11 +1,11 @@
-use rai_core::{backend::Cpu, DType, Tensor};
+use rai_core::{backend::Cpu, Tensor, F32};
 
 #[test]
 fn test_add() {
     let backend = &Cpu;
-    let a = &Tensor::ones([2, 3], DType::F32, backend);
-    let b = &Tensor::ones([2, 3], DType::F32, backend);
-    let c = &Tensor::ones([3], DType::F32, backend);
+    let a = &Tensor::ones([2, 3], F32, backend);
+    let b = &Tensor::ones([2, 3], F32, backend);
+    let c = &Tensor::ones([3], F32, backend);
 
     let z = a + b + c;
     println!("{}", z);
@@ -15,7 +15,7 @@ fn test_add() {
 fn test_add2() {
     let backend = &Cpu;
 
-    let a = &Tensor::ones([2, 3], DType::F32, backend);
+    let a = &Tensor::ones([2, 3], F32, backend);
     let b = &Tensor::full(1.4f32, [2, 3], backend);
     let c = &Tensor::full(1.4f32, [2, 3], backend);
     let d = &Tensor::full(1.4f32, [2, 3], backend);

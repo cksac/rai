@@ -2,7 +2,7 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{DType, Primitive, Tensor};
+use crate::{DType, DTypeRepr, ElemType, Primitive, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Negative;
@@ -323,16 +323,16 @@ impl Primitive for Log10 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AsType {
-    pub dtype: DType,
+pub struct AsType<D: DTypeRepr> {
+    pub dtype: D,
 }
-impl AsType {
-    pub fn new(dtype: DType) -> Self {
+impl<D: DTypeRepr> AsType<D> {
+    pub fn new(dtype: D) -> Self {
         Self { dtype }
     }
 }
 
-impl Primitive for AsType {
+impl<D: DTypeRepr> Primitive for AsType<D> {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
     }
@@ -354,7 +354,7 @@ impl Primitive for AsType {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let cotangent_x = cotangent.as_type(x.dtype());
+        let cotangent_x = cotangent.as_type_of(x);
         vec![cotangent_x]
     }
 }

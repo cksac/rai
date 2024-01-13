@@ -1,4 +1,4 @@
-use rai_core::{backend::Cpu, eval, utils::dot_graph, value_and_grad, DType, Func, Tensor};
+use rai_core::{backend::Cpu, eval, utils::dot_graph, value_and_grad, Func, Tensor, F32};
 
 #[test]
 fn test_add_grad() {
@@ -8,8 +8,8 @@ fn test_add_grad() {
     let func = |x: &Tensor, y: &Tensor| x + y;
     let vg_func = value_and_grad(func);
 
-    let a = Tensor::ones([1], DType::F32, backend);
-    let b = Tensor::ones([1], DType::F32, backend);
+    let a = Tensor::ones([1], F32, backend);
+    let b = Tensor::ones([1], F32, backend);
 
     let (v, (g1, g2)) = vg_func.apply((&a, &b));
     println!("{}", v);
@@ -25,8 +25,8 @@ fn test_sub_grad() {
     let func = |x: &Tensor, y: &Tensor| x - y;
     let vg_func = value_and_grad(func);
 
-    let a = Tensor::ones([1], DType::F32, backend);
-    let b = Tensor::ones([1], DType::F32, backend);
+    let a = Tensor::ones([1], F32, backend);
+    let b = Tensor::ones([1], F32, backend);
 
     let (v, (g1, g2)) = vg_func.apply((&a, &b));
     println!("{}", v);
@@ -59,8 +59,8 @@ fn test_div_grad() {
     let func = |x: &Tensor, y: &Tensor| x / y;
     let vg_func = value_and_grad(func);
 
-    let a = Tensor::ones([1], DType::F32, backend);
-    let b = Tensor::ones([1], DType::F32, backend);
+    let a = Tensor::ones([1], F32, backend);
+    let b = Tensor::ones([1], F32, backend);
 
     let (v, (g1, g2)) = vg_func.apply((&a, &b));
     println!("{}", v);
@@ -80,9 +80,9 @@ fn test_linear_grad() {
     let out_dim = 2;
     let batch_dim = 8;
 
-    let w = &Tensor::ones([out_dim, in_dim], DType::F32, backend);
-    let b = &Tensor::ones([out_dim], DType::F32, backend);
-    let x = &Tensor::ones([batch_dim, in_dim], DType::F32, backend);
+    let w = &Tensor::ones([out_dim, in_dim], F32, backend);
+    let b = &Tensor::ones([out_dim], F32, backend);
+    let x = &Tensor::ones([batch_dim, in_dim], F32, backend);
 
     let (v, (gw, gb, gx)) = vg_func.apply((w, b, x));
     eval(([&v, &gw, &gb, &gx], true));

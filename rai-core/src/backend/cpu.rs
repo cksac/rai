@@ -9,7 +9,7 @@ use crate::{
     primitives,
     tensor::TensorLike,
     utils::dot_graph,
-    Backend, DType, Shape, Tensor,
+    Backend, DType, DTypeRepr, Shape, Tensor, F32, F64, U8,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -26,11 +26,11 @@ impl TensorLike for candle_core::Tensor {
         self.dims()
     }
 
-    fn dtype(&self) -> DType {
+    fn dtype(&self) -> &dyn DType {
         match self.dtype() {
-            candle_core::DType::F32 => DType::F32,
-            candle_core::DType::F64 => DType::F64,
-            candle_core::DType::U8 => DType::U8,
+            candle_core::DType::F32 => &F32,
+            candle_core::DType::F64 => &F64,
+            candle_core::DType::U8 => &U8,
             candle_core::DType::U32 => todo!(),
             candle_core::DType::I64 => todo!(),
             candle_core::DType::BF16 => todo!(),
@@ -60,13 +60,32 @@ impl Backend for Cpu {
     }
 }
 
-impl From<DType> for candle_core::DType {
-    fn from(val: DType) -> candle_core::DType {
-        match val {
-            DType::F32 => candle_core::DType::F32,
-            DType::F64 => candle_core::DType::F64,
-            DType::U8 => candle_core::DType::U8,
-        }
+// impl<'a> From<&'a dyn DType> for candle_core::DType {
+//     fn from(val: &'a dyn DType) -> candle_core::DType {
+//         todo!()
+//         // match val {
+//         //     DType::F32 => candle_core::DType::F32,
+//         //     DType::F64 => candle_core::DType::F64,
+//         //     DType::U8 => candle_core::DType::U8,
+//         // }
+//     }
+// }
+
+impl From<U8> for candle_core::DType {
+    fn from(value: U8) -> Self {
+        candle_core::DType::U8
+    }
+}
+
+impl From<F32> for candle_core::DType {
+    fn from(value: F32) -> Self {
+        candle_core::DType::F32
+    }
+}
+
+impl From<F64> for candle_core::DType {
+    fn from(value: F64) -> Self {
+        candle_core::DType::F64
     }
 }
 
@@ -128,28 +147,29 @@ impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
 
 impl Eval<Cpu, primitives::Arange> for Dispatch<Cpu, primitives::Arange> {
     fn eval(&self, _: &Cpu, primitive: &primitives::Arange, _: &[Tensor], output: &Tensor) {
-        let start = primitive.start;
-        let end = primitive.stop;
-        let step = primitive.step;
-        let t = match output.dtype() {
-            DType::F32 => candle_core::Tensor::arange_step::<f32>(
-                start as f32,
-                end as f32,
-                step as f32,
-                &output.backend().into(),
-            ),
-            DType::F64 => {
-                candle_core::Tensor::arange_step::<f64>(start, end, step, &output.backend().into())
-            }
-            DType::U8 => candle_core::Tensor::arange_step::<u8>(
-                start as u8,
-                end as u8,
-                step as u8,
-                &output.backend().into(),
-            ),
-        }
-        .unwrap();
-        output.set_data(t);
+        todo!()
+        // let start = primitive.start;
+        // let end = primitive.stop;
+        // let step = primitive.step;
+        // let t = match output.dtype() {
+        //     DType::F32 => candle_core::Tensor::arange_step::<f32>(
+        //         start as f32,
+        //         end as f32,
+        //         step as f32,
+        //         &output.backend().into(),
+        //     ),
+        //     DType::F64 => {
+        //         candle_core::Tensor::arange_step::<f64>(start, end, step, &output.backend().into())
+        //     }
+        //     DType::U8 => candle_core::Tensor::arange_step::<u8>(
+        //         start as u8,
+        //         end as u8,
+        //         step as u8,
+        //         &output.backend().into(),
+        //     ),
+        // }
+        // .unwrap();
+        // output.set_data(t);
     }
 }
 
@@ -585,15 +605,28 @@ impl Eval<Cpu, primitives::Maximum> for Dispatch<Cpu, primitives::Maximum> {
     }
 }
 
-impl Eval<Cpu, primitives::AsType> for Dispatch<Cpu, primitives::AsType> {
-    fn eval(&self, _: &Cpu, primitive: &primitives::AsType, inputs: &[Tensor], output: &Tensor) {
-        let x = &inputs[0];
-        let t = x.get_data::<Data>().unwrap();
-        let t = t.deref();
-        let t = t.to_dtype(primitive.dtype.into()).unwrap();
-        output.set_data(t)
-    }
+macro_rules! impl_as_type {
+    ($T:ty) => {
+        impl Eval<Cpu, primitives::AsType<$T>> for Dispatch<Cpu, primitives::AsType<$T>> {
+            fn eval(
+                &self,
+                _: &Cpu,
+                primitive: &primitives::AsType<$T>,
+                inputs: &[Tensor],
+                output: &Tensor,
+            ) {
+                let x = &inputs[0];
+                let t = x.get_data::<Data>().unwrap();
+                let t = t.deref();
+                let t = t.to_dtype(primitive.dtype.into()).unwrap();
+                output.set_data(t)
+            }
+        }
+    };
 }
+impl_as_type!(U8);
+impl_as_type!(F32);
+impl_as_type!(F64);
 
 // from candle_nn::ops
 fn softmax<D: candle_core::shape::Dim>(
