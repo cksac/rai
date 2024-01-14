@@ -15,7 +15,7 @@ cargo add rai
 ## Code snippets
 ### Function transformations (jvp, vjp, grad, value_and_grad)
 ```rust
-use rai::{backend::Cpu, grad, DType, Func, Tensor};
+use rai::{backend::Cpu, grad, Func, Tensor, F32};
 
 fn f(x: &Tensor) -> Tensor {
     x.sin()
@@ -25,7 +25,7 @@ fn main() {
     let grad_fn = grad(grad(f));
 
     let backend = &Cpu;
-    let x = Tensor::ones([1], DType::F32, backend);
+    let x = Tensor::ones([1], F32, backend);
     let grad = grad_fn.apply((&x,));
 
     println!("{}", grad.dot_graph());

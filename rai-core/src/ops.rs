@@ -11,7 +11,7 @@ use crate::{
     },
     shape::Dims,
     utils::dot_graph,
-    Backend, DType, Dim, DynDType, ElemType, Primitive, Shape, Tensor, F32, F64, U8,
+    Backend, DType, Dim, DynDType, ElemType, Shape, Tensor, F32, F64, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -124,38 +124,28 @@ pub fn normal(
     Tensor::new(backend, dtype, shape, Normal, inputs)
 }
 
-pub trait ArangeArgs: Debug {
-    fn start(&self) -> f64 {
-        0.0
+pub trait ArangeArgs<D: DType>: Debug {
+    fn start(&self) -> D::Repr {
+        D::zero()
     }
-    fn stop(&self) -> f64;
-    fn step(&self) -> f64 {
-        1.0
+    fn stop(&self) -> D::Repr;
+    fn step(&self) -> D::Repr {
+        D::one()
     }
-    fn dtype(&self) -> impl DType;
+    fn dtype(&self) -> D;
 }
 
-impl ArangeArgs for f64 {
+impl ArangeArgs<F64> for f64 {
     fn stop(&self) -> f64 {
         *self
     }
 
-    fn dtype(&self) -> impl DType {
+    fn dtype(&self) -> F64 {
         F64
     }
 }
 
-impl<D: DType> ArangeArgs for (f64, D) {
-    fn stop(&self) -> f64 {
-        self.0
-    }
-
-    fn dtype(&self) -> impl DType {
-        self.1
-    }
-}
-
-impl ArangeArgs for (f64, f64) {
+impl ArangeArgs<F64> for (f64, f64) {
     fn start(&self) -> f64 {
         self.0
     }
@@ -164,26 +154,12 @@ impl ArangeArgs for (f64, f64) {
         self.1
     }
 
-    fn dtype(&self) -> impl DType {
+    fn dtype(&self) -> F64 {
         F64
     }
 }
 
-impl<D: DType> ArangeArgs for (f64, f64, D) {
-    fn start(&self) -> f64 {
-        self.0
-    }
-
-    fn stop(&self) -> f64 {
-        self.1
-    }
-
-    fn dtype(&self) -> impl DType {
-        self.2
-    }
-}
-
-impl ArangeArgs for (f64, f64, f64) {
+impl ArangeArgs<F64> for (f64, f64, f64) {
     fn start(&self) -> f64 {
         self.0
     }
@@ -196,128 +172,75 @@ impl ArangeArgs for (f64, f64, f64) {
         self.2
     }
 
-    fn dtype(&self) -> impl DType {
+    fn dtype(&self) -> F64 {
         F64
     }
 }
 
-impl<D: DType> ArangeArgs for (f64, f64, f64, D) {
-    fn start(&self) -> f64 {
+impl ArangeArgs<F32> for f32 {
+    fn stop(&self) -> f32 {
+        *self
+    }
+
+    fn dtype(&self) -> F32 {
+        F32
+    }
+}
+
+impl ArangeArgs<F32> for (f32, f32) {
+    fn start(&self) -> f32 {
         self.0
     }
 
-    fn stop(&self) -> f64 {
+    fn stop(&self) -> f32 {
+        self.1 as f32
+    }
+
+    fn dtype(&self) -> F32 {
+        F32
+    }
+}
+
+impl ArangeArgs<F32> for (f32, f32, f32) {
+    fn start(&self) -> f32 {
+        self.0
+    }
+
+    fn stop(&self) -> f32 {
         self.1
     }
 
-    fn step(&self) -> f64 {
+    fn step(&self) -> f32 {
         self.2
     }
 
-    fn dtype(&self) -> impl DType {
-        self.3
-    }
-}
-
-impl ArangeArgs for f32 {
-    fn stop(&self) -> f64 {
-        *self as f64
-    }
-
-    fn dtype(&self) -> impl DType {
+    fn dtype(&self) -> F32 {
         F32
-    }
-}
-
-impl<D: DType> ArangeArgs for (f32, D) {
-    fn stop(&self) -> f64 {
-        self.0 as f64
-    }
-
-    fn dtype(&self) -> impl DType {
-        self.1
-    }
-}
-
-impl ArangeArgs for (f32, f32) {
-    fn start(&self) -> f64 {
-        self.0 as f64
-    }
-
-    fn stop(&self) -> f64 {
-        self.1 as f64
-    }
-
-    fn dtype(&self) -> impl DType {
-        F32
-    }
-}
-
-impl<D: DType> ArangeArgs for (f32, f32, D) {
-    fn start(&self) -> f64 {
-        self.0 as f64
-    }
-
-    fn stop(&self) -> f64 {
-        self.1 as f64
-    }
-
-    fn dtype(&self) -> impl DType {
-        self.2
-    }
-}
-
-impl ArangeArgs for (f32, f32, f32) {
-    fn start(&self) -> f64 {
-        self.0 as f64
-    }
-
-    fn stop(&self) -> f64 {
-        self.1 as f64
-    }
-
-    fn step(&self) -> f64 {
-        self.2 as f64
-    }
-
-    fn dtype(&self) -> impl DType {
-        F32
-    }
-}
-
-impl<D: DType> ArangeArgs for (f32, f32, f32, D) {
-    fn start(&self) -> f64 {
-        self.0 as f64
-    }
-
-    fn stop(&self) -> f64 {
-        self.1 as f64
-    }
-
-    fn step(&self) -> f64 {
-        self.2 as f64
-    }
-
-    fn dtype(&self) -> impl DType {
-        self.3
     }
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
+pub fn arange<D: DType, T: ArangeArgs<D>>(
+    args: T,
+    backend: impl Into<Box<dyn Backend>> + Debug,
+) -> Tensor
+where
+    D::Repr: std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
+    D::Repr: Copy + Into<f64>,
+{
     let start = args.start();
     let stop = args.stop();
     let step = args.step();
     let dtype = args.dtype();
 
-    let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
+    let size = std::cmp::max(((stop - start) / step).into().ceil() as usize, 0);
     let backend = backend.into();
     let inputs = vec![];
     Tensor::new(
         backend,
         dtype,
         [size],
-        Arange::new(start, stop, step),
+        Arange::<D>::new(start, stop, step),
         inputs,
     )
 }

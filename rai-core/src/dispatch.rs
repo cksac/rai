@@ -71,7 +71,9 @@ macro_rules! register_backend {
         _register::<$backend, primitives::Full<F32>>(&mut $rules);
         _register::<$backend, primitives::Full<F64>>(&mut $rules);
         _register::<$backend, primitives::Normal>(&mut $rules);
-        _register::<$backend, primitives::Arange>(&mut $rules);
+        _register::<$backend, primitives::Arange<U8>>(&mut $rules);
+        _register::<$backend, primitives::Arange<F32>>(&mut $rules);
+        _register::<$backend, primitives::Arange<F64>>(&mut $rules);
         _register::<$backend, primitives::FromArray<U8>>(&mut $rules);
         _register::<$backend, primitives::FromArray<F32>>(&mut $rules);
         _register::<$backend, primitives::FromArray<F64>>(&mut $rules);

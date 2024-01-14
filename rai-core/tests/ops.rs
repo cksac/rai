@@ -21,11 +21,10 @@ fn test_arange() {
     let a1 = Tensor::arange(10.0f32, backend);
     let a2 = Tensor::arange((10.0f32, 20.0f32), backend);
     let a3 = Tensor::arange((10.0f32, 20.0f32, 2.0f32), backend);
-    let a4 = Tensor::arange((10.0f32, 20.0f32, 2.0f32, F64), backend);
+
     println!("{}", a1);
     println!("{}", a2);
     println!("{}", a3);
-    println!("{}", a4);
 }
 
 #[test]

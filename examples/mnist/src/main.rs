@@ -1,8 +1,8 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{differentiable_module, eval, Aux, DifferentiableModule};
-use rai::{nn::Linear, value_and_grad, Backend, DynDType, Func, Module, Tensor};
+use rai::{differentiable_module, eval, Aux, DType, DifferentiableModule, F32};
+use rai::{nn::Linear, value_and_grad, Backend, Func, Module, Tensor};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Instant;
@@ -18,7 +18,7 @@ impl Mlp {
         input_dim: usize,
         hidden_dim: usize,
         output_dim: usize,
-        dtype: DynDType,
+        dtype: impl DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Self {
         let backend = &backend.into();
@@ -87,7 +87,7 @@ fn main() {
     let learning_rate = 1e-1;
 
     let backend = &Cpu;
-    let dtype = DynDType::F32;
+    let dtype = F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
     let mut optimizer = SDG::new(model.parameters(), learning_rate);

@@ -1,11 +1,8 @@
 use std::{any::Any, fmt::Debug};
 
-use candle_core::Tensor;
-
 use crate::{
-    ops,
     primitives::{AsType, Full},
-    Backend, Primitive, Shape,
+    Primitive,
 };
 
 pub trait ElemType: Clone + Debug + 'static {
@@ -18,15 +15,15 @@ pub trait ElemType: Clone + Debug + 'static {
 
 pub trait DType: Clone + Copy + Debug + PartialEq + 'static {
     type Repr: ElemType<DType = Self>;
-    fn zero(&self) -> Self::Repr;
-    fn one(&self) -> Self::Repr;
+    fn zero() -> Self::Repr;
+    fn one() -> Self::Repr;
 
     fn full_zero(&self) -> Full<Self> {
-        Full::new(self.zero())
+        Full::new(Self::zero())
     }
 
     fn full_one(&self) -> Full<Self> {
-        Full::new(self.one())
+        Full::new(Self::one())
     }
 
     fn as_self_dtype(&self) -> AsType<Self> {
@@ -120,11 +117,11 @@ pub struct U8;
 impl DType for U8 {
     type Repr = u8;
 
-    fn zero(&self) -> Self::Repr {
+    fn zero() -> Self::Repr {
         0
     }
 
-    fn one(&self) -> Self::Repr {
+    fn one() -> Self::Repr {
         1
     }
 }
@@ -142,11 +139,11 @@ pub struct F32;
 impl DType for F32 {
     type Repr = f32;
 
-    fn zero(&self) -> Self::Repr {
+    fn zero() -> Self::Repr {
         0.0
     }
 
-    fn one(&self) -> Self::Repr {
+    fn one() -> Self::Repr {
         1.0
     }
 }
@@ -163,11 +160,11 @@ pub struct F64;
 impl DType for F64 {
     type Repr = f64;
 
-    fn zero(&self) -> Self::Repr {
+    fn zero() -> Self::Repr {
         0.0
     }
 
-    fn one(&self) -> Self::Repr {
+    fn one() -> Self::Repr {
         1.0
     }
 }

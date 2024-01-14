@@ -2,7 +2,7 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{DType, ElemType, Primitive, Tensor};
+use crate::{DType, Primitive, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Full<D>
@@ -75,25 +75,25 @@ impl Primitive for Normal {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Arange {
-    pub start: f64,
-    pub stop: f64,
-    pub step: f64,
+pub struct Arange<D: DType> {
+    pub start: D::Repr,
+    pub stop: D::Repr,
+    pub step: D::Repr,
 }
 
-impl Arange {
-    pub fn new(start: f64, stop: f64, step: f64) -> Self {
+impl<D: DType> Arange<D> {
+    pub fn new(start: D::Repr, stop: D::Repr, step: D::Repr) -> Self {
         Self { start, stop, step }
     }
 }
 
-impl Primitive for Arange {
+impl<D: DType> Primitive for Arange<D> {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
     }
 
     fn dot_label(&self) -> String {
-        format!("Arange({}, {}, {})", self.start, self.stop, self.step)
+        format!("Arange({:?}, {:?}, {:?})", self.start, self.stop, self.step)
     }
 
     fn as_any(&self) -> &dyn Any {

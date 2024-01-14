@@ -60,31 +60,20 @@ impl Backend for Cpu {
     }
 }
 
-// impl<'a> From<&'a dyn DType> for candle_core::DType {
-//     fn from(val: &'a dyn DType) -> candle_core::DType {
-//         todo!()
-//         // match val {
-//         //     DType::F32 => candle_core::DType::F32,
-//         //     DType::F64 => candle_core::DType::F64,
-//         //     DType::U8 => candle_core::DType::U8,
-//         // }
-//     }
-// }
-
 impl From<U8> for candle_core::DType {
-    fn from(value: U8) -> Self {
+    fn from(_: U8) -> Self {
         candle_core::DType::U8
     }
 }
 
 impl From<F32> for candle_core::DType {
-    fn from(value: F32) -> Self {
+    fn from(_: F32) -> Self {
         candle_core::DType::F32
     }
 }
 
 impl From<F64> for candle_core::DType {
-    fn from(value: F64) -> Self {
+    fn from(_: F64) -> Self {
         candle_core::DType::F64
     }
 }
@@ -145,33 +134,35 @@ impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
     }
 }
 
-impl Eval<Cpu, primitives::Arange> for Dispatch<Cpu, primitives::Arange> {
-    fn eval(&self, _: &Cpu, primitive: &primitives::Arange, _: &[Tensor], output: &Tensor) {
-        todo!()
-        // let start = primitive.start;
-        // let end = primitive.stop;
-        // let step = primitive.step;
-        // let t = match output.dtype() {
-        //     DType::F32 => candle_core::Tensor::arange_step::<f32>(
-        //         start as f32,
-        //         end as f32,
-        //         step as f32,
-        //         &output.backend().into(),
-        //     ),
-        //     DType::F64 => {
-        //         candle_core::Tensor::arange_step::<f64>(start, end, step, &output.backend().into())
-        //     }
-        //     DType::U8 => candle_core::Tensor::arange_step::<u8>(
-        //         start as u8,
-        //         end as u8,
-        //         step as u8,
-        //         &output.backend().into(),
-        //     ),
-        // }
-        // .unwrap();
-        // output.set_data(t);
-    }
+macro_rules! impl_arange {
+    ($T:ty) => {
+        impl Eval<Cpu, primitives::Arange<$T>> for Dispatch<Cpu, primitives::Arange<$T>> {
+            fn eval(
+                &self,
+                _: &Cpu,
+                primitive: &primitives::Arange<$T>,
+                _: &[Tensor],
+                output: &Tensor,
+            ) {
+                let start = primitive.start;
+                let end = primitive.stop;
+                let step = primitive.step;
+                let t = candle_core::Tensor::arange_step::<<$T as DType>::Repr>(
+                    start,
+                    end,
+                    step,
+                    &output.backend().into(),
+                )
+                .unwrap();
+                output.set_data(t);
+            }
+        }
+    };
 }
+
+impl_arange!(U8);
+impl_arange!(F32);
+impl_arange!(F64);
 
 macro_rules! impl_from_array {
     ($T:ty) => {

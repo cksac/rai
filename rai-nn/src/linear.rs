@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{differentiable_module, Backend, DynDType, Module, Tensor};
+use rai_core::{differentiable_module, Backend, DType, Module, Tensor};
 
 #[derive(Clone, Debug)]
 pub struct Linear {
@@ -13,7 +13,7 @@ impl Linear {
         in_features: usize,
         out_features: usize,
         has_bias: bool,
-        dtype: DynDType,
+        dtype: impl DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Self {
         let backend = &backend.into();

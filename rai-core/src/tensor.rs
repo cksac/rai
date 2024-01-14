@@ -4,15 +4,12 @@ use std::{
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
     ops::Deref,
-    primitive,
     rc::Rc,
     sync::atomic,
 };
 
-use candle_core::backend;
-
 use crate::{
-    dtype, eval,
+    eval,
     ops::{self, ArangeArgs, ReduceArgs},
     utils::{self, dot_graph},
     Backend, DType, Dim, DynDType, ElemType, Primitive, Shape,
@@ -91,25 +88,27 @@ impl Tensor {
     }
 
     #[inline]
+    #[allow(unused_variables)]
     pub fn ones<D: DType>(
         shape: impl Shape,
         dtype: D,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full::<D::Repr>(dtype.one(), shape, backend)
+        ops::full::<D::Repr>(D::one(), shape, backend)
     }
 
     #[inline]
+    #[allow(unused_variables)]
     pub fn zeros<D: DType>(
         shape: impl Shape,
         dtype: D,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full::<D::Repr>(dtype.zero(), shape, backend)
+        ops::full::<D::Repr>(D::zero(), shape, backend)
     }
 
     #[inline]
-    pub fn full_like<T: ElemType>(&self, val: <T::DType as DType>::Repr) -> Tensor {
+    pub fn full_like<T: ElemType>(&self, val: T) -> Tensor {
         if self.dtype() == T::dyn_dtype().as_ref() {
             ops::full::<T>(val, self.shape(), self.backend())
         } else {
@@ -148,7 +147,15 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn arange<T: ArangeArgs>(args: T, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
+    pub fn arange<D: DType, T: ArangeArgs<D>>(
+        args: T,
+        backend: impl Into<Box<dyn Backend>> + Debug,
+    ) -> Tensor
+    where
+        D::Repr:
+            std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
+        D::Repr: Into<f64> + Copy,
+    {
         ops::arange(args, backend)
     }
 
