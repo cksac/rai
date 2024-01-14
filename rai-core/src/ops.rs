@@ -193,7 +193,7 @@ impl ArangeArgs<F32> for (f32, f32) {
     }
 
     fn stop(&self) -> f32 {
-        self.1 as f32
+        self.1 
     }
 
     fn dtype(&self) -> F32 {
