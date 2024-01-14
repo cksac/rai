@@ -9,7 +9,7 @@ use crate::{
     primitives,
     tensor::TensorLike,
     utils::dot_graph,
-    Backend, DType, DTypeRepr, Shape, Tensor, F32, F64, U8,
+    Backend, DType, DynDType, Shape, Tensor, F32, F64, U8,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -26,7 +26,7 @@ impl TensorLike for candle_core::Tensor {
         self.dims()
     }
 
-    fn dtype(&self) -> &dyn DType {
+    fn dtype(&self) -> &dyn DynDType {
         match self.dtype() {
             candle_core::DType::F32 => &F32,
             candle_core::DType::F64 => &F64,
@@ -131,9 +131,9 @@ macro_rules! impl_full {
     };
 }
 
-impl_full!(u8);
-impl_full!(f32);
-impl_full!(f64);
+impl_full!(U8);
+impl_full!(F32);
+impl_full!(F64);
 
 impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
     fn eval(&self, _: &Cpu, _: &primitives::Normal, _: &[Tensor], output: &Tensor) {
@@ -191,9 +191,9 @@ macro_rules! impl_from_array {
     };
 }
 
-impl_from_array!(u8);
-impl_from_array!(f32);
-impl_from_array!(f64);
+impl_from_array!(U8);
+impl_from_array!(F32);
+impl_from_array!(F64);
 
 impl Eval<Cpu, primitives::Add> for Dispatch<Cpu, primitives::Add> {
     fn eval(&self, _: &Cpu, _: &primitives::Add, inputs: &[Tensor], output: &Tensor) {

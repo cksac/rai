@@ -11,7 +11,7 @@ use crate::{
     },
     shape::Dims,
     utils::dot_graph,
-    Backend, DType, DTypeRepr, Dim, ElemType, Primitive, Shape, Tensor, F32, F64, U8,
+    Backend, DType, Dim, DynDType, ElemType, Primitive, Shape, Tensor, F32, F64, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -20,7 +20,7 @@ macro_rules! impl_std_ops_for_scalar {
             type Output = Tensor;
 
             fn $func(self, rhs: Tensor) -> Self::Output {
-                let lhs = rhs.full_like(self);
+                let lhs = rhs.full_like::<$T>(self);
                 $func(&lhs, &rhs)
             }
         }
@@ -29,7 +29,7 @@ macro_rules! impl_std_ops_for_scalar {
             type Output = Tensor;
 
             fn $func(self, rhs: &'a Tensor) -> Self::Output {
-                let lhs = rhs.full_like(self);
+                let lhs = rhs.full_like::<$T>(self);
                 $func(&lhs, &rhs)
             }
         }
@@ -73,7 +73,7 @@ macro_rules! impl_std_ops {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs = self.full_like(rhs);
+                let rhs = self.full_like::<T>(rhs);
                 $func(&self, &rhs)
             }
         }
@@ -85,7 +85,7 @@ macro_rules! impl_std_ops {
             type Output = Tensor;
 
             fn $func(self, rhs: T) -> Self::Output {
-                let rhs = self.full_like(rhs);
+                let rhs = self.full_like::<T>(rhs);
                 $func(self, &rhs)
             }
         }
@@ -104,13 +104,19 @@ pub fn full<T: ElemType>(
 ) -> Tensor {
     let backend = backend.into();
     let inputs = vec![];
-    Tensor::new(backend, T::dtype(), shape, Full::new(val), inputs)
+    Tensor::new(
+        backend,
+        T::dyn_dtype(),
+        shape,
+        Full::<T::DType>::new(val),
+        inputs,
+    )
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn normal(
     shape: impl Shape,
-    dtype: impl DTypeRepr,
+    dtype: impl DType,
     backend: impl Into<Box<dyn Backend>> + Debug,
 ) -> Tensor {
     let backend = backend.into();
@@ -126,7 +132,7 @@ pub trait ArangeArgs: Debug {
     fn step(&self) -> f64 {
         1.0
     }
-    fn dtype(&self) -> impl DTypeRepr;
+    fn dtype(&self) -> impl DType;
 }
 
 impl ArangeArgs for f64 {
@@ -134,17 +140,17 @@ impl ArangeArgs for f64 {
         *self
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         F64
     }
 }
 
-impl<D: DTypeRepr> ArangeArgs for (f64, D) {
+impl<D: DType> ArangeArgs for (f64, D) {
     fn stop(&self) -> f64 {
         self.0
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         self.1
     }
 }
@@ -158,12 +164,12 @@ impl ArangeArgs for (f64, f64) {
         self.1
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         F64
     }
 }
 
-impl<D: DTypeRepr> ArangeArgs for (f64, f64, D) {
+impl<D: DType> ArangeArgs for (f64, f64, D) {
     fn start(&self) -> f64 {
         self.0
     }
@@ -172,7 +178,7 @@ impl<D: DTypeRepr> ArangeArgs for (f64, f64, D) {
         self.1
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         self.2
     }
 }
@@ -190,12 +196,12 @@ impl ArangeArgs for (f64, f64, f64) {
         self.2
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         F64
     }
 }
 
-impl<D: DTypeRepr> ArangeArgs for (f64, f64, f64, D) {
+impl<D: DType> ArangeArgs for (f64, f64, f64, D) {
     fn start(&self) -> f64 {
         self.0
     }
@@ -208,7 +214,7 @@ impl<D: DTypeRepr> ArangeArgs for (f64, f64, f64, D) {
         self.2
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         self.3
     }
 }
@@ -218,17 +224,17 @@ impl ArangeArgs for f32 {
         *self as f64
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         F32
     }
 }
 
-impl<D: DTypeRepr> ArangeArgs for (f32, D) {
+impl<D: DType> ArangeArgs for (f32, D) {
     fn stop(&self) -> f64 {
         self.0 as f64
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         self.1
     }
 }
@@ -242,12 +248,12 @@ impl ArangeArgs for (f32, f32) {
         self.1 as f64
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         F32
     }
 }
 
-impl<D: DTypeRepr> ArangeArgs for (f32, f32, D) {
+impl<D: DType> ArangeArgs for (f32, f32, D) {
     fn start(&self) -> f64 {
         self.0 as f64
     }
@@ -256,7 +262,7 @@ impl<D: DTypeRepr> ArangeArgs for (f32, f32, D) {
         self.1 as f64
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         self.2
     }
 }
@@ -274,12 +280,12 @@ impl ArangeArgs for (f32, f32, f32) {
         self.2 as f64
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         F32
     }
 }
 
-impl<D: DTypeRepr> ArangeArgs for (f32, f32, f32, D) {
+impl<D: DType> ArangeArgs for (f32, f32, f32, D) {
     fn start(&self) -> f64 {
         self.0 as f64
     }
@@ -292,7 +298,7 @@ impl<D: DTypeRepr> ArangeArgs for (f32, f32, f32, D) {
         self.2 as f64
     }
 
-    fn dtype(&self) -> impl DTypeRepr {
+    fn dtype(&self) -> impl DType {
         self.3
     }
 }
@@ -326,7 +332,13 @@ pub fn from_array<T: ElemType>(
     assert!(data.len() == shape.size());
     let backend = backend.into();
     let inputs = vec![];
-    Tensor::new(backend, T::dtype(), shape, FromArray::new(data), inputs)
+    Tensor::new(
+        backend,
+        T::dyn_dtype(),
+        shape,
+        FromArray::<T::DType>::new(data),
+        inputs,
+    )
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -742,7 +754,7 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn as_type(x: &Tensor, dtype: impl DTypeRepr) -> Tensor {
+pub fn as_type(x: &Tensor, dtype: impl DType) -> Tensor {
     if x.dtype() == &dtype {
         return x.clone();
     }
@@ -761,7 +773,7 @@ pub fn as_type_of(x: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = x.backend();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let dtype: &dyn DType = rhs.dtype();
+    let dtype: &dyn DynDType = rhs.dtype();
     let primitive = dtype.as_self_dtype();
     Tensor::new(backend, dtype, shape, primitive, inputs)
 }

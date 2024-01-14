@@ -2,27 +2,27 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{ElemType, Primitive, Tensor};
+use crate::{DType, ElemType, Primitive, Tensor};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Full<T>
+pub struct Full<D>
 where
-    T: ElemType,
+    D: DType,
 {
-    pub val: T,
+    pub val: D::Repr,
 }
-impl<T> Full<T>
+impl<D> Full<D>
 where
-    T: ElemType,
+    D: DType,
 {
-    pub fn new(val: T) -> Self {
+    pub fn new(val: D::Repr) -> Self {
         Full { val }
     }
 }
 
-impl<T> Primitive for Full<T>
+impl<D> Primitive for Full<D>
 where
-    T: ElemType,
+    D: DType,
 {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
@@ -114,25 +114,25 @@ impl Primitive for Arange {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FromArray<T>
+pub struct FromArray<D>
 where
-    T: ElemType,
+    D: DType,
 {
-    pub data: Vec<T>,
+    pub data: Vec<D::Repr>,
 }
 
-impl<T> FromArray<T>
+impl<D> FromArray<D>
 where
-    T: ElemType,
+    D: DType,
 {
-    pub fn new(data: impl Into<Vec<T>>) -> Self {
+    pub fn new(data: impl Into<Vec<D::Repr>>) -> Self {
         Self { data: data.into() }
     }
 }
 
-impl<T> Primitive for FromArray<T>
+impl<D> Primitive for FromArray<D>
 where
-    T: ElemType,
+    D: DType,
 {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())

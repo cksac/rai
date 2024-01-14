@@ -9,19 +9,23 @@ use crate::{
 };
 
 pub trait ElemType: Clone + Debug + 'static {
-    fn dtype() -> Box<dyn DType>;
+    type DType: DType<Repr = Self>;
+    fn dtype() -> Self::DType;
+    fn dyn_dtype() -> Box<dyn DynDType> {
+        Box::from(Self::dtype())
+    }
 }
 
-pub trait DTypeRepr: Clone + Copy + Debug + PartialEq + 'static {
-    type Repr: ElemType;
+pub trait DType: Clone + Copy + Debug + PartialEq + 'static {
+    type Repr: ElemType<DType = Self>;
     fn zero(&self) -> Self::Repr;
     fn one(&self) -> Self::Repr;
 
-    fn full_zero(&self) -> Full<Self::Repr> {
+    fn full_zero(&self) -> Full<Self> {
         Full::new(self.zero())
     }
 
-    fn full_one(&self) -> Full<Self::Repr> {
+    fn full_one(&self) -> Full<Self> {
         Full::new(self.one())
     }
 
@@ -30,18 +34,16 @@ pub trait DTypeRepr: Clone + Copy + Debug + PartialEq + 'static {
     }
 }
 
-pub trait DType: Debug {
-    // fn zero(&self) -> Box<dyn ElemType>;
-    // fn one(&self) -> Box<dyn ElemType>;
+pub trait DynDType: Debug {
     fn as_any(&self) -> &dyn Any;
-    fn clone_boxed(&self) -> Box<dyn DType>;
-    fn equal(&self, rhs: &dyn DType) -> bool;
+    fn clone_boxed(&self) -> Box<dyn DynDType>;
+    fn equal(&self, rhs: &dyn DynDType) -> bool;
     fn full_zero(&self) -> Box<dyn Primitive>;
     fn full_one(&self) -> Box<dyn Primitive>;
     fn as_self_dtype(&self) -> Box<dyn Primitive>;
 }
 
-impl<'a> PartialEq for &'a dyn DType {
+impl<'a> PartialEq for &'a dyn DynDType {
     fn eq(&self, rhs: &Self) -> bool {
         self.equal(*rhs)
     }
@@ -53,17 +55,17 @@ impl<'a> PartialEq for &'a dyn DType {
 //     }
 // }
 
-impl<T> From<T> for Box<dyn DType>
+impl<T> From<T> for Box<dyn DynDType>
 where
-    T: DTypeRepr + 'static,
+    T: DType + 'static,
 {
     fn from(value: T) -> Self {
         Box::new(value)
     }
 }
 
-impl<'a> From<&'a dyn DType> for Box<dyn DType> {
-    fn from(t: &'a dyn DType) -> Self {
+impl<'a> From<&'a dyn DynDType> for Box<dyn DynDType> {
+    fn from(t: &'a dyn DynDType) -> Self {
         t.clone_boxed()
     }
 }
@@ -77,24 +79,16 @@ impl<'a> From<&'a dyn DType> for Box<dyn DType> {
 //     }
 // }
 
-impl<D: DTypeRepr> DType for D {
-    // fn zero(&self) -> Box<dyn ElemType> {
-    //     Box::new(self.zero())
-    // }
-
-    // fn one(&self) -> Box<dyn ElemType> {
-    //     Box::new(self.one())
-    // }
-
+impl<D: DType> DynDType for D {
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn clone_boxed(&self) -> Box<dyn DType> {
+    fn clone_boxed(&self) -> Box<dyn DynDType> {
         Box::new(self.clone())
     }
 
-    fn equal(&self, rhs: &dyn DType) -> bool {
+    fn equal(&self, rhs: &dyn DynDType) -> bool {
         rhs.as_any()
             .downcast_ref()
             .map_or(false, |other| self == other)
@@ -114,14 +108,16 @@ impl<D: DTypeRepr> DType for D {
 }
 
 impl ElemType for u8 {
-    fn dtype() -> Box<dyn DType> {
-        Box::new(U8)
+    type DType = U8;
+
+    fn dtype() -> Self::DType {
+        U8
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct U8;
-impl DTypeRepr for U8 {
+impl DType for U8 {
     type Repr = u8;
 
     fn zero(&self) -> Self::Repr {
@@ -134,14 +130,16 @@ impl DTypeRepr for U8 {
 }
 
 impl ElemType for f32 {
-    fn dtype() -> Box<dyn DType> {
-        Box::new(F32)
+    type DType = F32;
+
+    fn dtype() -> Self::DType {
+        F32
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct F32;
-impl DTypeRepr for F32 {
+impl DType for F32 {
     type Repr = f32;
 
     fn zero(&self) -> Self::Repr {
@@ -154,13 +152,15 @@ impl DTypeRepr for F32 {
 }
 
 impl ElemType for f64 {
-    fn dtype() -> Box<dyn DType> {
-        Box::new(F64)
+    type DType = F64;
+
+    fn dtype() -> Self::DType {
+        F64
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct F64;
-impl DTypeRepr for F64 {
+impl DType for F64 {
     type Repr = f64;
 
     fn zero(&self) -> Self::Repr {

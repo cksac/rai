@@ -15,19 +15,19 @@ use crate::{
     dtype, eval,
     ops::{self, ArangeArgs, ReduceArgs},
     utils::{self, dot_graph},
-    Backend, DType, DTypeRepr, Dim, ElemType, Primitive, Shape,
+    Backend, DType, Dim, DynDType, ElemType, Primitive, Shape,
 };
 
 pub trait TensorLike: Debug + Display {
     fn as_any(&self) -> &dyn std::any::Any;
     fn shape(&self) -> &[usize];
-    fn dtype(&self) -> &dyn DType;
+    fn dtype(&self) -> &dyn DynDType;
 }
 
 struct TensorImpl {
     id: usize,
     backend: Box<dyn Backend>,
-    dtype: Box<dyn DType>,
+    dtype: Box<dyn DynDType>,
     shape: Vec<usize>,
     primitive: Box<dyn Primitive>,
     inputs: RefCell<Vec<Tensor>>,
@@ -37,7 +37,7 @@ struct TensorImpl {
 impl Tensor {
     pub fn new(
         backend: impl Into<Box<dyn Backend>>,
-        dtype: impl Into<Box<dyn DType>>,
+        dtype: impl Into<Box<dyn DynDType>>,
         shape: impl Shape,
         primitive: impl Into<Box<dyn Primitive>>,
         inputs: impl Into<Vec<Tensor>>,
@@ -67,7 +67,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn dtype(&self) -> &dyn DType {
+    pub fn dtype(&self) -> &dyn DynDType {
         self.0.dtype.as_ref()
     }
 
@@ -87,34 +87,34 @@ impl Tensor {
         shape: impl Shape,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full(val, shape, backend)
+        ops::full::<T>(val, shape, backend)
     }
 
     #[inline]
-    pub fn ones(
+    pub fn ones<D: DType>(
         shape: impl Shape,
-        dtype: impl DTypeRepr,
+        dtype: D,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full(dtype.one(), shape, backend)
+        ops::full::<D::Repr>(dtype.one(), shape, backend)
     }
 
     #[inline]
-    pub fn zeros(
+    pub fn zeros<D: DType>(
         shape: impl Shape,
-        dtype: impl DTypeRepr,
+        dtype: D,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
-        ops::full(dtype.zero(), shape, backend)
+        ops::full::<D::Repr>(dtype.zero(), shape, backend)
     }
 
     #[inline]
-    pub fn full_like<T: ElemType>(&self, val: T) -> Tensor {
-        if self.dtype() == T::dtype().as_ref() {
-            ops::full(val, self.shape(), self.backend())
+    pub fn full_like<T: ElemType>(&self, val: <T::DType as DType>::Repr) -> Tensor {
+        if self.dtype() == T::dyn_dtype().as_ref() {
+            ops::full::<T>(val, self.shape(), self.backend())
         } else {
             // TODO: check is type can be convert/promoted to self dtype?
-            ops::full(val, self.shape(), self.backend()).as_type_of(self)
+            ops::full::<T>(val, self.shape(), self.backend()).as_type_of(self)
         }
     }
 
@@ -141,7 +141,7 @@ impl Tensor {
     #[inline]
     pub fn normal(
         shape: impl Shape,
-        dtype: impl DTypeRepr,
+        dtype: impl DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
         ops::normal(shape, dtype, backend)
@@ -317,7 +317,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn as_type(&self, dtype: impl DTypeRepr) -> Tensor {
+    pub fn as_type(&self, dtype: impl DType) -> Tensor {
         ops::as_type(self, dtype)
     }
 

@@ -1,4 +1,6 @@
-use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, Aux, DType, Func, Module, Tensor};
+use rai_core::{
+    backend::Cpu, utils::dot_graph, value_and_grad, Aux, DynDType, Func, Module, Tensor,
+};
 
 use rai_nn::Linear;
 
@@ -14,8 +16,8 @@ fn test_linear_batch_input() {
     let in_size = 5;
     let out_size = 2;
     let batch_size = 8;
-    let linear = Linear::new(in_size, out_size, true, DType::F32, backend);
-    let input = Tensor::normal([batch_size, in_size], DType::F32, backend);
+    let linear = Linear::new(in_size, out_size, true, DynDType::F32, backend);
+    let input = Tensor::normal([batch_size, in_size], DynDType::F32, backend);
 
     let vg_fn = value_and_grad(loss_fn);
     let ((loss, Aux(output)), (grads, ..)) = vg_fn.apply((&linear, &input));

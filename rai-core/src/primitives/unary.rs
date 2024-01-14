@@ -2,7 +2,7 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{DType, DTypeRepr, ElemType, Primitive, Tensor};
+use crate::{DType, DynDType, ElemType, Primitive, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Negative;
@@ -323,16 +323,16 @@ impl Primitive for Log10 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AsType<D: DTypeRepr> {
+pub struct AsType<D: DType> {
     pub dtype: D,
 }
-impl<D: DTypeRepr> AsType<D> {
+impl<D: DType> AsType<D> {
     pub fn new(dtype: D) -> Self {
         Self { dtype }
     }
 }
 
-impl<D: DTypeRepr> Primitive for AsType<D> {
+impl<D: DType> Primitive for AsType<D> {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
     }
