@@ -18,11 +18,11 @@ pub trait DType: Clone + Copy + Debug + PartialEq + 'static {
     fn zero() -> Self::Repr;
     fn one() -> Self::Repr;
 
-    fn full_zero(&self) -> Full<Self> {
+    fn full_zero() -> Full<Self> {
         Full::new(Self::zero())
     }
 
-    fn full_one(&self) -> Full<Self> {
+    fn full_one() -> Full<Self> {
         Full::new(Self::one())
     }
 
@@ -92,11 +92,11 @@ impl<D: DType> DynDType for D {
     }
 
     fn full_zero(&self) -> Box<dyn Primitive> {
-        Box::new(self.full_zero())
+        Box::new(Self::full_zero())
     }
 
     fn full_one(&self) -> Box<dyn Primitive> {
-        Box::new(self.full_one())
+        Box::new(Self::full_one())
     }
 
     fn as_self_dtype(&self) -> Box<dyn Primitive> {
