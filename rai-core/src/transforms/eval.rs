@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::{dispatch::eval_rule, Backend, Tensor, TensorIter};
+use crate::{dispatch::eval_rule, utils::topological_sort, Backend, Tensor, TensorIter};
 
 pub trait EvalArgs {
     fn outputs(&self) -> impl Iterator<Item = &Tensor>;
@@ -76,16 +76,4 @@ pub fn eval<T: EvalArgs>(args: T) {
             t.detach();
         }
     }
-}
-
-fn topological_sort(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
-    for input in t.inputs().iter() {
-        if !t.is_evaluated() {
-            topological_sort(tape, input);
-        }
-    }
-    if t.is_evaluated() || tape.contains(t) {
-        return;
-    }
-    tape.insert(t.clone());
 }

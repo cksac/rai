@@ -3,10 +3,7 @@ use std::{any::TypeId, collections::HashMap, sync::Mutex};
 use dyn_clone::DynClone;
 use once_cell::sync::Lazy;
 
-use crate::{
-    backend::{Cpu, RaiExpr},
-    primitives, Backend, Primitive, Tensor, F32, F64, U8,
-};
+use crate::{backend::Cpu, primitives, Backend, Primitive, Tensor, F32, F64, U8};
 
 pub trait Eval<B, P>: DynClone + Sync + Send + 'static
 where
@@ -127,7 +124,6 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Laz
     let mut rules: HashMap<(TypeId, TypeId), ErasedEval> = HashMap::new();
 
     register_backend!(Cpu, rules);
-    register_backend!(RaiExpr, rules);
 
     Mutex::new(rules)
 });

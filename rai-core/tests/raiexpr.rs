@@ -1,20 +1,5 @@
-use rai_core::{
-    backend::{Cpu, RaiExpr},
-    eval, value_and_grad, F32,
-};
+use rai_core::{backend::Cpu, eval, value_and_grad, F32};
 use rai_core::{raiexpr, Tensor};
-
-#[test]
-fn test_add_expr() {
-    let backend = &Cpu;
-    let a = &Tensor::ones([2, 3], F32, backend);
-    let b = &Tensor::ones([2, 3], F32, backend);
-    let c = &Tensor::ones([3], F32, backend);
-
-    let z = a + b + c;
-    eval((&z, true, RaiExpr));
-    println!("{}", z);
-}
 
 #[test]
 fn test_linear_grad_expr() {
@@ -33,6 +18,6 @@ fn test_linear_grad_expr() {
     let b = Tensor::ones([out_dim], F32, backend);
     let x = Tensor::ones([batch_dim, in_dim], F32, backend);
 
-    let exprs = ir_func.raiexpr_of((&w, &b, &x));
-    println!("{}", exprs);
+    let ir = ir_func.raiexpr_of((&w, &b, &x));
+    println!("{}", ir);
 }
