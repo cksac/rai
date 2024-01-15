@@ -158,112 +158,170 @@ pub trait ArangeArgs<D: DType>: Debug {
     fn start(&self) -> D::Repr {
         D::zero()
     }
+
     fn stop(&self) -> D::Repr;
+
     fn step(&self) -> D::Repr {
         D::one()
     }
+
     fn dtype(&self) -> D;
+
+    fn size(&self) -> usize;
 }
 
-impl ArangeArgs<F64> for f64 {
-    fn stop(&self) -> f64 {
-        *self
-    }
+macro_rules! impl_arange_args {
+    ($R:ty, $T:tt) => {
+        impl ArangeArgs<$T> for $R {
+            fn stop(&self) -> $R {
+                *self
+            }
 
-    fn dtype(&self) -> F64 {
-        F64
-    }
+            fn dtype(&self) -> $T {
+                $T
+            }
+
+            fn size(&self) -> usize {
+                let start = self.start();
+                let stop = self.stop();
+                let step = self.step();
+                let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
+                size
+            }
+        }
+
+        impl ArangeArgs<$T> for ($R, $R) {
+            fn start(&self) -> $R {
+                self.0
+            }
+
+            fn stop(&self) -> $R {
+                self.1
+            }
+
+            fn dtype(&self) -> $T {
+                $T
+            }
+
+            fn size(&self) -> usize {
+                let start = self.start();
+                let stop = self.stop();
+                let step = self.step();
+                let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
+                size
+            }
+        }
+
+        impl ArangeArgs<$T> for ($R, $R, $R) {
+            fn start(&self) -> $R {
+                self.0
+            }
+
+            fn stop(&self) -> $R {
+                self.1
+            }
+
+            fn step(&self) -> $R {
+                self.2
+            }
+
+            fn dtype(&self) -> $T {
+                $T
+            }
+
+            fn size(&self) -> usize {
+                let start = self.start();
+                let stop = self.stop();
+                let step = self.step();
+                let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
+                size
+            }
+        }
+    };
+
+    ($AS:ty, $R:ty, $T:tt) => {
+        impl ArangeArgs<$T> for $R {
+            fn stop(&self) -> $R {
+                *self
+            }
+
+            fn dtype(&self) -> $T {
+                $T
+            }
+
+            fn size(&self) -> usize {
+                let start = self.start();
+                let stop = self.stop();
+                let step = self.step();
+                let size = std::cmp::max(((stop - start) as $AS / step as $AS).ceil() as usize, 0);
+                size
+            }
+        }
+
+        impl ArangeArgs<$T> for ($R, $R) {
+            fn start(&self) -> $R {
+                self.0
+            }
+
+            fn stop(&self) -> $R {
+                self.1
+            }
+
+            fn dtype(&self) -> $T {
+                $T
+            }
+
+            fn size(&self) -> usize {
+                let start = self.start();
+                let stop = self.stop();
+                let step = self.step();
+                let size = std::cmp::max(((stop - start) as $AS / step as $AS).ceil() as usize, 0);
+                size
+            }
+        }
+
+        impl ArangeArgs<$T> for ($R, $R, $R) {
+            fn start(&self) -> $R {
+                self.0
+            }
+
+            fn stop(&self) -> $R {
+                self.1
+            }
+
+            fn step(&self) -> $R {
+                self.2
+            }
+
+            fn dtype(&self) -> $T {
+                $T
+            }
+
+            fn size(&self) -> usize {
+                let start = self.start();
+                let stop = self.stop();
+                let step = self.step();
+                let size = std::cmp::max(((stop - start) as $AS / step as $AS).ceil() as usize, 0);
+                size
+            }
+        }
+    };
 }
 
-impl ArangeArgs<F64> for (f64, f64) {
-    fn start(&self) -> f64 {
-        self.0
-    }
-
-    fn stop(&self) -> f64 {
-        self.1
-    }
-
-    fn dtype(&self) -> F64 {
-        F64
-    }
-}
-
-impl ArangeArgs<F64> for (f64, f64, f64) {
-    fn start(&self) -> f64 {
-        self.0
-    }
-
-    fn stop(&self) -> f64 {
-        self.1
-    }
-
-    fn step(&self) -> f64 {
-        self.2
-    }
-
-    fn dtype(&self) -> F64 {
-        F64
-    }
-}
-
-impl ArangeArgs<F32> for f32 {
-    fn stop(&self) -> f32 {
-        *self
-    }
-
-    fn dtype(&self) -> F32 {
-        F32
-    }
-}
-
-impl ArangeArgs<F32> for (f32, f32) {
-    fn start(&self) -> f32 {
-        self.0
-    }
-
-    fn stop(&self) -> f32 {
-        self.1
-    }
-
-    fn dtype(&self) -> F32 {
-        F32
-    }
-}
-
-impl ArangeArgs<F32> for (f32, f32, f32) {
-    fn start(&self) -> f32 {
-        self.0
-    }
-
-    fn stop(&self) -> f32 {
-        self.1
-    }
-
-    fn step(&self) -> f32 {
-        self.2
-    }
-
-    fn dtype(&self) -> F32 {
-        F32
-    }
-}
+impl_arange_args!(f32, F32);
+impl_arange_args!(f64, F64);
+impl_arange_args!(f32, u8, U8);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn arange<D: DType, T: ArangeArgs<D>>(
     args: T,
     backend: impl Into<Box<dyn Backend>> + Debug,
-) -> Tensor
-where
-    D::Repr: std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
-    D::Repr: Copy + Into<f64>,
-{
+) -> Tensor {
     let start = args.start();
     let stop = args.stop();
     let step = args.step();
     let dtype = args.dtype();
-
-    let size = std::cmp::max(((stop - start) / step).into().ceil() as usize, 0);
+    let size = args.size();
     let backend = backend.into();
     let inputs = vec![];
     Tensor::new(
@@ -717,7 +775,6 @@ pub fn as_type(x: &Tensor, dtype: impl DType) -> Tensor {
     Tensor::new(backend, dtype, shape, AsType::new(dtype), inputs)
 }
 
-//  todo: merge with as_type using generic?
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn as_type_of(x: &Tensor, rhs: &Tensor) -> Tensor {
     if x.dtype() == rhs.dtype() {
