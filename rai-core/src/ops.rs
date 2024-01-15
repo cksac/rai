@@ -114,6 +114,36 @@ pub fn full<T: ElemType>(
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
+    if x.dtype() == T::dyn_dtype().as_ref() {
+        full::<T>(val, x.shape(), x.backend())
+    } else {
+        // TODO: check is type can be convert/promoted to x dtype?
+        full::<T>(val, x.shape(), x.backend()).as_type_of(x)
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn zeros_like(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let primitive = dtype.full_zero();
+    let inputs = vec![];
+    Tensor::new(backend, dtype, shape, primitive, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn ones_like(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let primitive = dtype.full_one();
+    let inputs = vec![];
+    Tensor::new(backend, dtype, shape, primitive, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn normal(
     shape: impl Shape,
     dtype: impl DType,
@@ -193,7 +223,7 @@ impl ArangeArgs<F32> for (f32, f32) {
     }
 
     fn stop(&self) -> f32 {
-        self.1 
+        self.1
     }
 
     fn dtype(&self) -> F32 {

@@ -109,32 +109,17 @@ impl Tensor {
 
     #[inline]
     pub fn full_like<T: ElemType>(&self, val: T) -> Tensor {
-        if self.dtype() == T::dyn_dtype().as_ref() {
-            ops::full::<T>(val, self.shape(), self.backend())
-        } else {
-            // TODO: check is type can be convert/promoted to self dtype?
-            ops::full::<T>(val, self.shape(), self.backend()).as_type_of(self)
-        }
+        ops::full_like::<T>(self, val)
     }
 
     #[inline]
     pub fn zeros_like(&self) -> Tensor {
-        let backend = self.backend();
-        let dtype = self.dtype();
-        let shape = self.shape();
-        let primitive = dtype.full_zero();
-        let inputs = vec![];
-        Tensor::new(backend, dtype, shape, primitive, inputs)
+        ops::zeros_like(self)
     }
 
     #[inline]
     pub fn ones_like(&self) -> Tensor {
-        let backend = self.backend();
-        let dtype = self.dtype();
-        let shape = self.shape();
-        let primitive = dtype.full_one();
-        let inputs = vec![];
-        Tensor::new(backend, dtype, shape, primitive, inputs)
+        ops::ones_like(self)
     }
 
     #[inline]

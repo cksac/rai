@@ -46,15 +46,9 @@ impl<'a> PartialEq for &'a dyn DynDType {
     }
 }
 
-// impl<'a> Debug for &'a dyn DType {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         todo!()
-//     }
-// }
-
 impl<T> From<T> for Box<dyn DynDType>
 where
-    T: DType + 'static,
+    T: DType,
 {
     fn from(value: T) -> Self {
         Box::new(value)
@@ -67,22 +61,13 @@ impl<'a> From<&'a dyn DynDType> for Box<dyn DynDType> {
     }
 }
 
-// impl<T> From<T> for Box<dyn DType>
-// where
-//     T: Clone + DTypeRepr + 'static,
-// {
-//     fn from(t: T) -> Self {
-//         Box::new(t.clone())
-//     }
-// }
-
 impl<D: DType> DynDType for D {
     fn as_any(&self) -> &dyn Any {
         self
     }
 
     fn clone_boxed(&self) -> Box<dyn DynDType> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn equal(&self, rhs: &dyn DynDType) -> bool {
@@ -155,6 +140,7 @@ impl ElemType for f64 {
         F64
     }
 }
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct F64;
 impl DType for F64 {
