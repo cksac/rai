@@ -1,121 +1,106 @@
-use std::{
-    collections::BTreeSet,
-    fmt::{format, Display},
-};
+use std::collections::{BTreeSet, HashMap};
 
-use crate::{utils::topological_sort, Differentiable, Func, Shape, Tensor, TensorIter};
+use crate::{Differentiable, Func, Shape, Tensor, TensorIter};
 
-#[derive(Debug)]
-pub struct RaiFunc {
-    inputs: Vec<Tensor>,
-    outputs: Vec<Tensor>,
-    expressions: Vec<Tensor>,
-}
-
-impl RaiFunc {
-    pub fn new() -> Self {
-        Self {
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            expressions: Vec::new(),
-        }
-    }
-}
-
-impl Display for RaiFunc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let inputs = self
-            .inputs
-            .iter()
-            .map(|t| format!("%{}:{:?}{:?}", t.id(), t.dtype(), t.shape()))
-            .collect::<Vec<String>>()
-            .join(", ");
-        let outputs = self
-            .outputs
-            .iter()
-            .map(|t| format!("%{}:{:?}{:?}", t.id(), t.dtype(), t.shape()))
-            .collect::<Vec<String>>()
-            .join(", ");
-        let body = self
-            .expressions
-            .iter()
-            .map(|t| {
-                format!(
-                    "\t%{}:{:?}{:?} = {} {}",
-                    t.id(),
-                    t.dtype(),
-                    t.shape(),
-                    t.primitive().dot_label(),
-                    t.inputs()
-                        .iter()
-                        .map(|v| format!("%{}", v.id()))
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        f.write_fmt(format_args!(
-            "fn({}) -> ({}) {{\n{}\n}}",
-            inputs, outputs, body
-        ))
-    }
-}
-
-#[derive(Clone)]
-pub struct RaiExprFunc<IN, OUT, F>
+pub fn raiexpr<IN, OUT, F>(func: &F, input: IN) -> String
 where
     F: Func<IN, OUT>,
     IN: Differentiable,
     OUT: Differentiable,
 {
-    func: F,
-    phantom: std::marker::PhantomData<(IN, OUT)>,
-}
+    let mut id_seq = 0;
+    let mut id_map: HashMap<usize, usize> = HashMap::new();
 
-impl<IN, OUT, F> RaiExprFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT>,
-    IN: Differentiable,
-    OUT: Differentiable,
-{
-    pub fn new(func: F) -> Self {
-        Self {
-            func,
-            phantom: std::marker::PhantomData,
+    let in_tensors = input.tensors();
+    let output = func.apply(input);
+    let out_tensors = output.tensors();
+
+    let mut tape = BTreeSet::new();
+    let input_set = in_tensors.tensor_iter().cloned().collect::<BTreeSet<_>>();
+    fn recurse(tape: &mut BTreeSet<Tensor>, inputs: &BTreeSet<Tensor>, t: &Tensor) {
+        for input in t.inputs().iter() {
+            recurse(tape, inputs, input);
         }
+        if tape.contains(t) || inputs.contains(t) {
+            return;
+        }
+        tape.insert(t.clone());
     }
 
-    pub fn raiexpr_of(&self, input: IN) -> RaiFunc {
-        let mut ir_func = RaiFunc::new();
-        let in_tensors = input.tensors();
-        for t in in_tensors.tensor_iter() {
-            ir_func.inputs.push(t.clone());
-        }
-
-        let output = self.func.apply(input);
-        let out_tensors = output.tensors();
-        for t in out_tensors.tensor_iter() {
-            ir_func.outputs.push(t.clone());
-        }
-
-        let mut tape = BTreeSet::new();
-        for output in out_tensors.tensor_iter() {
-            topological_sort(&mut tape, output);
-        }
-        for t in tape.into_iter() {
-            ir_func.expressions.push(t.clone())
-        }
-
-        ir_func
+    for output in out_tensors.tensor_iter() {
+        recurse(&mut tape, &input_set, output);
     }
-}
 
-pub fn raiexpr<IN, OUT, F>(func: F) -> RaiExprFunc<IN, OUT, F>
-where
-    F: Func<IN, OUT>,
-    IN: Differentiable,
-    OUT: Differentiable,
-{
-    RaiExprFunc::new(func)
+    let inputs = in_tensors
+        .tensor_iter()
+        .map(|t| {
+            format!(
+                "%{}:{:?}{:?}",
+                id_map.entry(t.id()).or_insert_with(|| {
+                    id_seq += 1;
+                    id_seq
+                }),
+                t.dtype(),
+                t.shape()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    let outputs = out_tensors
+        .tensor_iter()
+        .map(|t| format!("{:?}{:?}", t.dtype(), t.shape()))
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    let body = tape
+        .iter()
+        .map(|t| {
+            let id = id_map
+                .entry(t.id())
+                .or_insert_with(|| {
+                    id_seq += 1;
+                    id_seq
+                })
+                .clone();
+            format!(
+                "\t%{}:{:?}{:?} = {} {}",
+                id,
+                t.dtype(),
+                t.shape(),
+                t.primitive().dot_label(),
+                t.inputs()
+                    .iter()
+                    .map(|v| format!(
+                        "%{}",
+                        id_map.entry(v.id()).or_insert_with(|| {
+                            id_seq += 1;
+                            id_seq
+                        }),
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    let returns = out_tensors
+        .tensor_iter()
+        .map(|t| {
+            format!(
+                "%{}",
+                id_map.entry(t.id()).or_insert_with(|| {
+                    id_seq += 1;
+                    id_seq
+                }),
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    format!(
+        "fn({}) -> ({}) {{\n{}\n\treturn ({})\n}}",
+        inputs, outputs, body, returns
+    )
 }
