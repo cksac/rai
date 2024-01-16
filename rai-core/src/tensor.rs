@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     eval,
-    ops::{self, ArangeArgs, ReduceArgs},
+    ops::{self, ArangeArgs, FlattenArgs, ReduceArgs},
     utils::{self, dot_graph},
     Backend, DType, Dim, DynDType, ElemType, Primitive, Shape,
 };
@@ -336,6 +336,11 @@ impl Tensor {
     #[inline]
     pub fn relu(&self) -> Tensor {
         ops::relu(self)
+    }
+
+    #[inline]
+    pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
+        ops::flatten(self, args)
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {

@@ -1,6 +1,6 @@
 use std::{
     fmt::Debug,
-    ops::{RangeFull, RangeTo},
+    ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
 };
 
 use crate::{Error, Result};
@@ -170,6 +170,135 @@ impl Dims for RangeTo<i32> {
     }
 }
 
+impl Dims for RangeToInclusive<usize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let dim = shape.dim(self.end);
+        (0..=dim).collect()
+    }
+}
+
+impl Dims for RangeToInclusive<isize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let dim = shape.dim(self.end);
+        (0..=dim).collect()
+    }
+}
+
+impl Dims for RangeToInclusive<i32> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let dim = shape.dim(self.end);
+        (0..=dim).collect()
+    }
+}
+
+impl Dims for RangeFrom<usize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start);
+        let end = shape.ndim();
+        if start > end {
+            (end + 1..=start).rev().collect()
+        } else {
+            (start..end).collect()
+        }
+    }
+}
+
+impl Dims for RangeFrom<isize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start);
+        let end = shape.ndim();
+        if start > end {
+            (end + 1..=start).rev().collect()
+        } else {
+            (start..end).collect()
+        }
+    }
+}
+
+impl Dims for RangeFrom<i32> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start);
+        let end = shape.ndim();
+        if start > end {
+            (end + 1..=start).rev().collect()
+        } else {
+            (start..end).collect()
+        }
+    }
+}
+
+impl Dims for Range<usize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start);
+        let end = shape.dim(self.end);
+        if start > end {
+            (end + 1..=start).rev().collect()
+        } else {
+            (start..end).collect()
+        }
+    }
+}
+
+impl Dims for Range<isize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start);
+        let end = shape.dim(self.end);
+        if start > end {
+            (end + 1..=start).rev().collect()
+        } else {
+            (start..end).collect()
+        }
+    }
+}
+
+impl Dims for Range<i32> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start);
+        let end = shape.dim(self.end);
+        if start > end {
+            (end + 1..=start).rev().collect()
+        } else {
+            (start..end).collect()
+        }
+    }
+}
+
+impl Dims for RangeInclusive<usize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start());
+        let end = shape.dim(self.end());
+        if start > end {
+            (end..=start).rev().collect()
+        } else {
+            (start..=end).collect()
+        }
+    }
+}
+
+impl Dims for RangeInclusive<isize> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start());
+        let end = shape.dim(self.end());
+        if start > end {
+            (end..=start).rev().collect()
+        } else {
+            (start..=end).collect()
+        }
+    }
+}
+
+impl Dims for RangeInclusive<i32> {
+    fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize> {
+        let start = shape.dim(self.start());
+        let end = shape.dim(self.end());
+        if start > end {
+            (end..=start).rev().collect()
+        } else {
+            (start..=end).collect()
+        }
+    }
+}
+
 pub trait Shape: Debug {
     fn shape(&self) -> &[usize];
 
@@ -191,6 +320,12 @@ pub trait Shape: Debug {
     #[inline]
     fn shape_until<I: Dim>(&self, i: I) -> &[usize] {
         &self.shape()[..=i.dim_of(self)]
+    }
+
+    #[inline]
+    fn shape_of<D: Dims>(&self, d: D) -> Vec<usize> {
+        let dims = d.dims_of(self);
+        dims.into_iter().map(|d| self.shape_at(d)).collect()
     }
 
     #[inline]
