@@ -1,4 +1,4 @@
-use std::collections::{hash_map::RandomState, BTreeSet, HashSet};
+use std::collections::{hash_map::RandomState, HashSet};
 
 use crate::{Shape, Tensor, TensorIter};
 
@@ -46,16 +46,4 @@ fn depth_first_traversal(tape: &mut Vec<Tensor>, tensor: &Tensor) {
         return;
     }
     tape.push(tensor.clone());
-}
-
-pub(crate) fn topological_sort(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
-    for input in t.inputs().iter() {
-        if !t.is_evaluated() {
-            topological_sort(tape, input);
-        }
-    }
-    if t.is_evaluated() || tape.contains(t) {
-        return;
-    }
-    tape.insert(t.clone());
 }

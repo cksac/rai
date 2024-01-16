@@ -140,3 +140,16 @@ fn test_softmax() {
     println!("{}", out);
     println!("{}", grad);
 }
+
+#[test]
+fn test_gather() {
+    let backend = &Cpu;
+
+    let a = Tensor::from_array([1, 2, 3, 4, 5, 6], [2, 3], backend);
+    let indexes = Tensor::from_array([0, 1, 1, 0, 0, 1], [2, 3], backend);
+    let out = a.gather(0, &indexes);
+
+    println!("{}", a);
+    println!("{}", indexes);
+    println!("{}", out);
+}

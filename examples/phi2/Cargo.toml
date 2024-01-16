@@ -1,0 +1,11 @@
+[package]
+name = "phi2"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+categories.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

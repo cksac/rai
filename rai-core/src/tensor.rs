@@ -309,6 +309,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn gather(&self, dim: impl Dim, indexes: &Tensor) -> Tensor {
+        ops::gather(self, dim, indexes)
+    }
+
+    #[inline]
     pub fn as_type(&self, dtype: impl DType) -> Tensor {
         ops::as_type(self, dtype)
     }

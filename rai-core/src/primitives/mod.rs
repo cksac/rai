@@ -47,3 +47,6 @@ pub use transform::*;
 
 mod reduce;
 pub use reduce::*;
+
+mod indexing;
+pub use indexing::*;

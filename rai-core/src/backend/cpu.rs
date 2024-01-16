@@ -175,7 +175,10 @@ macro_rules! impl_from_array {
                 output: &Tensor,
             ) {
                 let device = &output.backend().into();
-                let t = candle_core::Tensor::new(primitive.data.as_slice(), device).unwrap();
+                let t = candle_core::Tensor::new(primitive.data.as_slice(), device)
+                    .unwrap()
+                    .reshape(output.shape())
+                    .unwrap();
                 output.set_data(t);
             }
         }
@@ -668,5 +671,19 @@ impl Eval<Cpu, primitives::LogSoftmax> for Dispatch<Cpu, primitives::LogSoftmax>
         let t = t.deref();
         let t = log_softmax(t, primitive.dim).unwrap();
         output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::Gather> for Dispatch<Cpu, primitives::Gather> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Gather, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        // TODO: slice_sizes not used
+        let t = t1.gather(t2, primitive.dim).unwrap();
+        output.set_data(t);
     }
 }

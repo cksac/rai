@@ -19,7 +19,4 @@ fn test_linear_grad_expr() {
 
     let e = raiexpr(&vg_func, (&w, &b, &x));
     println!("{}", e);
-
-    let e = raiexpr(&vg_func, (&w, &b, &x));
-    println!("{}", e);
 }

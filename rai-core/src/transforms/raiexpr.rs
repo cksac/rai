@@ -1,6 +1,6 @@
-use std::collections::{BTreeSet, HashMap};
-
 use crate::{Differentiable, Func, Shape, Tensor, TensorIter};
+use colored::*;
+use std::collections::{BTreeSet, HashMap};
 
 pub fn raiexpr<IN, OUT, F>(func: &F, input: IN) -> String
 where
@@ -17,6 +17,7 @@ where
 
     let mut tape = BTreeSet::new();
     let input_set = in_tensors.tensor_iter().cloned().collect::<BTreeSet<_>>();
+
     fn recurse(tape: &mut BTreeSet<Tensor>, inputs: &BTreeSet<Tensor>, t: &Tensor) {
         for input in t.inputs().iter() {
             recurse(tape, inputs, input);
@@ -27,57 +28,52 @@ where
         tape.insert(t.clone());
     }
 
+    fn id(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {
+        let id = *id_map.entry(t.id()).or_insert_with(|| {
+            *id_seq += 1;
+            *id_seq
+        });
+        format!("%{}", id.to_string()).yellow().to_string()
+    }
+
+    fn decl(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {
+        format!("{}:{}", id(id_map, id_seq, t), ty(t))
+    }
+
+    fn ty(t: &Tensor) -> String {
+        format!(
+            "{}{}",
+            format!("{:?}", t.dtype()).to_lowercase().cyan(),
+            format!("{:?}", t.shape()).purple(),
+        )
+    }
+
     for output in out_tensors.tensor_iter() {
         recurse(&mut tape, &input_set, output);
     }
 
     let inputs = in_tensors
         .tensor_iter()
-        .map(|t| {
-            format!(
-                "%{}:{:?}{:?}",
-                id_map.entry(t.id()).or_insert_with(|| {
-                    id_seq += 1;
-                    id_seq
-                }),
-                t.dtype(),
-                t.shape()
-            )
-        })
+        .map(|t| decl(&mut id_map, &mut id_seq, t))
         .collect::<Vec<String>>()
         .join(", ");
 
     let outputs = out_tensors
         .tensor_iter()
-        .map(|t| format!("{:?}{:?}", t.dtype(), t.shape()))
+        .map(ty)
         .collect::<Vec<String>>()
         .join(", ");
 
     let body = tape
         .iter()
         .map(|t| {
-            let id = id_map
-                .entry(t.id())
-                .or_insert_with(|| {
-                    id_seq += 1;
-                    id_seq
-                })
-                .clone();
             format!(
-                "\t%{}:{:?}{:?} = {} {}",
-                id,
-                t.dtype(),
-                t.shape(),
+                "\t{} = {} {}",
+                decl(&mut id_map, &mut id_seq, t),
                 t.primitive().dot_label(),
                 t.inputs()
                     .iter()
-                    .map(|v| format!(
-                        "%{}",
-                        id_map.entry(v.id()).or_insert_with(|| {
-                            id_seq += 1;
-                            id_seq
-                        }),
-                    ))
+                    .map(|v| decl(&mut id_map, &mut id_seq, v))
                     .collect::<Vec<_>>()
                     .join(" ")
             )
@@ -87,15 +83,7 @@ where
 
     let returns = out_tensors
         .tensor_iter()
-        .map(|t| {
-            format!(
-                "%{}",
-                id_map.entry(t.id()).or_insert_with(|| {
-                    id_seq += 1;
-                    id_seq
-                }),
-            )
-        })
+        .map(|t| id(&mut id_map, &mut id_seq, t))
         .collect::<Vec<String>>()
         .join(", ");
 

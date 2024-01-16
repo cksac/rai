@@ -47,6 +47,32 @@ impl Differentiable for Tensor {
     }
 }
 
+impl Differentiable for HashMap<usize, Tensor> {
+    type Tensors = HashMap<usize, Tensor>;
+    type Gradient = HashMap<usize, Tensor>;
+
+    fn tensors(&self) -> Self::Tensors {
+        self.clone()
+    }
+
+    fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+        tensors
+            .keys()
+            .map(|id| (*id, grad_map.get(id).unwrap().clone()))
+            .collect()
+    }
+
+    fn grad_map(
+        tensors: &Self::Tensors,
+        grad: HashMap<usize, Tensor>,
+        out: &mut HashMap<usize, Tensor>,
+    ) {
+        for id in tensors.keys() {
+            out.insert(*id, grad.get(id).unwrap().clone());
+        }
+    }
+}
+
 impl<const N: usize, T> Differentiable for [T; N]
 where
     T: Differentiable,

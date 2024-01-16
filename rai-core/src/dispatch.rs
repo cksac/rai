@@ -108,6 +108,9 @@ macro_rules! register_backend {
         _register::<$backend, primitives::Softmax>(&mut $rules);
         _register::<$backend, primitives::LogSoftmax>(&mut $rules);
 
+        // indexing
+        _register::<$backend, primitives::Gather>(&mut $rules);
+
         // transform
         _register::<$backend, primitives::Transpose>(&mut $rules);
         _register::<$backend, primitives::Reshape>(&mut $rules);

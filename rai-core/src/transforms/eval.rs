@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::{dispatch::eval_rule, utils::topological_sort, Backend, Tensor, TensorIter};
+use crate::{dispatch::eval_rule, Backend, Tensor, TensorIter};
 
 pub trait EvalArgs {
     fn outputs(&self) -> impl Iterator<Item = &Tensor>;
@@ -53,9 +53,21 @@ where
 }
 
 pub fn eval<T: EvalArgs>(args: T) {
+    fn recurse(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
+        for input in t.inputs().iter() {
+            if !t.is_evaluated() {
+                recurse(tape, input);
+            }
+        }
+        if t.is_evaluated() || tape.contains(t) {
+            return;
+        }
+        tape.insert(t.clone());
+    }
+
     let mut tape = BTreeSet::new();
     for output in args.outputs() {
-        topological_sort(&mut tape, output);
+        recurse(&mut tape, output);
     }
     for t in tape.into_iter() {
         {

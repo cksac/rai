@@ -4,8 +4,8 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, FromArray, Full, Greater,
-        GreaterEqual, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul,
+        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, FromArray, Full, Gather,
+        Greater, GreaterEqual, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul,
         Negative, Normal, NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin,
         Softmax, Sqrt, Square, Sub, Transpose,
     },
@@ -896,4 +896,15 @@ pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn relu(x: &Tensor) -> Tensor {
     x.maximum(x.zeros_like())
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn gather(x: &Tensor, dim: impl Dim, indexes: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone(), indexes.clone()];
+    let dim = x.dim(dim);
+    // TODO: asserts
+    Tensor::new(backend, dtype, shape, Gather::new(dim), inputs)
 }
