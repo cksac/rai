@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     eval,
-    ops::{self, ArangeArgs, FlattenArgs, ReduceArgs},
+    ops::{self, ArangeArgs, FlattenArgs, ReduceArgs, VarArgs},
     utils::{self, dot_graph},
     Backend, DType, Dim, DynDType, ElemType, Primitive, Shape,
 };
@@ -306,6 +306,11 @@ impl Tensor {
     #[inline]
     pub fn mean<T: ReduceArgs>(&self, args: T) -> Tensor {
         ops::mean(self, args)
+    }
+
+    #[inline]
+    pub fn var<T: VarArgs>(&self, args: T) -> Tensor {
+        ops::var(self, args)
     }
 
     #[inline]

@@ -73,7 +73,7 @@ macro_rules! differentiable_module {
             type Gradient = std::collections::HashMap<usize, Tensor>;
 
             fn tensors(&self) -> Self::Tensors {
-                $crate::Module::parameters(self)
+                $crate::Module::params(self)
             }
 
             fn grad(

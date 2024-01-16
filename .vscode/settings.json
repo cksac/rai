@@ -1,9 +1,12 @@
 {
     "cSpell.words": [
         "Arange",
+        "ddof",
         "dtype",
+        "Gelu",
         "jvps",
         "keepdim",
+        "layernorm",
         "logits",
         "matmul",
         "mnist",

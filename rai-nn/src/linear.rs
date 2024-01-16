@@ -2,6 +2,8 @@ use std::{collections::HashMap, fmt::Debug};
 
 use rai_core::{differentiable_module, Backend, DType, Module, Tensor};
 
+use crate::{gather_params, update_params};
+
 #[derive(Clone, Debug)]
 pub struct Linear {
     weight: Tensor,
@@ -36,23 +38,15 @@ impl Module for Linear {
         }
     }
 
-    fn gather_parameters(&self, out: &mut HashMap<usize, Tensor>) {
-        out.insert(self.weight.id(), self.weight.clone());
-        if let Some(bias) = &self.bias {
-            out.insert(bias.id(), bias.clone());
-        }
+    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        gather_params!(self.weight, params);
+        gather_params!(?self.bias, params);
     }
 
     #[track_caller]
-    fn update(&self, params: &mut HashMap<usize, Tensor>) {
-        if let Some(weight) = params.remove(&self.weight.id()) {
-            self.weight.replace_data(weight);
-        }
-        if let Some(bias) = &self.bias {
-            if let Some(new_bias) = params.remove(&bias.id()) {
-                bias.replace_data(new_bias);
-            }
-        }
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        update_params!(self.weight, params);
+        update_params!(?self.bias, params);
     }
 }
 

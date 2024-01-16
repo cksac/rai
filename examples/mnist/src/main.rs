@@ -41,15 +41,15 @@ impl Module for Mlp {
         self.layers[self.layers.len() - 1].forward(&x)
     }
 
-    fn gather_parameters(&self, out: &mut HashMap<usize, Tensor>) {
+    fn gather_params(&self, out: &mut HashMap<usize, Tensor>) {
         for l in &self.layers {
-            l.gather_parameters(out)
+            l.gather_params(out)
         }
     }
 
-    fn update(&self, params: &mut HashMap<usize, Tensor>) {
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
         for layer in self.layers.iter() {
-            layer.update(params);
+            layer.update_params(params);
         }
     }
 }
@@ -75,7 +75,7 @@ fn train_step<O: Optimizer, M: DifferentiableModule + 'static>(
     let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, input, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
-    model.update(&mut params);
+    model.update_params(&mut params);
 }
 
 fn main() {
@@ -90,7 +90,7 @@ fn main() {
     let dtype = F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
-    let mut optimizer = SDG::new(model.parameters(), learning_rate);
+    let mut optimizer = SDG::new(model.params(), learning_rate);
 
     let start = Instant::now();
     for i in 0..num_epochs {

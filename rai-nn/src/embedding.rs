@@ -1,5 +1,8 @@
 use core::fmt::Debug;
 use rai_core::{differentiable_module, Backend, DType, Module, Shape, Tensor};
+use std::collections::HashMap;
+
+use crate::{gather_params, update_params};
 
 pub struct Embedding {
     weight: Tensor,
@@ -31,14 +34,12 @@ impl Module for Embedding {
         self.weight.index_select(0, index).reshape(out_dims)
     }
 
-    fn gather_parameters(&self, params: &mut std::collections::HashMap<usize, Tensor>) {
-        params.insert(self.weight.id(), self.weight.clone());
+    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        gather_params!(self.weight, params);
     }
 
-    fn update(&self, params: &mut std::collections::HashMap<usize, Tensor>) {
-        if let Some(weight) = params.remove(&self.weight.id()) {
-            self.weight.replace_data(weight);
-        }
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        update_params!(self.weight, params);
     }
 }
 

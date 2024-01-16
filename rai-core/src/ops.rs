@@ -810,6 +810,8 @@ where
     }
 }
 
+impl<T> VarArgs for T where T: Dims {}
+
 impl<T> ReduceArgs for (T, bool)
 where
     T: Dims,
@@ -819,6 +821,50 @@ where
     }
     fn keep_dim(&self) -> bool {
         self.1
+    }
+}
+
+impl<T> VarArgs for (T, bool) where T: Dims {}
+
+impl<T> ReduceArgs for (T, usize)
+where
+    T: Dims,
+{
+    fn dims(&self) -> &impl Dims {
+        &self.0
+    }
+    fn keep_dim(&self) -> bool {
+        false
+    }
+}
+
+impl<T> VarArgs for (T, usize)
+where
+    T: Dims,
+{
+    fn ddof(&self) -> usize {
+        self.1
+    }
+}
+
+impl<T> ReduceArgs for (T, bool, usize)
+where
+    T: Dims,
+{
+    fn dims(&self) -> &impl Dims {
+        &self.0
+    }
+    fn keep_dim(&self) -> bool {
+        self.1
+    }
+}
+
+impl<T> VarArgs for (T, bool, usize)
+where
+    T: Dims,
+{
+    fn ddof(&self) -> usize {
+        self.2
     }
 }
 
@@ -874,6 +920,20 @@ pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
 pub fn mean<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let elem_count = x.size_of_dims(args.dims()) as f64;
     x.sum(args) / elem_count
+}
+
+pub trait VarArgs: ReduceArgs {
+    fn ddof(&self) -> usize {
+        0
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
+    let elem_count = x.size_of_dims(args.dims());
+    let m = x.mean((args.dims(), args.keep_dim()));
+    let s = (x - m).square().sum((args.dims(), args.keep_dim()));
+    s / (elem_count - args.ddof()) as f32
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
