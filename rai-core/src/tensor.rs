@@ -309,8 +309,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn gather(&self, dim: impl Dim, indexes: &Tensor) -> Tensor {
-        ops::gather(self, dim, indexes)
+    pub fn gather(&self, dim: impl Dim, index: &Tensor) -> Tensor {
+        ops::gather(self, dim, index)
+    }
+
+    #[inline]
+    pub fn index_select(&self, dim: impl Dim, index: &Tensor) -> Tensor {
+        ops::index_select(self, dim, index)
     }
 
     #[inline]

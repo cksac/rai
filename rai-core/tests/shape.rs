@@ -55,3 +55,9 @@ fn test_dims() {
     assert_eq!(s.dims(-1..=0), &[4usize, 3, 2, 1, 0]);
     assert_eq!(s.dims(-4..=-1), &[1usize, 2, 3, 4]);
 }
+
+#[test]
+fn test_shape() {
+    let s = [1, 2, 3, 4, 5, 6];
+    assert_eq!(s.shape_at(..), 6);
+}

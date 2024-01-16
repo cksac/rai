@@ -51,3 +51,51 @@ impl Primitive for Gather {
         todo!()
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IndexSelect {
+    pub dim: usize,
+}
+
+impl IndexSelect {
+    pub fn new(dim: usize) -> Self {
+        Self { dim }
+    }
+
+    pub fn dim(&self) -> &usize {
+        &self.dim
+    }
+}
+
+impl Primitive for IndexSelect {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("IndexSelect({:?})", &self.dim)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        // let tangent_x = &tangents[0];
+        // tangent_x.sum((self.dims(), false))
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        // let x = &primals[0];
+        // let mut shape = x.shape().to_vec();
+        // for dim in self.dims() {
+        //     shape[*dim] = 1;
+        // }
+        // let cotangent_x = cotangent.reshape(&shape).broadcast_to(x);
+        // vec![cotangent_x]
+        todo!()
+    }
+}

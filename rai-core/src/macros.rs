@@ -69,14 +69,17 @@ macro_rules! __non_differentiable {
 macro_rules! differentiable_module {
     ($m:ident) => {
         impl $crate::Differentiable for $m {
-            type Tensors = HashMap<usize, Tensor>;
-            type Gradient = HashMap<usize, Tensor>;
+            type Tensors = std::collections::HashMap<usize, Tensor>;
+            type Gradient = std::collections::HashMap<usize, Tensor>;
 
             fn tensors(&self) -> Self::Tensors {
                 $crate::Module::parameters(self)
             }
 
-            fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+            fn grad(
+                tensors: &Self::Tensors,
+                grad_map: &std::collections::HashMap<usize, Tensor>,
+            ) -> Self::Gradient {
                 tensors
                     .keys()
                     .map(|id| (*id, grad_map.get(id).unwrap().clone()))
@@ -86,7 +89,7 @@ macro_rules! differentiable_module {
             fn grad_map(
                 tensors: &Self::Tensors,
                 grad: Self::Gradient,
-                out: &mut HashMap<usize, Tensor>,
+                out: &mut std::collections::HashMap<usize, Tensor>,
             ) {
                 for id in tensors.keys() {
                     out.insert(*id, grad.get(id).unwrap().clone());

@@ -110,6 +110,7 @@ macro_rules! register_backend {
 
         // indexing
         _register::<$backend, primitives::Gather>(&mut $rules);
+        _register::<$backend, primitives::IndexSelect>(&mut $rules);
 
         // transform
         _register::<$backend, primitives::Transpose>(&mut $rules);

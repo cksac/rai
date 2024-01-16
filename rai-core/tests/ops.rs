@@ -146,11 +146,24 @@ fn test_gather() {
     let backend = &Cpu;
 
     let a = Tensor::from_array([1, 2, 3, 4, 5, 6], [2, 3], backend);
-    let indexes = Tensor::from_array([0, 0, 0, 1, 1, 1], [2, 3], backend);
-    let out = a.gather(0, &indexes);
+    let index = Tensor::from_array([0, 0, 0, 1, 1, 1], [2, 3], backend);
+    let out = a.gather(0, &index);
 
     println!("{}", a);
-    println!("{}", indexes);
+    println!("{}", index);
+    println!("{}", out);
+}
+
+#[test]
+fn test_index_select() {
+    let backend = &Cpu;
+
+    let a = Tensor::from_array([1, 2, 3, 4, 5, 6], [2, 3], backend);
+    let index = Tensor::from_array([1, 1, 0, 0], [4], backend);
+    let out = a.index_select(0, &index);
+
+    println!("{}", a);
+    println!("{}", index);
     println!("{}", out);
 }
 

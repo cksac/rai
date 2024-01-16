@@ -8,9 +8,9 @@ use tracing::Level;
 use crate::{
     primitives::{
         Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, FromArray, Full, Gather,
-        Greater, GreaterEqual, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul,
-        Negative, Normal, NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin,
-        Softmax, Sqrt, Square, Sub, Transpose,
+        Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul,
+        Maximum, Mul, Negative, Normal, NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt,
+        Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
     },
     shape::Dims,
     utils::dot_graph,
@@ -902,14 +902,27 @@ pub fn relu(x: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn gather(x: &Tensor, dim: impl Dim, indexes: &Tensor) -> Tensor {
+pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
+    assert!(x.shape_eq(index));
+    let dim = x.dim(dim);
     let backend = x.backend();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
-    let inputs = vec![x.clone(), indexes.clone()];
-    let dim = x.dim(dim);
+    let inputs = vec![x.clone(), index.clone()];
     // TODO: asserts
     Tensor::new(backend, dtype, shape, Gather::new(dim), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let mut shape = x.shape().to_vec();
+    shape[dim] = index.size();
+    let inputs = vec![x.clone(), index.clone()];
+    // TODO: asserts
+    Tensor::new(backend, dtype, shape, IndexSelect::new(dim), inputs)
 }
 
 pub trait FlattenArgs: Debug {

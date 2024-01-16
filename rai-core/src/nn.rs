@@ -14,6 +14,7 @@ pub trait Module {
         out
     }
 
+    // TODO: params should be a reference? for model with shared parameters in different layers
     fn update(&self, params: &mut HashMap<usize, Tensor>) {}
 }
 

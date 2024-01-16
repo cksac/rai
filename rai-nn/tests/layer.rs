@@ -1,6 +1,6 @@
 use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, Aux, Func, Module, Tensor, F32};
 
-use rai_nn::Linear;
+use rai_nn::{Embedding, Linear};
 
 fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {
     let output = model.forward(x);
@@ -28,4 +28,17 @@ fn test_linear_batch_input() {
     }
 
     println!("{}", dot_graph((output, grads)));
+}
+
+#[test]
+fn test_embedding() {
+    let backend = &Cpu;
+    let num_embeddings = 10;
+    let features = 4;
+    let embedding = Embedding::new(num_embeddings, features, F32, backend);
+    let input = Tensor::from_array([0, 1, 2, 3, 4], [5], backend);
+
+    let output = embedding.forward(&input);
+    println!("embeddings = {}", embedding.weight());
+    println!("output = {}", &output);
 }
