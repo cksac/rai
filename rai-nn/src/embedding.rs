@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use rai_core::{differentiable_module, Backend, DType, Module, Shape, Tensor};
+use rai_core::{simple_module, Backend, DType, Module, Shape, Tensor};
 use std::collections::HashMap;
 
 use crate::{gather_params, update_params};
@@ -27,10 +27,13 @@ impl Embedding {
 }
 
 impl Module for Embedding {
-    fn forward(&self, input: &Tensor) -> Tensor {
-        let mut out_dims = input.shape().to_vec();
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+        let mut out_dims = x.shape().to_vec();
         out_dims.push(self.weight.shape_at(..));
-        let index = &input.flatten(..);
+        let index = &x.flatten(..);
         self.weight.index_select(0, index).reshape(out_dims)
     }
 
@@ -43,4 +46,4 @@ impl Module for Embedding {
     }
 }
 
-differentiable_module!(Embedding);
+simple_module!(Embedding);

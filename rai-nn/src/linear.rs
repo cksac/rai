@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{differentiable_module, Backend, DType, Module, Tensor};
+use rai_core::{simple_module, Backend, DType, Module, Tensor};
 
 use crate::{gather_params, update_params};
 
@@ -31,10 +31,13 @@ impl Linear {
 }
 
 impl Module for Linear {
-    fn forward(&self, input: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         match &self.bias {
-            Some(bias) => input.matmul(self.weight.t()) + bias,
-            None => input.matmul(self.weight.t()),
+            Some(bias) => x.matmul(self.weight.t()) + bias,
+            None => x.matmul(self.weight.t()),
         }
     }
 
@@ -50,4 +53,4 @@ impl Module for Linear {
     }
 }
 
-differentiable_module!(Linear);
+simple_module!(Linear);

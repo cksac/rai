@@ -67,8 +67,8 @@ macro_rules! __non_differentiable {
 
 #[macro_export]
 macro_rules! differentiable_module {
-    ($m:ident) => {
-        impl $crate::Differentiable for $m {
+    ($M:ident) => {
+        impl $crate::Differentiable for $M {
             type Tensors = std::collections::HashMap<usize, Tensor>;
             type Gradient = std::collections::HashMap<usize, Tensor>;
 
@@ -97,6 +97,15 @@ macro_rules! differentiable_module {
             }
         }
 
-        impl $crate::DifferentiableModule for $m {}
+        impl $crate::DifferentiableModule for $M {}
+    };
+}
+
+#[macro_export]
+macro_rules! simple_module {
+    ($M:ident) => {
+        $crate::differentiable_module!($M);
+
+        impl<'i, 'o> $crate::SimpleModule<'i, 'o> for $M {}
     };
 }

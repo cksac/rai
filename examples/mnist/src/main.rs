@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{differentiable_module, eval, Aux, DType, DifferentiableModule, F32};
+use rai::{eval, simple_module, Aux, DType, SimpleModule, F32};
 use rai::{nn::Linear, value_and_grad, Backend, Func, Module, Tensor};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -33,7 +33,10 @@ impl Mlp {
 }
 
 impl Module for Mlp {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         let mut x = x.clone();
         for l in self.layers[0..self.layers.len() - 1].iter() {
             x = l.forward(&x).relu();
@@ -53,11 +56,11 @@ impl Module for Mlp {
         }
     }
 }
-differentiable_module!(Mlp);
+simple_module!(Mlp);
 
-fn loss_fn<M: DifferentiableModule + 'static>(
+fn loss_fn<'i, 'o, M: SimpleModule<'i, 'o>>(
     model: &M,
-    input: &Tensor,
+    input: &'i Tensor,
     labels: &Tensor,
 ) -> (Tensor, Aux<Tensor>) {
     let logits = model.forward(input);
@@ -65,10 +68,10 @@ fn loss_fn<M: DifferentiableModule + 'static>(
     (loss, Aux(logits))
 }
 
-fn train_step<O: Optimizer, M: DifferentiableModule + 'static>(
+fn train_step<'i, 'o, M: SimpleModule<'i, 'o>, O: Optimizer>(
     optimizer: &mut O,
     model: &M,
-    input: &Tensor,
+    input: &'i Tensor,
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);

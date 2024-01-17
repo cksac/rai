@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{Backend, DType, Module, Tensor};
+use rai_core::{simple_module, Backend, DType, Module, Tensor};
 
 use crate::{gather_params, update_params};
 
@@ -31,7 +31,10 @@ impl LayerNorm {
 }
 
 impl Module for LayerNorm {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         let mean = x.mean((-1, true));
         let var = x.var((-1, true));
         let x = (x - mean) * (var + self.eps).rsqrt();
@@ -53,3 +56,5 @@ impl Module for LayerNorm {
         update_params!(?self.bias, params);
     }
 }
+
+simple_module!(LayerNorm);

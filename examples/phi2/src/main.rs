@@ -14,7 +14,10 @@ pub struct ModelConfig {
 
 pub struct RoPE {}
 impl Module for RoPE {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         todo!()
     }
 
@@ -36,7 +39,10 @@ pub struct PhiAttention {
     rope: RoPE,
 }
 impl Module for PhiAttention {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         todo!()
     }
 
@@ -56,7 +62,10 @@ pub struct PhiMLP {
     act: Relu, // TODO: use GELU
 }
 impl Module for PhiMLP {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         todo!()
     }
 
@@ -76,7 +85,10 @@ pub struct PhiDecoderLayer {
     mlp: PhiMLP,
 }
 impl Module for PhiDecoderLayer {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         todo!()
     }
 
@@ -96,7 +108,10 @@ pub struct PhiModel {
     final_layernorm: LayerNorm,
 }
 impl Module for PhiModel {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         todo!()
     }
 
@@ -119,7 +134,10 @@ pub struct Model {
     lm_head: Linear,
 }
 impl Module for Model {
-    fn forward(&self, x: &Tensor) -> Tensor {
+    type Input<'i> = &'i Tensor;
+    type Output<'o> = Tensor;
+
+    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
         todo!()
     }
 
