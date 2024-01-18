@@ -35,10 +35,10 @@ impl ValuAssociated for Embedding {
 }
 
 impl Module for Embedding {
-    type Input<'i> = &'i Tensor;
-    type Output<'o> = Tensor;
+    type Input = Tensor;
+    type Output = Tensor;
 
-    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+    fn forward(&self, x: &Self::Input) -> Self::Output {
         let mut out_dims = x.shape().to_vec();
         out_dims.push(self.weight.shape_at(..));
         let index = &x.flatten(..);

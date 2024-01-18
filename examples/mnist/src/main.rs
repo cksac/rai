@@ -39,10 +39,10 @@ impl ValuAssociated for Mlp {
 }
 
 impl Module for Mlp {
-    type Input<'i> = &'i Tensor;
-    type Output<'o> = Tensor;
+    type Input = Tensor;
+    type Output = Tensor;
 
-    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+    fn forward(&self, x: &Self::Input) -> Self::Output {
         let mut x = x.clone();
         for l in self.layers[0..self.layers.len() - 1].iter() {
             x = l.forward(&x).relu();
@@ -65,9 +65,9 @@ impl TrainableModule for Mlp {
     }
 }
 
-fn loss_fn<'i, 'o, M: TrainableModule<Input<'i> = &'i Tensor, Output<'o> = Tensor>>(
+fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     model: &M,
-    input: &'i Tensor,
+    input: &Tensor,
     labels: &Tensor,
 ) -> (Tensor, Aux<Tensor>) {
     let logits = model.forward(input);
@@ -76,11 +76,9 @@ fn loss_fn<'i, 'o, M: TrainableModule<Input<'i> = &'i Tensor, Output<'o> = Tenso
 }
 
 fn train_step<
-    'i,
-    'o,
     M: TrainableModule<
-        Input<'i> = &'i Tensor,
-        Output<'o> = Tensor,
+        Input = Tensor,
+        Output = Tensor,
         Tensors = HashMap<usize, Tensor>,
         Gradient = HashMap<usize, Tensor>,
     >,
@@ -88,7 +86,7 @@ fn train_step<
 >(
     optimizer: &mut O,
     model: &M,
-    input: &'i Tensor,
+    input: &Tensor,
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);

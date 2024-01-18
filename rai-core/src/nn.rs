@@ -2,26 +2,25 @@ use std::collections::HashMap;
 
 use crate::{
     transforms::{ValuAssociated, VF},
-    Tensor, TensorIter, Value,
+    Tensor,
 };
 
 pub struct ModuleType;
 
 pub trait Module {
-    type Input<'i>;
-    type Output<'o>;
-    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o>;
+    type Input;
+    type Output;
+    fn forward(&self, x: &Self::Input) -> Self::Output;
 }
 
 impl<'a, T> Module for &'a T
 where
     T: Module,
 {
-    type Input<'i> = T::Input<'i>;
+    type Input = T::Input;
+    type Output = T::Output;
 
-    type Output<'o> = T::Output<'o>;
-
-    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+    fn forward(&self, x: &Self::Input) -> Self::Output {
         (*self).forward(x)
     }
 }
@@ -61,7 +60,7 @@ where
 
 impl<T> VF<ModuleType, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
 where
-    T: TrainableModule,
+    T: TrainableModule<Tensors = HashMap<usize, Tensor>, Gradient = HashMap<usize, Tensor>>,
 {
     fn vf_tensors(&self) -> HashMap<usize, Tensor> {
         self.params()
@@ -96,7 +95,7 @@ impl<'a, T> NonTrainableModule for &'a T where T: NonTrainableModule {}
 
 impl<T> VF<ModuleType, (), ()> for T
 where
-    T: NonTrainableModule,
+    T: NonTrainableModule<Tensors = (), Gradient = ()>,
 {
     fn vf_tensors(&self) {}
     fn vf_grad(_: &(), _: &HashMap<usize, Tensor>) {}

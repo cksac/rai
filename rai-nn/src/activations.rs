@@ -9,9 +9,10 @@ macro_rules! impl_activation {
         }
 
         impl rai_core::Module for $M {
-            type Input<'i> = &'i Tensor;
-            type Output<'o> = Tensor;
-            fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+            type Input = Tensor;
+            type Output = Tensor;
+
+            fn forward(&self, x: &Self::Input) -> Self::Output {
                 rai_core::ops::$OP(x)
             }
         }

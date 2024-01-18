@@ -37,10 +37,10 @@ impl ValuAssociated for LayerNorm {
 }
 
 impl Module for LayerNorm {
-    type Input<'i> = &'i Tensor;
-    type Output<'o> = Tensor;
+    type Input = Tensor;
+    type Output = Tensor;
 
-    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+    fn forward(&self, x: &Self::Input) -> Self::Output {
         let mean = x.mean((-1, true));
         let var = x.var((-1, true));
         let x = (x - mean) * (var + self.eps).rsqrt();

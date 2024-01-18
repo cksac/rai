@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{Tensor, TensorIter};
+use crate::{non_differentiable, Tensor, TensorIter};
 
 pub trait ValuAssociated {
     type ValueType;
@@ -49,6 +49,7 @@ where
 }
 
 pub struct BasicType;
+
 impl<'a, T, G, X> VF<BasicType, T, G> for &'a X
 where
     X: VF<BasicType, T, G>,
@@ -240,14 +241,4 @@ impl_tuple_differentiable!(A B C D E F G H I J K);
 impl_tuple_differentiable!(A B C D E F G H I J K L);
 
 pub struct Aux<T>(pub T);
-
-impl<T> ValuAssociated for Aux<T> {
-    type ValueType = BasicType;
-    type Tensors = ();
-    type Gradient = ();
-}
-impl<T> VF<BasicType, (), ()> for Aux<T> {
-    fn vf_tensors(&self) {}
-    fn vf_grad(_: &(), _: &HashMap<usize, Tensor>) {}
-    fn vf_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
-}
+non_differentiable!(<T> Aux<T>);

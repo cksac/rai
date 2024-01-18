@@ -17,7 +17,8 @@ pub use backend::Backend;
 
 mod transforms;
 pub use transforms::{
-    eval, grad, jvp, raiexpr, value_and_grad, vjp, Aux, Func, TensorIter, ValuAssociated, Value, VF,
+    eval, grad, jvp, raiexpr, value_and_grad, vjp, Aux, BasicType, Func, TensorIter,
+    ValuAssociated, Value, VF,
 };
 
 pub mod dispatch;

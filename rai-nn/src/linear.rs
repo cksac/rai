@@ -37,10 +37,10 @@ impl ValuAssociated for Linear {
 }
 
 impl Module for Linear {
-    type Input<'i> = &'i Tensor;
-    type Output<'o> = Tensor;
+    type Input = Tensor;
+    type Output = Tensor;
 
-    fn forward<'i, 'o>(&self, x: Self::Input<'i>) -> Self::Output<'o> {
+    fn forward(&self, x: &Self::Input) -> Self::Output {
         match &self.bias {
             Some(bias) => x.matmul(self.weight.t()) + bias,
             None => x.matmul(self.weight.t()),

@@ -10,7 +10,7 @@ mod tensor_iter;
 pub use tensor_iter::TensorIter;
 
 mod differentiable;
-pub use differentiable::{Aux, ValuAssociated, Value, VF};
+pub use differentiable::{Aux, BasicType, ValuAssociated, Value, VF};
 
 mod eval;
 pub use eval::eval;
