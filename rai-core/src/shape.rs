@@ -30,8 +30,7 @@ impl Dim for isize {
         let dim = if *self >= 0 {
             *self as usize
         } else {
-            assert!(shape.ndim() > 0);
-            self.checked_add_unsigned(shape.ndim() - 1).unwrap() as usize
+            self.checked_add_unsigned(shape.ndim()).unwrap() as usize
         };
         assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
         dim
@@ -43,20 +42,19 @@ impl Dim for i32 {
         let dim = if *self >= 0 {
             *self as usize
         } else {
-            assert!(shape.ndim() > 0);
-            self.checked_add_unsigned(shape.ndim() as u32 - 1).unwrap() as usize
+            self.checked_add_unsigned(shape.ndim() as u32).unwrap() as usize
         };
         assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
         dim
     }
 }
 
-impl Dim for RangeFull {
-    fn dim_of<T: Shape + ?Sized>(&self, shape: &T) -> usize {
-        assert!(shape.ndim() > 0);
-        shape.ndim() - 1
-    }
-}
+// impl Dim for RangeFull {
+//     fn dim_of<T: Shape + ?Sized>(&self, shape: &T) -> usize {
+//         assert!(shape.ndim() > 0);
+//         shape.ndim() - 1
+//     }
+// }
 
 pub trait Dims: Debug {
     fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize>;

@@ -10,6 +10,9 @@ pub use embedding::*;
 mod layer_norm;
 pub use layer_norm::*;
 
+mod rms_norm;
+pub use rms_norm::*;
+
 #[macro_export]
 macro_rules! gather_params {
     ($P:expr, $M:ident) => {

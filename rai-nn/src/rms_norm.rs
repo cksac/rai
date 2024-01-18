@@ -1,40 +1,35 @@
-use core::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
+
 use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
-use std::collections::HashMap;
 
 use crate::{gather_params, update_params};
 
-pub struct Embedding {
+pub struct RMSNorm {
     weight: Tensor,
+    eps: f32,
 }
 
-impl Embedding {
+impl RMSNorm {
     pub fn new(
-        num_embeddings: usize,
-        features: usize,
+        dims: usize,
+        eps: f32,
         dtype: impl DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Self {
         let backend = &backend.into();
-        // TODO: init strategy
-        let weight = Tensor::normal([num_embeddings, features], dtype, backend);
-        Self { weight }
-    }
-
-    pub fn weight(&self) -> &Tensor {
-        &self.weight
+        let weight = Tensor::ones([dims], dtype, backend);
+        Self { weight, eps }
     }
 }
 
-impl Module for Embedding {
+impl Module for RMSNorm {
     type Input = Tensor;
     type Output = Tensor;
 
     fn forward(&self, x: &Self::Input) -> Self::Output {
-        let mut out_dims = x.shape().to_vec();
-        out_dims.push(self.weight.shape_at(-1));
-        let index = &x.flatten(..);
-        self.weight.index_select(0, index).reshape(out_dims)
+        let s = 1.0 / (x.shape_at(-1) as f32).sqrt();
+        let n = ((x * s).square().sum((-1, true)) + self.eps).rsqrt();
+        &self.weight * x * n
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
@@ -46,4 +41,4 @@ impl Module for Embedding {
     }
 }
 
-trainable_module!(Embedding);
+trainable_module!(RMSNorm);

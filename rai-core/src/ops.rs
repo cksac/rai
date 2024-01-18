@@ -1006,7 +1006,7 @@ impl<D: Dim> FlattenArgs for (D, D) {
 
 impl FlattenArgs for RangeFull {
     fn end_dim(&self) -> impl Dim {
-        self
+        -1
     }
 }
 
