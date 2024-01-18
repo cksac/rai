@@ -33,7 +33,7 @@ where
             *id_seq += 1;
             *id_seq
         });
-        format!("%{}", id.to_string()).yellow().to_string()
+        format!("%{}", id).yellow().to_string()
     }
 
     fn decl(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {

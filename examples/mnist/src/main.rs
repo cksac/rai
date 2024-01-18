@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{eval, Aux, DType, ModuleValue, TrainableModule, ValueSpec, F32};
+use rai::{eval, trainable_module, Aux, DType, TrainableModule, ValueSpec, F32};
 use rai::{nn::Linear, value_and_grad, Backend, Func, Module, Tensor};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -32,12 +32,6 @@ impl Mlp {
     }
 }
 
-impl ValueSpec for Mlp {
-    type Kind = ModuleValue;
-    type Tensors = HashMap<usize, Tensor>;
-    type Gradient = HashMap<usize, Tensor>;
-}
-
 impl Module for Mlp {
     type Input = Tensor;
     type Output = Tensor;
@@ -49,9 +43,7 @@ impl Module for Mlp {
         }
         self.layers[self.layers.len() - 1].forward(&x)
     }
-}
 
-impl TrainableModule for Mlp {
     fn gather_params(&self, out: &mut HashMap<usize, Tensor>) {
         for l in &self.layers {
             l.gather_params(out)
@@ -64,6 +56,8 @@ impl TrainableModule for Mlp {
         }
     }
 }
+
+trainable_module!(Mlp);
 
 fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     model: &M,

@@ -35,7 +35,7 @@ fn main() {
 
 ### NN Modules, Optimizer and loss functions
 ```rust
-fn loss_fn<M: DifferentiableModule + 'static>(
+fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     model: &M,
     input: &Tensor,
     labels: &Tensor,
@@ -45,7 +45,15 @@ fn loss_fn<M: DifferentiableModule + 'static>(
     (loss, Aux(logits))
 }
 
-fn train_step<O: Optimizer, M: DifferentiableModule + 'static>(
+fn train_step<
+    M: TrainableModule<
+        Input = Tensor,
+        Output = Tensor,
+        Tensors = HashMap<usize, Tensor>,
+        Gradient = HashMap<usize, Tensor>,
+    >,
+    O: Optimizer,
+>(
     optimizer: &mut O,
     model: &M,
     input: &Tensor,
@@ -55,7 +63,7 @@ fn train_step<O: Optimizer, M: DifferentiableModule + 'static>(
     let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, input, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
-    model.update(&mut params);
+    model.update_params(&mut params);
 }
 ```
 

@@ -74,11 +74,24 @@ macro_rules! __non_differentiable {
 macro_rules! non_trainable_module {
     ($M:ty) => {
         impl $crate::ValueSpec for $M {
-            type Kind = rai_core::ModuleValue;
+            type Kind = $crate::ModuleValue;
             type Tensors = ();
             type Gradient = ();
         }
 
         impl $crate::NonTrainableModule for $M {}
+    };
+}
+
+#[macro_export]
+macro_rules! trainable_module {
+    ($M:ty) => {
+        impl $crate::ValueSpec for $M {
+            type Kind = $crate::ModuleValue;
+            type Tensors = HashMap<usize, Tensor>;
+            type Gradient = HashMap<usize, Tensor>;
+        }
+
+        impl $crate::TrainableModule for $M {}
     };
 }

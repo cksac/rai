@@ -2,7 +2,7 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{Primitive, Shape, Tensor};
+use crate::{Primitive, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Gather {

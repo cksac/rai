@@ -38,16 +38,19 @@ impl<T> Value for T
 where
     T: ValueSpec + GenericValue<T::Kind, T::Tensors, T::Gradient>,
 {
+    #[inline]
     fn tensors(&self) -> Self::Tensors {
-        <Self as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_tensors(self)
+        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_tensors(self)
     }
 
+    #[inline]
     fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
-        <Self as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad(tensors, grad_map)
+        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad(tensors, grad_map)
     }
 
+    #[inline]
     fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
-        <Self as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad_map(tensors, grad, out);
+        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad_map(tensors, grad, out);
     }
 }
 
@@ -55,16 +58,19 @@ impl<'a, T, G, X> GenericValue<BasicValue, T, G> for &'a X
 where
     X: GenericValue<BasicValue, T, G>,
 {
+    #[inline]
     fn gv_tensors(&self) -> T {
         (*self).gv_tensors()
     }
 
+    #[inline]
     fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
-        X::gv_grad(tensors, grad_map)
+        <X as GenericValue<BasicValue, T, G>>::gv_grad(tensors, grad_map)
     }
 
+    #[inline]
     fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
-        X::gv_grad_map(tensors, grad, out)
+        <X as GenericValue<BasicValue, T, G>>::gv_grad_map(tensors, grad, out)
     }
 }
 

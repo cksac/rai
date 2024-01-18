@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rai_core::{non_trainable_module, Tensor};
 
 macro_rules! impl_activation {
@@ -9,6 +11,8 @@ macro_rules! impl_activation {
             fn forward(&self, x: &Self::Input) -> Self::Output {
                 rai_core::ops::$OP(x)
             }
+            fn gather_params(&self, _: &mut HashMap<usize, Tensor>) {}
+            fn update_params(&self, _: &mut HashMap<usize, Tensor>) {}
         }
 
         non_trainable_module!($M);

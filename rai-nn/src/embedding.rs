@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use rai_core::{Backend, DType, Module, ModuleValue, Shape, Tensor, TrainableModule, ValueSpec};
+use rai_core::{trainable_module, Backend, DType, Module, Shape, Tensor};
 use std::collections::HashMap;
 
 use crate::{gather_params, update_params};
@@ -26,12 +26,6 @@ impl Embedding {
     }
 }
 
-impl ValueSpec for Embedding {
-    type Kind = ModuleValue;
-    type Tensors = HashMap<usize, Tensor>;
-    type Gradient = HashMap<usize, Tensor>;
-}
-
 impl Module for Embedding {
     type Input = Tensor;
     type Output = Tensor;
@@ -42,9 +36,7 @@ impl Module for Embedding {
         let index = &x.flatten(..);
         self.weight.index_select(0, index).reshape(out_dims)
     }
-}
 
-impl TrainableModule for Embedding {
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
         gather_params!(self.weight, params);
     }
@@ -53,3 +45,5 @@ impl TrainableModule for Embedding {
         update_params!(self.weight, params);
     }
 }
+
+trainable_module!(Embedding);

@@ -6,28 +6,7 @@ pub trait Module {
     type Input;
     type Output;
     fn forward(&self, x: &Self::Input) -> Self::Output;
-}
 
-impl<'a, T> Module for &'a T
-where
-    T: Module,
-{
-    type Input = T::Input;
-    type Output = T::Output;
-
-    fn forward(&self, x: &Self::Input) -> Self::Output {
-        (*self).forward(x)
-    }
-}
-
-pub trait TrainableModule:
-    Module
-    + ValueSpec<
-        Kind = ModuleValue,
-        Tensors = HashMap<usize, Tensor>,
-        Gradient = HashMap<usize, Tensor>,
-    >
-{
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>);
 
     fn params(&self) -> HashMap<usize, Tensor> {
@@ -40,27 +19,51 @@ pub trait TrainableModule:
     fn update_params(&self, params: &mut HashMap<usize, Tensor>);
 }
 
-impl<'a, T> TrainableModule for &'a T
+impl<'a, T> Module for &'a T
 where
-    T: TrainableModule,
+    T: Module,
 {
+    type Input = T::Input;
+    type Output = T::Output;
+
+    #[inline]
+    fn forward(&self, x: &Self::Input) -> Self::Output {
+        (*self).forward(x)
+    }
+
+    #[inline]
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
         (*self).gather_params(params)
     }
 
+    #[inline]
     fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
         (*self).update_params(params)
     }
 }
 
+pub trait TrainableModule:
+    Module
+    + ValueSpec<
+        Kind = ModuleValue,
+        Tensors = HashMap<usize, Tensor>,
+        Gradient = HashMap<usize, Tensor>,
+    >
+{
+}
+
+impl<'a, T> TrainableModule for &'a T where T: TrainableModule {}
+
 impl<T> GenericValue<ModuleValue, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
 where
     T: TrainableModule<Tensors = HashMap<usize, Tensor>, Gradient = HashMap<usize, Tensor>>,
 {
+    #[inline]
     fn gv_tensors(&self) -> HashMap<usize, Tensor> {
         self.params()
     }
 
+    #[inline]
     fn gv_grad(
         tensors: &HashMap<usize, Tensor>,
         grad_map: &HashMap<usize, Tensor>,
@@ -71,6 +74,7 @@ where
             .collect()
     }
 
+    #[inline]
     fn gv_grad_map(
         tensors: &HashMap<usize, Tensor>,
         grad: HashMap<usize, Tensor>,

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{Backend, DType, Module, ModuleValue, Tensor, TrainableModule, ValueSpec};
+use rai_core::{trainable_module, Backend, DType, Module, Tensor};
 
 use crate::{gather_params, update_params};
 
@@ -30,12 +30,6 @@ impl Linear {
     }
 }
 
-impl ValueSpec for Linear {
-    type Kind = ModuleValue;
-    type Tensors = HashMap<usize, Tensor>;
-    type Gradient = HashMap<usize, Tensor>;
-}
-
 impl Module for Linear {
     type Input = Tensor;
     type Output = Tensor;
@@ -46,9 +40,7 @@ impl Module for Linear {
             None => x.matmul(self.weight.t()),
         }
     }
-}
 
-impl TrainableModule for Linear {
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
         gather_params!(self.weight, params);
         gather_params!(?self.bias, params);
@@ -60,3 +52,5 @@ impl TrainableModule for Linear {
         update_params!(?self.bias, params);
     }
 }
+
+trainable_module!(Linear);
