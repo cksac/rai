@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{simple_module, Backend, DType, Module, Tensor};
+use rai_core::{Backend, DType, Module, Tensor, TrainableModule};
 
 use crate::{gather_params, update_params};
 
@@ -31,6 +31,9 @@ impl LayerNorm {
 }
 
 impl Module for LayerNorm {
+    type Tensors = HashMap<usize, Tensor>;
+    type Gradient = HashMap<usize, Tensor>;
+
     type Input<'i> = &'i Tensor;
     type Output<'o> = Tensor;
 
@@ -45,7 +48,9 @@ impl Module for LayerNorm {
             x
         }
     }
+}
 
+impl TrainableModule for LayerNorm {
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
         gather_params!(?self.weight, params);
         gather_params!(?self.bias, params);
@@ -56,5 +61,3 @@ impl Module for LayerNorm {
         update_params!(?self.bias, params);
     }
 }
-
-simple_module!(LayerNorm);

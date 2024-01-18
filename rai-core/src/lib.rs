@@ -28,7 +28,7 @@ mod error;
 pub use error::{Error, Result};
 
 mod nn;
-pub use nn::{DifferentiableModule, Module, SimpleModule};
+pub use nn::{Module, NonTrainableModule, TrainableModule};
 
 #[macro_use]
 mod macros;

@@ -10,25 +10,25 @@ pub trait Differentiable {
     fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>);
 }
 
-impl<'a, T> Differentiable for &'a T
-where
-    T: Differentiable,
-{
-    type Tensors = T::Tensors;
-    type Gradient = T::Gradient;
+// impl<'a, T> Differentiable for &'a T
+// where
+//     T: Differentiable,
+// {
+//     type Tensors = T::Tensors;
+//     type Gradient = T::Gradient;
 
-    fn tensors(&self) -> Self::Tensors {
-        (*self).tensors()
-    }
+//     fn tensors(&self) -> Self::Tensors {
+//         (*self).tensors()
+//     }
 
-    fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
-        T::grad(tensors, grad_map)
-    }
+//     fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+//         T::grad(tensors, grad_map)
+//     }
 
-    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
-        T::grad_map(tensors, grad, out)
-    }
-}
+//     fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
+//         T::grad_map(tensors, grad, out)
+//     }
+// }
 
 impl Differentiable for Tensor {
     type Tensors = Tensor;
@@ -36,6 +36,23 @@ impl Differentiable for Tensor {
 
     fn tensors(&self) -> Self::Tensors {
         self.clone()
+    }
+
+    fn grad(tensor: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+        grad_map.get(&tensor.id()).cloned().unwrap()
+    }
+
+    fn grad_map(tensor: &Self::Tensors, grad: Tensor, out: &mut HashMap<usize, Tensor>) {
+        out.insert(tensor.id(), grad);
+    }
+}
+
+impl<'a> Differentiable for &'a Tensor {
+    type Tensors = Tensor;
+    type Gradient = Tensor;
+
+    fn tensors(&self) -> Self::Tensors {
+        (*self).clone()
     }
 
     fn grad(tensor: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
