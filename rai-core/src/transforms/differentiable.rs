@@ -1,86 +1,114 @@
 use std::collections::HashMap;
 
-use crate::{non_differentiable, Tensor, TensorIter};
+use crate::{Tensor, TensorIter};
 
-pub trait Differentiable {
+pub trait ValuAssociated {
+    type ValueType;
     type Tensors: TensorIter + 'static;
     type Gradient;
+}
+
+impl<'a, T> ValuAssociated for &'a T
+where
+    T: ValuAssociated,
+{
+    type ValueType = T::ValueType;
+    type Tensors = T::Tensors;
+    type Gradient = T::Gradient;
+}
+
+pub trait Value: ValuAssociated {
     fn tensors(&self) -> Self::Tensors;
     fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient;
     fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>);
 }
 
-// impl<'a, T> Differentiable for &'a T
-// where
-//     T: Differentiable,
-// {
-//     type Tensors = T::Tensors;
-//     type Gradient = T::Gradient;
+pub trait VF<F, T, G> {
+    fn vf_tensors(&self) -> T;
 
-//     fn tensors(&self) -> Self::Tensors {
-//         (*self).tensors()
-//     }
+    fn vf_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G;
 
-//     fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
-//         T::grad(tensors, grad_map)
-//     }
-
-//     fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
-//         T::grad_map(tensors, grad, out)
-//     }
-// }
-
-impl Differentiable for Tensor {
-    type Tensors = Tensor;
-    type Gradient = Tensor;
-
-    fn tensors(&self) -> Self::Tensors {
-        self.clone()
-    }
-
-    fn grad(tensor: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
-        grad_map.get(&tensor.id()).cloned().unwrap()
-    }
-
-    fn grad_map(tensor: &Self::Tensors, grad: Tensor, out: &mut HashMap<usize, Tensor>) {
-        out.insert(tensor.id(), grad);
-    }
+    fn vf_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>);
 }
 
-impl<'a> Differentiable for &'a Tensor {
-    type Tensors = Tensor;
-    type Gradient = Tensor;
-
+impl<T> Value for T
+where
+    T: ValuAssociated + VF<T::ValueType, T::Tensors, T::Gradient>,
+{
     fn tensors(&self) -> Self::Tensors {
-        (*self).clone()
-    }
-
-    fn grad(tensor: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
-        grad_map.get(&tensor.id()).cloned().unwrap()
-    }
-
-    fn grad_map(tensor: &Self::Tensors, grad: Tensor, out: &mut HashMap<usize, Tensor>) {
-        out.insert(tensor.id(), grad);
-    }
-}
-
-impl Differentiable for HashMap<usize, Tensor> {
-    type Tensors = HashMap<usize, Tensor>;
-    type Gradient = HashMap<usize, Tensor>;
-
-    fn tensors(&self) -> Self::Tensors {
-        self.clone()
+        <Self as VF<T::ValueType, T::Tensors, T::Gradient>>::vf_tensors(self)
     }
 
     fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+        <Self as VF<T::ValueType, T::Tensors, T::Gradient>>::vf_grad(tensors, grad_map)
+    }
+
+    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
+        <Self as VF<T::ValueType, T::Tensors, T::Gradient>>::vf_grad_map(tensors, grad, out);
+    }
+}
+
+pub struct BasicType;
+impl<'a, T, G, X> VF<BasicType, T, G> for &'a X
+where
+    X: VF<BasicType, T, G>,
+{
+    fn vf_tensors(&self) -> T {
+        (*self).vf_tensors()
+    }
+
+    fn vf_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
+        X::vf_grad(tensors, grad_map)
+    }
+
+    fn vf_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
+        X::vf_grad_map(tensors, grad, out)
+    }
+}
+
+impl ValuAssociated for Tensor {
+    type ValueType = BasicType;
+    type Tensors = Tensor;
+    type Gradient = Tensor;
+}
+
+impl VF<BasicType, Tensor, Tensor> for Tensor {
+    fn vf_tensors(&self) -> Tensor {
+        self.clone()
+    }
+
+    fn vf_grad(tensor: &Tensor, grad_map: &HashMap<usize, Tensor>) -> Tensor {
+        grad_map.get(&tensor.id()).cloned().unwrap()
+    }
+
+    fn vf_grad_map(tensor: &Tensor, grad: Tensor, out: &mut HashMap<usize, Tensor>) {
+        out.insert(tensor.id(), grad);
+    }
+}
+
+impl ValuAssociated for HashMap<usize, Tensor> {
+    type ValueType = BasicType;
+    type Tensors = HashMap<usize, Tensor>;
+    type Gradient = HashMap<usize, Tensor>;
+}
+
+impl VF<BasicType, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for HashMap<usize, Tensor> {
+    fn vf_tensors(&self) -> HashMap<usize, Tensor> {
+        self.clone()
+    }
+
+    fn vf_grad(
+        tensors: &HashMap<usize, Tensor>,
+        grad_map: &HashMap<usize, Tensor>,
+    ) -> HashMap<usize, Tensor> {
         tensors
             .keys()
             .map(|id| (*id, grad_map.get(id).unwrap().clone()))
             .collect()
     }
 
-    fn grad_map(
-        tensors: &Self::Tensors,
+    fn vf_grad_map(
+        tensors: &HashMap<usize, Tensor>,
         grad: HashMap<usize, Tensor>,
         out: &mut HashMap<usize, Tensor>,
     ) {
@@ -90,24 +118,30 @@ impl Differentiable for HashMap<usize, Tensor> {
     }
 }
 
-impl<const N: usize, T> Differentiable for [T; N]
+impl<const N: usize, T> ValuAssociated for [T; N]
 where
-    T: Differentiable,
+    T: Value,
     [T::Tensors; N]: TensorIter,
 {
+    type ValueType = BasicType;
     type Tensors = [T::Tensors; N];
-
     type Gradient = [T::Gradient; N];
+}
 
-    fn tensors(&self) -> Self::Tensors {
+impl<const N: usize, T> VF<BasicType, [T::Tensors; N], [T::Gradient; N]> for [T; N]
+where
+    T: Value,
+    [T::Tensors; N]: TensorIter,
+{
+    fn vf_tensors(&self) -> [T::Tensors; N] {
         self.iter()
-            .map(Differentiable::tensors)
+            .map(Value::tensors)
             .collect::<Vec<T::Tensors>>()
             .try_into()
             .unwrap_or_else(|_| unreachable!())
     }
 
-    fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+    fn vf_grad(tensors: &[T::Tensors; N], grad_map: &HashMap<usize, Tensor>) -> [T::Gradient; N] {
         tensors
             .iter()
             .map(|t| T::grad(t, grad_map))
@@ -116,30 +150,41 @@ where
             .unwrap_or_else(|_| unreachable!())
     }
 
-    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
+    fn vf_grad_map(
+        tensors: &[T::Tensors; N],
+        grad: [T::Gradient; N],
+        out: &mut HashMap<usize, Tensor>,
+    ) {
         for (t, g) in tensors.iter().zip(grad.into_iter()) {
             T::grad_map(t, g, out);
         }
     }
 }
 
-impl<A> Differentiable for (A,)
+impl<A> ValuAssociated for (A,)
 where
-    A: Differentiable,
+    A: Value,
     A::Tensors: TensorIter,
 {
+    type ValueType = BasicType;
     type Tensors = A::Tensors;
     type Gradient = A::Gradient;
+}
 
-    fn tensors(&self) -> Self::Tensors {
+impl<A> VF<BasicType, A::Tensors, A::Gradient> for (A,)
+where
+    A: Value,
+    A::Tensors: TensorIter,
+{
+    fn vf_tensors(&self) -> A::Tensors {
         self.0.tensors()
     }
 
-    fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+    fn vf_grad(tensors: &A::Tensors, grad_map: &HashMap<usize, Tensor>) -> A::Gradient {
         A::grad(tensors, grad_map)
     }
 
-    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
+    fn vf_grad_map(tensors: &A::Tensors, grad: A::Gradient, out: &mut HashMap<usize, Tensor>) {
         A::grad_map(tensors, grad, out);
     }
 }
@@ -147,25 +192,32 @@ where
 macro_rules! impl_tuple_differentiable {
     ($($T:tt)*) => {
         paste::paste! {
-            impl<$($T,)*> Differentiable for ($($T,)*)
+            impl<$($T,)*> ValuAssociated for ($($T,)*)
             where
-                $($T: Differentiable,)*
+                $($T: Value,)*
                 ($($T::Tensors,)*): TensorIter,
             {
+                type ValueType = BasicType;
                 type Tensors = ($($T::Tensors,)*);
                 type Gradient = ($($T::Gradient,)*);
+            }
 
-                fn tensors(&self) -> Self::Tensors {
+            impl<$($T,)*> VF<BasicType, ($($T::Tensors,)*), ($($T::Gradient,)*)> for ($($T,)*)
+            where
+                $($T: Value,)*
+                ($($T::Tensors,)*): TensorIter,
+            {
+                fn vf_tensors(&self) -> ($($T::Tensors,)*) {
                     let ($([<$T:lower 1>],)*) = self;
                     ($([<$T:lower 1>].tensors(),)*)
                 }
 
-                fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
+                fn vf_grad(tensors: &($($T::Tensors,)*), grad_map: &HashMap<usize, Tensor>) -> ($($T::Gradient,)*) {
                     let ($([<$T:lower 1>],)*) = tensors;
                     ($($T::grad([<$T:lower 1>], grad_map),)*)
                 }
 
-                fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
+                fn vf_grad_map(tensors: &($($T::Tensors,)*), grad: ($($T::Gradient,)*), out: &mut HashMap<usize, Tensor>) {
                     let ($([<$T:lower 1>],)*) = tensors;
                     let ($([<$T:lower 2>],)*) = grad;
                     $($T::grad_map([<$T:lower 1>], [<$T:lower 2>], out);)*
@@ -188,4 +240,14 @@ impl_tuple_differentiable!(A B C D E F G H I J K);
 impl_tuple_differentiable!(A B C D E F G H I J K L);
 
 pub struct Aux<T>(pub T);
-non_differentiable!(<T> Aux<T>);
+
+impl<T> ValuAssociated for Aux<T> {
+    type ValueType = BasicType;
+    type Tensors = ();
+    type Gradient = ();
+}
+impl<T> VF<BasicType, (), ()> for Aux<T> {
+    fn vf_tensors(&self) {}
+    fn vf_grad(_: &(), _: &HashMap<usize, Tensor>) {}
+    fn vf_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
+}

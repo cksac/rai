@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{Backend, DType, Module, Tensor, TrainableModule};
+use rai_core::{Backend, DType, Module, ModuleType, Tensor, TrainableModule, ValuAssociated};
 
 use crate::{gather_params, update_params};
 
@@ -30,10 +30,13 @@ impl LayerNorm {
     }
 }
 
-impl Module for LayerNorm {
+impl ValuAssociated for LayerNorm {
+    type ValueType = ModuleType;
     type Tensors = HashMap<usize, Tensor>;
     type Gradient = HashMap<usize, Tensor>;
+}
 
+impl Module for LayerNorm {
     type Input<'i> = &'i Tensor;
     type Output<'o> = Tensor;
 

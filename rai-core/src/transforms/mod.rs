@@ -10,7 +10,7 @@ mod tensor_iter;
 pub use tensor_iter::TensorIter;
 
 mod differentiable;
-pub use differentiable::{Aux, Differentiable};
+pub use differentiable::{Aux, ValuAssociated, Value, VF};
 
 mod eval;
 pub use eval::eval;
@@ -23,8 +23,8 @@ pub use raiexpr::raiexpr;
 pub fn jvp<IN, OUT, F>(func: F, input: IN, tangents: IN::Gradient) -> (OUT, OUT::Gradient)
 where
     F: Func<IN, OUT>,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     let input_tensors = input.tensors();
     let mut grads = HashMap::new();
@@ -43,8 +43,8 @@ type VjpFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
 pub fn vjp<IN, OUT, F>(func: F, input: IN) -> (OUT, VjpFunc<OUT::Gradient, IN::Gradient>)
 where
     F: Func<IN, OUT>,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     let input_tensors = input.tensors();
     let output = func.apply(input);
@@ -96,8 +96,8 @@ where
 impl<IN, OUT, F> Func<IN, IN::Gradient> for GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     fn apply(&self, input: IN) -> IN::Gradient {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
@@ -113,8 +113,8 @@ where
 pub fn grad<IN, OUT, F>(func: F) -> GradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     GradFunc::new(func)
 }
@@ -143,8 +143,8 @@ where
 impl<IN, OUT, F> Func<IN, (OUT, IN::Gradient)> for ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     fn apply(&self, input: IN) -> (OUT, IN::Gradient) {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
@@ -160,8 +160,8 @@ where
 pub fn value_and_grad<IN, OUT, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
 where
     F: Func<IN, OUT> + Clone,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     ValueAndGradFunc::new(func)
 }

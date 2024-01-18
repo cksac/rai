@@ -1,4 +1,7 @@
-use rai_core::{backend::Cpu, eval, utils::dot_graph, value_and_grad, Func, Tensor, F32};
+use rai_core::{
+    backend::Cpu, eval, utils::dot_graph, value_and_grad, Func, Tensor, ValuAssociated, Value, F32,
+    VF,
+};
 
 #[test]
 fn test_add_grad() {

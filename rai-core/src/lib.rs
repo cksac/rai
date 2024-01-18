@@ -17,7 +17,7 @@ pub use backend::Backend;
 
 mod transforms;
 pub use transforms::{
-    eval, grad, jvp, raiexpr, value_and_grad, vjp, Aux, Differentiable, Func, TensorIter,
+    eval, grad, jvp, raiexpr, value_and_grad, vjp, Aux, Func, TensorIter, ValuAssociated, Value, VF,
 };
 
 pub mod dispatch;
@@ -28,7 +28,7 @@ mod error;
 pub use error::{Error, Result};
 
 mod nn;
-pub use nn::{Module, NonTrainableModule, TrainableModule};
+pub use nn::{Module, ModuleType, NonTrainableModule, TrainableModule};
 
 #[macro_use]
 mod macros;

@@ -1,12 +1,12 @@
-use crate::{Differentiable, Func};
+use crate::{Func, Value};
 
 macro_rules! impl_tuple_arg_fn {
     ($($T:tt)*) => {
         paste::paste! {
             impl<$($T,)* OUT, FUNC> Func<($($T,)*), OUT> for FUNC
             where
-                $($T: Differentiable,)*
-                OUT: Differentiable,
+                $($T: Value,)*
+                OUT: Value,
                 FUNC: Fn($($T,)*) -> OUT,
             {
                 fn apply(&self, input: ($($T,)*)) -> OUT {
@@ -36,8 +36,8 @@ macro_rules! impl_array_arg_fn {
         paste::paste! {
             impl<I, OUT, FUNC> Func<[I; $S], OUT> for FUNC
             where
-                I: Differentiable,
-                OUT: Differentiable,
+                I: Value,
+                OUT: Value,
                 FUNC: Fn($($T,)*) -> OUT,
             {
                 fn apply(&self, input: [I; $S]) -> OUT {

@@ -1,12 +1,12 @@
-use crate::{Differentiable, Func, Shape, Tensor, TensorIter};
+use crate::{Func, Shape, Tensor, TensorIter, Value};
 use colored::*;
 use std::collections::{BTreeSet, HashMap};
 
 pub fn raiexpr<IN, OUT, F>(func: &F, input: IN) -> String
 where
     F: Func<IN, OUT>,
-    IN: Differentiable,
-    OUT: Differentiable,
+    IN: Value,
+    OUT: Value,
 {
     let mut id_seq = 0;
     let mut id_map: HashMap<usize, usize> = HashMap::new();
