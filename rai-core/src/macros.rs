@@ -79,7 +79,7 @@ macro_rules! non_trainable_module {
             type Gradient = ();
         }
 
-        impl $crate::NonTrainableModule for $M {}
+        impl $crate::nn::NonTrainableModule for $M {}
     };
 }
 
@@ -92,6 +92,6 @@ macro_rules! trainable_module {
             type Gradient = HashMap<usize, Tensor>;
         }
 
-        impl $crate::TrainableModule for $M {}
+        impl $crate::nn::TrainableModule for $M {}
     };
 }

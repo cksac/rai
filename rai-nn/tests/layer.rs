@@ -1,4 +1,6 @@
-use rai_core::{backend::Cpu, utils::dot_graph, value_and_grad, Aux, Func, Module, Tensor, F32};
+use rai_core::{
+    backend::Cpu, nn::Module, utils::dot_graph, value_and_grad, Aux, Func, Tensor, F32,
+};
 
 use rai_nn::{Embedding, Linear};
 

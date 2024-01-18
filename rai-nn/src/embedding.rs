@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use rai_core::{trainable_module, Backend, DType, Module, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
 use std::collections::HashMap;
 
 use crate::{gather_params, update_params};

@@ -1,8 +1,11 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{eval, trainable_module, Aux, DType, TrainableModule, ValueSpec, F32};
-use rai::{nn::Linear, value_and_grad, Backend, Func, Module, Tensor};
+use rai::{eval, trainable_module, Aux, DType, F32};
+use rai::{
+    nn::{Linear, Module, TrainableModule},
+    value_and_grad, Backend, Func, Tensor,
+};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Instant;

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use rai::{
-    nn::{self, gather_params, update_params, LayerNorm, Linear, Relu},
-    trainable_module, Module, Tensor,
+    nn::{self, gather_params, update_params, LayerNorm, Linear, Module, Relu},
+    trainable_module, Tensor,
 };
 
 pub struct ModelConfig {

@@ -4,7 +4,7 @@ use rai_core::{non_trainable_module, Tensor};
 
 macro_rules! impl_activation {
     ($M:ty, $OP:tt) => {
-        impl rai_core::Module for $M {
+        impl rai_core::nn::Module for $M {
             type Input = Tensor;
             type Output = Tensor;
 
