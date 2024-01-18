@@ -1,7 +1,5 @@
 use core::fmt::Debug;
-use rai_core::{
-    Backend, DType, Module, ModuleType, Shape, Tensor, TrainableModule, ValuAssociated,
-};
+use rai_core::{Backend, DType, Module, ModuleValue, Shape, Tensor, TrainableModule, ValueSpec};
 use std::collections::HashMap;
 
 use crate::{gather_params, update_params};
@@ -28,8 +26,8 @@ impl Embedding {
     }
 }
 
-impl ValuAssociated for Embedding {
-    type ValueType = ModuleType;
+impl ValueSpec for Embedding {
+    type Kind = ModuleValue;
     type Tensors = HashMap<usize, Tensor>;
     type Gradient = HashMap<usize, Tensor>;
 }

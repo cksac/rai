@@ -1,7 +1,7 @@
 use rai::backend::Cpu;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{eval, Aux, DType, ModuleType, TrainableModule, ValuAssociated, F32};
+use rai::{eval, Aux, DType, ModuleValue, TrainableModule, ValueSpec, F32};
 use rai::{nn::Linear, value_and_grad, Backend, Func, Module, Tensor};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -32,8 +32,8 @@ impl Mlp {
     }
 }
 
-impl ValuAssociated for Mlp {
-    type ValueType = ModuleType;
+impl ValueSpec for Mlp {
+    type Kind = ModuleValue;
     type Tensors = HashMap<usize, Tensor>;
     type Gradient = HashMap<usize, Tensor>;
 }

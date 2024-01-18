@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::Shape;
+use crate::{Shape, Value};
 
 pub trait Func<IN, OUT> {
     fn apply(&self, input: IN) -> OUT;
@@ -8,9 +8,6 @@ pub trait Func<IN, OUT> {
 
 mod tensor_iter;
 pub use tensor_iter::TensorIter;
-
-mod differentiable;
-pub use differentiable::{Aux, BasicType, ValuAssociated, Value, VF};
 
 mod eval;
 pub use eval::eval;

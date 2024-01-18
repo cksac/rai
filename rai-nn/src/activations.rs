@@ -1,13 +1,7 @@
-use rai_core::Tensor;
+use rai_core::{non_trainable_module, Tensor};
 
 macro_rules! impl_activation {
     ($M:ty, $OP:tt) => {
-        impl rai_core::ValuAssociated for $M {
-            type ValueType = rai_core::ModuleType;
-            type Tensors = ();
-            type Gradient = ();
-        }
-
         impl rai_core::Module for $M {
             type Input = Tensor;
             type Output = Tensor;
@@ -17,7 +11,7 @@ macro_rules! impl_activation {
             }
         }
 
-        impl rai_core::NonTrainableModule for $M {}
+        non_trainable_module!($M);
     };
 }
 

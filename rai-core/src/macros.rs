@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! non_differentiable {
-    ($($path:tt)+) => {
-        $crate::__non_differentiable!(begin $($path)+);
+    ($kind:ident; $($path:tt)+) => {
+        $crate::__non_differentiable!($kind; begin $($path)+);
     };
 }
 
@@ -9,108 +9,76 @@ macro_rules! non_differentiable {
 #[macro_export]
 macro_rules! __non_differentiable {
     // Invocation started with `<`, parse generics.
-    (begin < $($rest:tt)*) => {
-        $crate::__non_differentiable!(generics () () $($rest)*);
+    ($kind:ident; begin < $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; generics () () $($rest)*);
     };
 
     // Invocation did not start with `<`.
-    (begin $first:tt $($rest:tt)*) => {
-        $crate::__non_differentiable!(path () ($first) $($rest)*);
+    ($kind:ident; begin $first:tt $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; path () ($first) $($rest)*);
     };
 
     // End of generics.
-    (generics ($($generics:tt)*) () > $($rest:tt)*) => {
-        $crate::__non_differentiable!(path ($($generics)*) () $($rest)*);
+    ($kind:ident; generics ($($generics:tt)*) () > $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; path ($($generics)*) () $($rest)*);
     };
 
     // Generics open bracket.
-    (generics ($($generics:tt)*) ($($brackets:tt)*) < $($rest:tt)*) => {
-        $crate::__non_differentiable!(generics ($($generics)* <) ($($brackets)* <) $($rest)*);
+    ($kind:ident; generics ($($generics:tt)*) ($($brackets:tt)*) < $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; generics ($($generics)* <) ($($brackets)* <) $($rest)*);
     };
 
     // Generics close bracket.
-    (generics ($($generics:tt)*) (< $($brackets:tt)*) > $($rest:tt)*) => {
-        $crate::__non_differentiable!(generics ($($generics)* >) ($($brackets)*) $($rest)*);
+    ($kind:ident; generics ($($generics:tt)*) (< $($brackets:tt)*) > $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; generics ($($generics)* >) ($($brackets)*) $($rest)*);
     };
 
     // Token inside of generics.
-    (generics ($($generics:tt)*) ($($brackets:tt)*) $first:tt $($rest:tt)*) => {
-        $crate::__non_differentiable!(generics ($($generics)* $first) ($($brackets)*) $($rest)*);
+    ($kind:ident; generics ($($generics:tt)*) ($($brackets:tt)*) $first:tt $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; generics ($($generics)* $first) ($($brackets)*) $($rest)*);
     };
 
     // End with `where` clause.
-    (path ($($generics:tt)*) ($($path:tt)*) where $($rest:tt)*) => {
-        $crate::__non_differentiable!(impl ($($generics)*) ($($path)*) ($($rest)*));
+    ($kind:ident; path ($($generics:tt)*) ($($path:tt)*) where $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; impl ($($generics)*) ($($path)*) ($($rest)*));
     };
 
     // End without `where` clause.
-    (path ($($generics:tt)*) ($($path:tt)*)) => {
-        $crate::__non_differentiable!(impl ($($generics)*) ($($path)*) ());
+    ($kind:ident; path ($($generics:tt)*) ($($path:tt)*)) => {
+        $crate::__non_differentiable!($kind; impl ($($generics)*) ($($path)*) ());
     };
 
     // Token inside of path.
-    (path ($($generics:tt)*) ($($path:tt)*) $first:tt $($rest:tt)*) => {
-        $crate::__non_differentiable!(path ($($generics)*) ($($path)* $first) $($rest)*);
+    ($kind:ident; path ($($generics:tt)*) ($($path:tt)*) $first:tt $($rest:tt)*) => {
+        $crate::__non_differentiable!($kind; path ($($generics)*) ($($path)* $first) $($rest)*);
     };
 
     // The impl.
-    (impl ($($generics:tt)*) ($($path:tt)*) ($($bound:tt)*)) => {
-        impl<$($generics)*> $crate::ValuAssociated for $($path)* where $($bound)* {
-            type ValueType = $crate::BasicType;
+    ($kind:ident; impl ($($generics:tt)*) ($($path:tt)*) ($($bound:tt)*)) => {
+        impl<$($generics)*> $crate::ValueSpec for $($path)* where $($bound)* {
+            type Kind = $kind;
             type Tensors = ();
             type Gradient = ();
         }
 
-        impl<$($generics)*> VF<$crate::BasicType, (), ()> for $($path)* where $($bound)*
+        impl<$($generics)*> $crate::GenericValue<$kind, (), ()> for $($path)* where $($bound)*
         {
-            fn vf_tensors(&self) {}
-            fn vf_grad(_: &(), _: &HashMap<usize, Tensor>) {}
-            fn vf_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
+            fn gv_tensors(&self) {}
+            fn gv_grad(_: &(), _: &HashMap<usize, Tensor>) {}
+            fn gv_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
         }
     };
 }
 
-// #[macro_export]
-// macro_rules! differentiable_module {
-//     ($M:ident) => {
-//         impl $crate::Differentiable for $M {
-//             type Tensors = std::collections::HashMap<usize, Tensor>;
-//             type Gradient = std::collections::HashMap<usize, Tensor>;
+#[macro_export]
+macro_rules! non_trainable_module {
+    ($M:ty) => {
+        impl $crate::ValueSpec for $M {
+            type Kind = rai_core::ModuleValue;
+            type Tensors = ();
+            type Gradient = ();
+        }
 
-//             fn tensors(&self) -> Self::Tensors {
-//                 $crate::Module::params(self)
-//             }
-
-//             fn grad(
-//                 tensors: &Self::Tensors,
-//                 grad_map: &std::collections::HashMap<usize, Tensor>,
-//             ) -> Self::Gradient {
-//                 tensors
-//                     .keys()
-//                     .map(|id| (*id, grad_map.get(id).unwrap().clone()))
-//                     .collect()
-//             }
-
-//             fn grad_map(
-//                 tensors: &Self::Tensors,
-//                 grad: Self::Gradient,
-//                 out: &mut std::collections::HashMap<usize, Tensor>,
-//             ) {
-//                 for id in tensors.keys() {
-//                     out.insert(*id, grad.get(id).unwrap().clone());
-//                 }
-//             }
-//         }
-
-//         impl $crate::DifferentiableModule for $M {}
-//     };
-// }
-
-// #[macro_export]
-// macro_rules! simple_module {
-//     ($M:ident) => {
-//         $crate::differentiable_module!($M);
-
-//         impl<'i, 'o> $crate::SimpleModule<'i, 'o> for $M {}
-//     };
-// }
+        impl $crate::NonTrainableModule for $M {}
+    };
+}

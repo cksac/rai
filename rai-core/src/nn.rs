@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    transforms::{ValuAssociated, VF},
-    Tensor,
-};
-
-pub struct ModuleType;
+use crate::{GenericValue, ModuleValue, Tensor, ValueSpec};
 
 pub trait Module {
     type Input;
@@ -27,8 +22,8 @@ where
 
 pub trait TrainableModule:
     Module
-    + ValuAssociated<
-        ValueType = ModuleType,
+    + ValueSpec<
+        Kind = ModuleValue,
         Tensors = HashMap<usize, Tensor>,
         Gradient = HashMap<usize, Tensor>,
     >
@@ -58,15 +53,15 @@ where
     }
 }
 
-impl<T> VF<ModuleType, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
+impl<T> GenericValue<ModuleValue, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
 where
     T: TrainableModule<Tensors = HashMap<usize, Tensor>, Gradient = HashMap<usize, Tensor>>,
 {
-    fn vf_tensors(&self) -> HashMap<usize, Tensor> {
+    fn gv_tensors(&self) -> HashMap<usize, Tensor> {
         self.params()
     }
 
-    fn vf_grad(
+    fn gv_grad(
         tensors: &HashMap<usize, Tensor>,
         grad_map: &HashMap<usize, Tensor>,
     ) -> HashMap<usize, Tensor> {
@@ -76,7 +71,7 @@ where
             .collect()
     }
 
-    fn vf_grad_map(
+    fn gv_grad_map(
         tensors: &HashMap<usize, Tensor>,
         grad: HashMap<usize, Tensor>,
         out: &mut HashMap<usize, Tensor>,
@@ -88,16 +83,16 @@ where
 }
 
 pub trait NonTrainableModule:
-    Module + ValuAssociated<ValueType = ModuleType, Tensors = (), Gradient = ()>
+    Module + ValueSpec<Kind = ModuleValue, Tensors = (), Gradient = ()>
 {
 }
 impl<'a, T> NonTrainableModule for &'a T where T: NonTrainableModule {}
 
-impl<T> VF<ModuleType, (), ()> for T
+impl<T> GenericValue<ModuleValue, (), ()> for T
 where
     T: NonTrainableModule<Tensors = (), Gradient = ()>,
 {
-    fn vf_tensors(&self) {}
-    fn vf_grad(_: &(), _: &HashMap<usize, Tensor>) {}
-    fn vf_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
+    fn gv_tensors(&self) {}
+    fn gv_grad(_: &(), _: &HashMap<usize, Tensor>) {}
+    fn gv_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
 }

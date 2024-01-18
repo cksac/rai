@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{Backend, DType, Module, ModuleType, Tensor, TrainableModule, ValuAssociated, VF};
+use rai_core::{Backend, DType, Module, ModuleValue, Tensor, TrainableModule, ValueSpec};
 
 use crate::{gather_params, update_params};
 
@@ -30,8 +30,8 @@ impl Linear {
     }
 }
 
-impl ValuAssociated for Linear {
-    type ValueType = ModuleType;
+impl ValueSpec for Linear {
+    type Kind = ModuleValue;
     type Tensors = HashMap<usize, Tensor>;
     type Gradient = HashMap<usize, Tensor>;
 }

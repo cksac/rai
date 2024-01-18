@@ -1,6 +1,6 @@
 use rai_core::{
-    backend::Cpu, eval, utils::dot_graph, value_and_grad, Func, Tensor, ValuAssociated, Value, F32,
-    VF,
+    backend::Cpu, eval, utils::dot_graph, value_and_grad, Func, GenericValue, Tensor, Value,
+    ValueSpec, F32,
 };
 
 #[test]
