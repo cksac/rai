@@ -12,6 +12,7 @@ repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
 [dependencies]
+safetensors = { workspace = true }
 candle-core = { workspace = true }
 dyn-clone = { workspace = true }
 once_cell = { workspace = true }

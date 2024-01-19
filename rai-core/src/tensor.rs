@@ -4,9 +4,12 @@ use std::{
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
     ops::Deref,
+    path::Path,
     rc::Rc,
     sync::atomic,
 };
+
+use safetensors::tensor::TensorView;
 
 use crate::{
     eval,
@@ -459,6 +462,17 @@ impl Tensor {
             .as_ref()
             .filter(|v| v.as_any().type_id() == self.backend().data_type_id())
             .is_some()
+    }
+
+    #[inline]
+    pub fn from_safetensors(&self, x: &Tensor, st: &TensorView) {
+        self.0.backend.from_safetensors(x, st)
+    }
+
+    #[inline]
+    pub fn to_safetensors(&self, name: impl Into<String>, filename: &Path) {
+        let tensors = HashMap::from([(name.into(), self.clone())]);
+        self.0.backend.to_safetensors(tensors, filename);
     }
 }
 

@@ -1,7 +1,11 @@
 use std::{
     any::{Any, TypeId},
+    collections::HashMap,
     ops::Deref,
+    path::{self, Path},
 };
+
+use safetensors::tensor::TensorView;
 
 use crate::{
     backend,
@@ -57,6 +61,24 @@ impl Backend for Cpu {
         rhs.as_any()
             .downcast_ref()
             .map_or(false, |other| self == other)
+    }
+
+    fn from_safetensors(&self, x: &Tensor, st: &TensorView) {
+        let device = candle_core::Device::Cpu;
+        let candle_tensor = candle_core::safetensors::Load::load(st, &device).unwrap();
+        x.set_data(candle_tensor)
+    }
+
+    fn to_safetensors(&self, tensors: HashMap<String, Tensor>, filename: &Path) {
+        let candle_tensors: HashMap<String, candle_core::Tensor> = tensors
+            .into_iter()
+            .map(|(n, t)| {
+                let ct = t.get_data::<Data>().unwrap();
+                let ct = ct.deref().clone();
+                (n, ct)
+            })
+            .collect();
+        candle_core::safetensors::save(&candle_tensors, filename).unwrap();
     }
 }
 

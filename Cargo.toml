@@ -20,6 +20,7 @@ rai = { path = "rai", version = "0.6.0" }
 rai-core = { path = "rai-core", version = "0.6.0" }
 rai-nn = { path = "rai-nn", version = "0.6.0" }
 rai-opt = { path = "rai-opt", version = "0.6.0" }
+safetensors = "0.3.1"
 candle-core = "0.3.2"
 paste = "1.0"
 dyn-clone = "1.0.16"

@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
 
-use crate::{gather_params, update_params};
+use crate::{gather_named_params, gather_params, update_params};
 
 pub struct RMSNorm {
     weight: Tensor,
@@ -33,11 +33,15 @@ impl Module for RMSNorm {
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(self.weight, params);
+        gather_params!(params, self.weight);
     }
 
     fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(self.weight, params);
+        update_params!(params, self.weight);
+    }
+
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, prefix, "w", self.weight);
     }
 }
 

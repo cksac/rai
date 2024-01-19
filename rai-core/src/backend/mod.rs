@@ -1,6 +1,8 @@
 use std::{
     any::{Any, TypeId},
+    collections::HashMap,
     fmt::Debug,
+    path::Path,
 };
 
 pub trait Backend: Debug {
@@ -8,6 +10,8 @@ pub trait Backend: Debug {
     fn data_type_id(&self) -> TypeId;
     fn as_any(&self) -> &dyn Any;
     fn equal(&self, rhs: &dyn Backend) -> bool;
+    fn from_safetensors(&self, x: &Tensor, st: &TensorView);
+    fn to_safetensors(&self, tensors: HashMap<String, Tensor>, filename: &Path);
 }
 
 impl<'a, T> From<&'a T> for Box<dyn Backend>
@@ -45,6 +49,9 @@ impl<'a> PartialEq for &'a dyn Backend {
 
 mod cpu;
 pub use cpu::Cpu;
+use safetensors::{tensor::TensorView, SafeTensors};
+
+use crate::Tensor;
 
 // mod cuda;
 // pub use cuda::Cuda;

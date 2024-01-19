@@ -13,6 +13,7 @@ macro_rules! impl_activation {
             }
             fn gather_params(&self, _: &mut HashMap<usize, Tensor>) {}
             fn update_params(&self, _: &mut HashMap<usize, Tensor>) {}
+            fn gather_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
         }
 
         non_trainable_module!($M);

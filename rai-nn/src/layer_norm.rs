@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use rai_core::{nn::Module, trainable_module, Backend, DType, Tensor};
 
-use crate::{gather_params, update_params};
+use crate::{gather_named_params, gather_params, update_params};
 
 pub struct LayerNorm {
     weight: Option<Tensor>,
@@ -47,13 +47,18 @@ impl Module for LayerNorm {
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(?self.weight, params);
-        gather_params!(?self.bias, params);
+        gather_params!(params, ?self.weight);
+        gather_params!(params, ?self.bias);
     }
 
     fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(?self.weight, params);
-        update_params!(?self.bias, params);
+        update_params!(params, ?self.weight);
+        update_params!(params, ?self.bias);
+    }
+
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, prefix, "w", ?self.weight);
+        gather_named_params!(params, prefix, "b", ?self.bias);
     }
 }
 

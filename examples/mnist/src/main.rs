@@ -1,4 +1,5 @@
 use rai::backend::Cpu;
+use rai::nn::gather_named_params;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
 use rai::{eval, trainable_module, Aux, DType, F32};
@@ -57,6 +58,10 @@ impl Module for Mlp {
         for layer in self.layers.iter() {
             layer.update_params(params);
         }
+    }
+
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, prefix, "l", []self.layers);
     }
 }
 
@@ -124,5 +129,6 @@ fn main() {
         "elapsed: {:?}, throughput: {:.2} iters/sec",
         elapsed, throughput
     );
-    // todo: save model
+
+    model.to_safetensors("mnist.safetensors");
 }
