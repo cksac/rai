@@ -1,7 +1,5 @@
 use std::{collections::HashMap, path::Path};
 
-use safetensors::SafeTensors;
-
 use crate::{backend::Cpu, Backend, GenericValue, ModuleValue, Tensor, ValueSpec};
 
 pub trait Module {
@@ -17,7 +15,6 @@ pub trait Module {
         params
     }
 
-    // TODO: params should be a reference? for model with shared parameters in different layers
     fn update_params(&self, params: &mut HashMap<usize, Tensor>);
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>);
@@ -28,6 +25,8 @@ pub trait Module {
         params
     }
 
+    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>);
+
     fn to_safetensors<P: AsRef<Path>>(&self, filename: P)
     where
         Self: Sized,
@@ -36,6 +35,20 @@ pub trait Module {
         // todo: add to_device ops, and move all tensors to cpu first
         // todo: eval once after call to_device
         Cpu.to_safetensors(named_params, filename.as_ref());
+    }
+
+    fn update_by_safetensors(&self, filename: &str) {
+        let data = std::fs::read(filename).unwrap();
+        let st = safetensors::SafeTensors::deserialize(&data).unwrap();
+        let mut st_tensors: HashMap<String, Tensor> = st
+            .tensors()
+            .into_iter()
+            .map(|(name, view)| {
+                let t = Tensor::from_safetensor(&view, &Cpu);
+                (name, t)
+            })
+            .collect();
+        self.update_named_params("", &mut st_tensors);
     }
 }
 
@@ -63,6 +76,10 @@ where
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
         (*self).gather_named_params(prefix, params)
+    }
+
+    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        (*self).update_named_params(prefix, params)
     }
 }
 

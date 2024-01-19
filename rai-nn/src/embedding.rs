@@ -2,7 +2,7 @@ use core::fmt::Debug;
 use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
 use std::collections::HashMap;
 
-use crate::{gather_named_params, gather_params, update_params};
+use crate::{gather_params, update_params, NamedParameter};
 
 pub struct Embedding {
     weight: Tensor,
@@ -46,7 +46,11 @@ impl Module for Embedding {
     }
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, prefix, "w", self.weight);
+        self.weight.gather_to(params, prefix, "w");
+    }
+
+    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        self.weight.update_by(params, prefix, "w");
     }
 }
 

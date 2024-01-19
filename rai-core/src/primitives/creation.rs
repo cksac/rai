@@ -158,3 +158,71 @@ where
         vec![]
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FromSafetensor;
+
+impl Primitive for FromSafetensor {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    // fn dot_label(&self) -> String {
+    //     format!("FromSafetensor({:?})", self.data)
+    // }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    #[inline]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.ones_like()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    #[inline]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        vec![]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Concatenate {
+    pub dim: usize,
+}
+
+impl Concatenate {
+    pub fn new(dim: impl Into<usize>) -> Self {
+        Self { dim: dim.into() }
+    }
+
+    pub fn dim(&self) -> &usize {
+        &self.dim
+    }
+}
+
+impl Primitive for Concatenate {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("Concatenate({:?})", self.dim())
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}

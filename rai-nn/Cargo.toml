@@ -13,3 +13,4 @@ homepage = "https://github.com/cksac/rai"
 
 [dependencies]
 rai-core = { workspace = true }
+safetensors = { workspace = true }

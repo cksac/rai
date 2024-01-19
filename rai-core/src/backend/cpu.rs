@@ -2,7 +2,7 @@ use std::{
     any::{Any, TypeId},
     collections::HashMap,
     ops::Deref,
-    path::{self, Path},
+    path::Path,
 };
 
 use safetensors::tensor::TensorView;
@@ -63,10 +63,14 @@ impl Backend for Cpu {
             .map_or(false, |other| self == other)
     }
 
-    fn from_safetensors(&self, x: &Tensor, st: &TensorView) {
+    fn from_safetensor(&self, st: &TensorView) -> Tensor {
+        let dtype: Box<dyn DynDType> = st.dtype().into();
+        let primitive = primitives::FromSafetensor;
+        let t = Tensor::new(&Cpu, dtype, st.shape(), primitive, vec![]);
         let device = candle_core::Device::Cpu;
         let candle_tensor = candle_core::safetensors::Load::load(st, &device).unwrap();
-        x.set_data(candle_tensor)
+        t.set_data(candle_tensor);
+        t
     }
 
     fn to_safetensors(&self, tensors: HashMap<String, Tensor>, filename: &Path) {
@@ -727,5 +731,22 @@ impl Eval<Cpu, primitives::IndexSelect> for Dispatch<Cpu, primitives::IndexSelec
         // TODO: slice_sizes not used
         let t = t1.index_select(t2, primitive.dim).unwrap();
         output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::Concatenate> for Dispatch<Cpu, primitives::Concatenate> {
+    fn eval(
+        &self,
+        _: &Cpu,
+        primitive: &primitives::Concatenate,
+        inputs: &[Tensor],
+        output: &Tensor,
+    ) {
+        let tensors: Vec<_> = inputs
+            .iter()
+            .map(|t| t.get_data::<Data>().unwrap().clone())
+            .collect();
+        let t = candle_core::Tensor::cat(tensors.as_slice(), primitive.dim).unwrap();
+        output.set_data(t)
     }
 }

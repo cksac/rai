@@ -9,13 +9,16 @@ use std::{
     sync::atomic,
 };
 
+use candle_core::backend;
 use safetensors::tensor::TensorView;
 
 use crate::{
+    backend::Cpu,
     eval,
     ops::{self, ArangeArgs, FlattenArgs, ReduceArgs, VarArgs},
+    primitives,
     utils::{self, dot_graph},
-    Backend, DType, Dim, DynDType, ElemType, Primitive, Shape,
+    Backend, DType, Dim, Dims, DynDType, ElemType, Primitive, Shape,
 };
 
 pub trait TensorLike: Debug + Display {
@@ -54,6 +57,12 @@ impl Tensor {
             data: RefCell::new(None),
         };
         Tensor(Rc::new(inner))
+    }
+
+    #[inline]
+    pub fn from_safetensor(st: &TensorView, backend: impl Into<Box<dyn Backend>>) -> Tensor {
+        let backend = backend.into();
+        backend.from_safetensor(st)
     }
 
     #[inline]
@@ -154,6 +163,11 @@ impl Tensor {
         backend: impl Into<Box<dyn Backend>> + Debug,
     ) -> Tensor {
         ops::from_array(data, shape, backend)
+    }
+
+    #[inline]
+    pub fn cat(tensors: &[Tensor], d: impl Dim) -> Tensor {
+        ops::cat(tensors, d)
     }
 
     #[inline]
@@ -347,13 +361,33 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn erf(&self) -> Tensor {
+        ops::erf(self)
+    }
+
+    #[inline]
     pub fn relu(&self) -> Tensor {
         ops::relu(self)
     }
 
     #[inline]
+    pub fn gelu(&self) -> Tensor {
+        ops::gelu(self)
+    }
+
+    #[inline]
     pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
         ops::flatten(self, args)
+    }
+
+    #[inline]
+    pub fn squeeze(&self, d: impl Dims) -> Tensor {
+        ops::squeeze(self, d)
+    }
+
+    #[inline]
+    pub fn unsqueeze(&self, d: impl Dim) -> Tensor {
+        ops::unsqueeze(self, d)
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
@@ -462,11 +496,6 @@ impl Tensor {
             .as_ref()
             .filter(|v| v.as_any().type_id() == self.backend().data_type_id())
             .is_some()
-    }
-
-    #[inline]
-    pub fn from_safetensors(&self, x: &Tensor, st: &TensorView) {
-        self.0.backend.from_safetensors(x, st)
     }
 
     #[inline]

@@ -1,4 +1,6 @@
 mod linear;
+use std::{borrow::Cow, collections::HashMap};
+
 pub use linear::Linear;
 
 mod activations;
@@ -11,6 +13,7 @@ mod layer_norm;
 pub use layer_norm::*;
 
 mod rms_norm;
+use rai_core::{Shape, Tensor};
 pub use rms_norm::*;
 
 #[macro_export]
@@ -63,27 +66,68 @@ macro_rules! update_params {
     };
 }
 
-#[macro_export]
-macro_rules! gather_named_params {
-    ($M:ident, $NP:expr, $N:expr, $P:expr) => {
-        $M.insert(format!("{}.{}", $NP, $N), $P.clone());
-    };
+pub trait NamedParameter {
+    fn gather_to(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
+    fn update_by(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
+}
 
-    ($M:ident, $NP:expr, $N:expr, ?$P:expr) => {
-        if let Some(p) = &$P {
-            $M.insert(format!("{}.{}", $NP, $N), p.clone());
+impl NamedParameter for Tensor {
+    fn gather_to(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let name = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name)
+        };
+        params.insert(name, self.clone());
+    }
+
+    fn update_by(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let name: Cow<'_, str> = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name).into()
+        };
+        if let Some(t) = params.remove(name.as_ref()) {
+            if self.shape() != t.shape() {
+                panic!(
+                    "parameter {} shape {:?} not align with shape {:?}",
+                    name,
+                    self.shape(),
+                    t.shape()
+                );
+            }
+
+            if self.dtype() != t.dtype() {
+                panic!(
+                    "parameter {} dtype {:?} not align with dtype {:?}",
+                    name,
+                    self.dtype(),
+                    t.dtype()
+                );
+            }
+
+            if self.backend() == t.backend() {
+                self.replace_data(t);
+            } else {
+                // todo: Add ToBackend op
+                self.replace_data(t);
+            }
+        } else {
+            panic!("parameter {} not found", name);
         }
-    };
+    }
+}
 
-    ($M:ident, $NP:expr, $N:expr, @$L:expr) => {
-        let p = format!("{}.{}", $NP, $N);
-        $L.gather_named_params(&p, $M);
-    };
-
-    ($M:ident, $NP:expr, $N:expr, []$L:expr) => {
-        for (i, l) in $L.iter().enumerate() {
-            let p = format!("{}.{}.{}", $NP, $N, i);
-            l.gather_named_params(&p, $M);
+impl NamedParameter for Option<Tensor> {
+    fn gather_to(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        if let Some(t) = self {
+            t.gather_to(params, prefix, name);
         }
-    };
+    }
+
+    fn update_by(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        if let Some(t) = self {
+            t.update_by(params, prefix, name)
+        }
+    }
 }

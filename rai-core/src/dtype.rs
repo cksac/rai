@@ -154,3 +154,24 @@ impl DType for F64 {
         1.0
     }
 }
+
+impl From<safetensors::Dtype> for Box<dyn DynDType> {
+    fn from(value: safetensors::Dtype) -> Self {
+        match value {
+            safetensors::Dtype::BOOL => todo!(),
+            safetensors::Dtype::U8 => U8.into(),
+            safetensors::Dtype::I8 => todo!(),
+            safetensors::Dtype::I16 => todo!(),
+            safetensors::Dtype::U16 => todo!(),
+            safetensors::Dtype::F16 => todo!(),
+            safetensors::Dtype::BF16 => todo!(),
+            safetensors::Dtype::I32 => todo!(),
+            safetensors::Dtype::U32 => todo!(),
+            safetensors::Dtype::F32 => F32.into(),
+            safetensors::Dtype::F64 => F64.into(),
+            safetensors::Dtype::I64 => todo!(),
+            safetensors::Dtype::U64 => todo!(),
+            _ => todo!(),
+        }
+    }
+}

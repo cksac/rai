@@ -434,3 +434,26 @@ impl Primitive for LogSoftmax {
         vec![cotangent_x]
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Erf;
+
+impl Primitive for Erf {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}

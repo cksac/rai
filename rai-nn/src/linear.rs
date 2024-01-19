@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use rai_core::{nn::Module, trainable_module, Backend, DType, Tensor};
 
-use crate::{gather_named_params, gather_params, update_params};
+use crate::{gather_params, update_params, NamedParameter};
 
 #[derive(Clone, Debug)]
 pub struct Linear {
@@ -53,8 +53,13 @@ impl Module for Linear {
     }
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, prefix, "w", self.weight);
-        gather_named_params!(params, prefix, "b", ?self.bias);
+        self.weight.gather_to(params, prefix, "w");
+        self.bias.gather_to(params, prefix, "b");
+    }
+
+    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        self.weight.update_by(params, prefix, "w");
+        self.bias.update_by(params, prefix, "b");
     }
 }
 

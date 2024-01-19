@@ -1,5 +1,4 @@
 use rai::backend::Cpu;
-use rai::nn::gather_named_params;
 use rai::opt::losses::softmax_cross_entropy;
 use rai::opt::optimizers::{Optimizer, SDG};
 use rai::{eval, trainable_module, Aux, DType, F32};
@@ -61,7 +60,25 @@ impl Module for Mlp {
     }
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, prefix, "l", []self.layers);
+        for (i, l) in self.layers.iter().enumerate() {
+            let p = if prefix.is_empty() {
+                format!("l.{}", i)
+            } else {
+                format!("{}.l.{}", prefix, i)
+            };
+            l.gather_named_params(&p, params);
+        }
+    }
+
+    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        for (i, l) in self.layers.iter().enumerate() {
+            let p = if prefix.is_empty() {
+                format!("l.{}", i)
+            } else {
+                format!("{}.l.{}", prefix, i)
+            };
+            l.update_named_params(&p, params);
+        }
     }
 }
 
@@ -131,4 +148,13 @@ fn main() {
     );
 
     model.to_safetensors("mnist.safetensors");
+
+    // load saved model and test
+    let loaded_model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
+    loaded_model.update_by_safetensors("mnist.safetensors");
+
+    let input = Tensor::normal([batch_size, 784], dtype, backend);
+    let labels = Tensor::full(0.123f32, [batch_size, 10], backend);
+    let (loss, ..) = loss_fn(&loaded_model, &input, &labels);
+    println!("loss = {}", loss);
 }

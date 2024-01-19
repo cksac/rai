@@ -7,10 +7,10 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, AsType, Broadcast, Cos, Div, Equal, Exp, FromArray, Full, Gather,
-        Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul,
-        Maximum, Mul, Negative, Normal, NotEqual, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt,
-        Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
+        Abs, Add, Arange, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp, FromArray,
+        Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10, Log2,
+        LogSoftmax, MatMul, Maximum, Mul, Negative, Normal, NotEqual, ReduceMax, ReduceMin,
+        ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
     },
     shape::Dims,
     utils::dot_graph,
@@ -957,8 +957,22 @@ pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn erf(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Erf, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn relu(x: &Tensor) -> Tensor {
     x.maximum(x.zeros_like())
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn gelu(x: &Tensor) -> Tensor {
+    x * (1 + (x / 2f32.sqrt()).erf()) / 2
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -1125,4 +1139,40 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
             x.clone()
         }
     }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
+    let dims = x.dims(dims).to_vec();
+    let mut shape = x.shape().to_vec();
+    for d in dims.into_iter() {
+        if shape.shape_at(d) == 1 {
+            shape.remove(d);
+        }
+    }
+    x.reshape(shape)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
+    let dim = x.dim(d) + 1;
+    let mut shape = x.shape().to_vec();
+    shape.insert(dim, 1);
+    x.reshape(shape)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn cat(tensors: &[Tensor], d: impl Dim) -> Tensor {
+    let t1 = &tensors[0];
+    let dim = t1.dim(d);
+    let backend = t1.backend();
+    let dtype = t1.dtype();
+    let mut shape = t1.shape().to_vec();
+    shape[dim] = 0;
+    for t in tensors {
+        // todo: check shape
+        shape[dim] += t.shape_at(dim);
+    }
+    let inputs = tensors.to_vec();
+    Tensor::new(backend, dtype, shape, Concatenate::new(dim), inputs)
 }
