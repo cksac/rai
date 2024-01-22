@@ -9,7 +9,7 @@ use crate::{
     primitives::{
         Abs, Add, Arange, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp, FromArray,
         Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10, Log2,
-        LogSoftmax, MatMul, Maximum, Mul, Negative, Normal, NotEqual, ReduceMax, ReduceMin,
+        LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual, ReduceMax, ReduceMin,
         ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
     },
     shape::Dims,
@@ -1175,4 +1175,14 @@ pub fn cat(tensors: &[Tensor], d: impl Dim) -> Tensor {
     }
     let inputs = tensors.to_vec();
     Tensor::new(backend, dtype, shape, Concatenate::new(dim), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn narrow(x: &Tensor, d: impl Dim, start: usize, len: usize) -> Tensor {
+    let dim = x.dim(d);
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Narrow::new(dim, start, len), inputs)
 }

@@ -750,3 +750,15 @@ impl Eval<Cpu, primitives::Concatenate> for Dispatch<Cpu, primitives::Concatenat
         output.set_data(t)
     }
 }
+
+impl Eval<Cpu, primitives::Narrow> for Dispatch<Cpu, primitives::Narrow> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Narrow, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t
+            .narrow(primitive.dim, primitive.start, primitive.len)
+            .unwrap();
+        output.set_data(t)
+    }
+}

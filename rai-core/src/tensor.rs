@@ -390,6 +390,11 @@ impl Tensor {
         ops::unsqueeze(self, d)
     }
 
+    #[inline]
+    pub fn narrow(&self, d: impl Dim, start: usize, len: usize) -> Tensor {
+        ops::narrow(self, d, start, len)
+    }
+
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
         if let Some(tangent) = tangent_cache.get(&self.id()) {
             return tangent.clone();

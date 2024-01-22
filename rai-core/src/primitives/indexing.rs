@@ -99,3 +99,52 @@ impl Primitive for IndexSelect {
         todo!()
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Narrow {
+    pub dim: usize,
+    pub start: usize,
+    pub len: usize,
+}
+
+impl Narrow {
+    pub fn new(dim: usize, start: usize, len: usize) -> Self {
+        Self { dim, start, len }
+    }
+
+    pub fn dim(&self) -> usize {
+        self.dim
+    }
+
+    pub fn start(&self) -> usize {
+        self.start
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+}
+
+impl Primitive for Narrow {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("Narrow({}, {}, {})", self.dim, self.start, self.len)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}
