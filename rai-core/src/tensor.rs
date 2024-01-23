@@ -10,15 +10,11 @@ use std::{
     sync::atomic,
 };
 
-use candle_core::backend;
 use safetensors::tensor::TensorView;
 
 use crate::{
-    backend::Cpu,
     eval,
-    nn::Module,
     ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
-    primitives,
     utils::{self, dot_graph},
     Backend, DType, Dim, Dims, DynDType, ElemType, Primitive, Shape,
 };

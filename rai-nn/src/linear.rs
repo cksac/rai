@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, DynDType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 
@@ -36,8 +36,8 @@ impl Module for Linear {
 
     fn forward(&self, x: &Self::Input) -> Self::Output {
         let w = &match x.shape() {
-            [b1, b2, _, _] => self.weight.broadcast_left(&[*b1, *b2]).t(),
-            [bsize, _, _] => self.weight.broadcast_left(&[*bsize]).t(),
+            [b1, b2, _, _] => self.weight.broadcast_left([*b1, *b2]).t(),
+            [b, _, _] => self.weight.broadcast_left([*b]).t(),
             _ => self.weight.t(),
         };
         match &self.bias {

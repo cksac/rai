@@ -1,6 +1,6 @@
-use std::{collections::HashMap, hash::Hash, path::Path};
+use std::{collections::HashMap, path::Path};
 
-use crate::{backend::Cpu, dtype, Backend, DType, GenericValue, ModuleValue, Tensor, ValueSpec};
+use crate::{backend::Cpu, Backend, GenericValue, ModuleValue, Tensor, ValueSpec};
 
 pub trait Module {
     type Input;

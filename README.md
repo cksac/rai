@@ -72,8 +72,8 @@ fn train_step<
     - `cargo run --bin linear_regression --release`
 - [mnist](https://github.com/cksac/rai/blob/main/examples/mnist/src/main.rs)
     - `cargo run --bin mnist --release`
-
-
+- [phi2](https://github.com/cksac/rai/blob/main/examples/phi2/src/main.rs)
+    - `cargo run --bin phi2 --release`
 
 # LICENSE
 

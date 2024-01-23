@@ -1,8 +1,11 @@
 {
     "cSpell.words": [
         "Arange",
+        "argmax",
+        "consts",
         "ddof",
         "dtype",
+        "endoftext",
         "Gelu",
         "jvps",
         "keepdim",
@@ -11,11 +14,16 @@
         "matmul",
         "mnist",
         "nesterov",
+        "powf",
         "primals",
         "raiexpr",
         "recip",
         "relu",
         "rsqrt",
+        "safetensor",
+        "safetensors",
+        "seqlen",
+        "simd",
         "softmax",
         "thiserror",
         "vjps"

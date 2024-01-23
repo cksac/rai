@@ -49,13 +49,6 @@ impl Dim for i32 {
     }
 }
 
-// impl Dim for RangeFull {
-//     fn dim_of<T: Shape + ?Sized>(&self, shape: &T) -> usize {
-//         assert!(shape.ndim() > 0);
-//         shape.ndim() - 1
-//     }
-// }
-
 pub trait Dims: Debug {
     fn dims_of<T: Shape + ?Sized>(&self, shape: &T) -> Vec<usize>;
 }

@@ -3,7 +3,6 @@ use std::{
     collections::HashMap,
     ops::Deref,
     path::Path,
-    primitive,
 };
 
 use half::{bf16, f16};

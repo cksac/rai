@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, DynDType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, Backend, DType, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 

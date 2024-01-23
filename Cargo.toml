@@ -6,6 +6,7 @@ members = [
     "rai-opt",
     "examples/*"
 ]
+
 resolver = "2"
 
 [workspace.package]

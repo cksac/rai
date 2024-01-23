@@ -13,7 +13,7 @@ mod layer_norm;
 pub use layer_norm::*;
 
 mod rms_norm;
-use rai_core::{eval, nn::Module, Shape, Tensor};
+use rai_core::{eval, Shape, Tensor};
 pub use rms_norm::*;
 
 #[macro_export]
@@ -90,29 +90,26 @@ impl NamedParameter for Tensor {
         if let Some(t) = params.remove(name.as_ref()) {
             if self.shape() != t.shape() {
                 panic!(
-                    "parameter {} shape {:?} not align with shape {:?}",
+                    "parameter {} shape {:?} not align with data shape {:?}",
                     name,
                     self.shape(),
                     t.shape()
                 );
             }
 
-            // if self.dtype() != t.dtype() {
-            //     panic!(
-            //         "parameter {} dtype {:?} not align with dtype {:?}",
-            //         name,
-            //         self.dtype(),
-            //         t.dtype()
-            //     );
-            // }
+            if self.backend() != t.backend() {
+                panic!(
+                    "parameter {} backend {:?} not align with data backend {:?}",
+                    name,
+                    self.backend(),
+                    t.backend()
+                );
+            }
+
+            // todo: check if can promote type to self
             let t = t.as_type_of(self);
             eval((&t, true));
-            if self.backend() == t.backend() {
-                self.replace_data(t);
-            } else {
-                // todo: Add ToBackend op
-                self.replace_data(t);
-            }
+            self.replace_data(t);
         } else {
             panic!("parameter {} not found", name);
         }

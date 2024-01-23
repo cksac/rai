@@ -5,16 +5,11 @@ use rai::{
     nn::{
         self, gather_params, update_params, Embedding, LayerNorm, Linear, Module, NamePath, NewGelu,
     },
-    trainable_module, Backend, DType, ElemType, Shape, Tensor, F32,
+    trainable_module, Backend, DType, Shape, Tensor, F32,
 };
 use serde::Deserialize;
 use std::{collections::HashMap, fmt::Debug, io::Write, time::Instant};
 use tokenizers::Tokenizer;
-use tracing::instrument;
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::Registry;
-use tracing_tree::HierarchicalLayer;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Config {
@@ -78,7 +73,6 @@ impl Module for RotaryEmbedding {
     type Output = Tensor;
 
     /// input = (x, seqlen_offset)
-    #[instrument(skip_all)]
     fn forward(&self, input: &Self::Input) -> Self::Output {
         let xs = &input.0;
         let seqlen_offset = input.1;
@@ -141,7 +135,6 @@ impl Module for MLP {
     type Input = Tensor;
     type Output = Tensor;
 
-    #[instrument(skip_all)]
     fn forward(&self, x: &Self::Input) -> Self::Output {
         (&self.fc1).chain(&self.act).chain(&self.fc2).forward(x)
     }
@@ -185,9 +178,10 @@ fn get_mask(size: usize, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor
 
 fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
     let shape = mask.shape();
-    let on_true = &Tensor::full(on_true, shape, on_false.backend()).broadcast_to(shape);
-    let m = mask.where_cond(on_true, on_false);
-    m
+    let on_true = &Tensor::full(on_true, shape, on_false.backend())
+        .broadcast_to(shape)
+        .as_type_of(on_false);
+    mask.where_cond(on_true, on_false)
 }
 
 impl Attention {
@@ -216,7 +210,7 @@ impl Attention {
             &backend,
         );
         let dense = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, &backend);
-        // Alternative rope scalings are not supported.
+        // Alternative rope scaling are not supported.
         let rotary_emb = RotaryEmbedding::new(cfg, &backend);
         let (q_layernorm, k_layernorm) = if cfg.qk_layernorm {
             let q_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &backend);
@@ -259,7 +253,6 @@ impl Module for Attention {
     type Input = (Tensor, Option<Tensor>, Option<(Tensor, Tensor)>); // (x, mask, kv_cache)
     type Output = (Tensor, Option<(Tensor, Tensor)>); // (output, kv_cache)
 
-    #[instrument(skip_all)]
     fn forward(&self, input: &Self::Input) -> Self::Output {
         let xs = &input.0;
         let mask = input.1.as_ref();
@@ -303,11 +296,11 @@ impl Module for Attention {
         };
         let kv_cache = Some((key_states.clone(), value_states.clone()));
         // Repeat kv.
-        let key_states = self.repeat_kv(key_states); //.contiguous()?;
-        let value_states = self.repeat_kv(value_states); //.contiguous()?;
-
+        let key_states = self.repeat_kv(key_states).to_contiguous();
+        let value_states = self.repeat_kv(value_states).to_contiguous();
         let attn_weights = query_states
             .as_type(F32)
+            .to_contiguous()
             .matmul(key_states.as_type(F32).t() * self.softmax_scale);
         let attn_weights = match mask {
             None => attn_weights,
@@ -320,10 +313,7 @@ impl Module for Attention {
         let attn_weights = attn_weights.softmax(-1).as_type_of(&value_states);
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
-
-        debug_data::<f32>("attn_output", &attn_output);
         let attn_output = self.dense.forward(&attn_output);
-
         (attn_output, kv_cache)
     }
 
@@ -384,23 +374,14 @@ impl Module for DecoderLayer {
     type Input = (Tensor, Option<Tensor>, Option<(Tensor, Tensor)>); // (x, mask, kv_cache)
     type Output = (Tensor, Option<(Tensor, Tensor)>); // (output, kv_cache)
 
-    #[instrument(skip_all)]
     fn forward(&self, input: &Self::Input) -> Self::Output {
         let xs = &input.0;
         let mask = input.1.clone();
         let kv_cache = input.2.clone();
-        debug_data::<f32>("input_layernorm pre", &xs);
-
         let residual = xs;
         let xs = self.input_layernorm.forward(xs);
-        debug_data::<f32>("input_layernorm post", &xs);
-
         let (attn_outputs, kv_cache) = self.self_attn.forward(&(xs.clone(), mask, kv_cache));
-        debug_data::<f32>("self_attn post", &attn_outputs);
-
         let feed_forward_hidden_states = self.mlp.forward(&xs);
-        debug_data::<f32>("mlp post", &feed_forward_hidden_states);
-
         let out = attn_outputs + feed_forward_hidden_states + residual;
         (out, kv_cache)
     }
@@ -459,7 +440,6 @@ impl Module for Model {
     type Output = (Tensor, HashMap<usize, Option<(Tensor, Tensor)>>); // (logits, kv_caches)
 
     /// (x, kv_cache)
-    #[instrument(skip_all)]
     fn forward(&self, input: &Self::Input) -> Self::Output {
         let xs = &input.0;
         let mut kv_caches = input.1.clone();
@@ -471,17 +451,10 @@ impl Module for Model {
         } else {
             Some(get_mask(seq_len, xs.backend()))
         };
-
-        if let Some(m) = &mask {
-            debug_data::<u8>("mask", &m);
-        }
-
         for (i, layer) in self.layers.iter().enumerate() {
             let mut kv_cache = kv_caches.get(&i).cloned().unwrap_or(None);
             (xs, kv_cache) = layer.forward(&(xs, mask.clone(), kv_cache));
             kv_caches.insert(i, kv_cache);
-            debug_data::<f32>(format!("layer {i}"), &xs);
-            //break;
         }
         let xs = self.final_layernorm.forward(&xs).narrow(1, seq_len - 1, 1);
         let logits = self.lm_head.forward(&xs).squeeze(1);
@@ -546,80 +519,6 @@ fn load_model(
     (tokenizer, phi)
 }
 
-fn main() {
-    let layer = HierarchicalLayer::default()
-        .with_writer(std::io::stdout)
-        .with_indent_lines(true)
-        .with_indent_amount(2)
-        .with_filter(LevelFilter::OFF);
-
-    let subscriber = Registry::default().with(layer);
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-
-    let backend = &Cpu;
-    backend.debug_info();
-
-    let dtype = F32;
-    let (tokenizer, model) = load_model(dtype, backend);
-
-    // inferencing
-    let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
-    println!("{prompt}");
-    std::io::stdout().flush().unwrap();
-
-    let tokens = tokenizer.encode(prompt, true).unwrap();
-    let mut tokens = tokens.get_ids().to_vec();
-    let mut generated_tokens = 0usize;
-    let eos_token = match tokenizer.get_vocab(true).get("<|endoftext|>") {
-        Some(token) => *token,
-        None => panic!("cannot find the endoftext token"),
-    };
-
-    let start_gen = std::time::Instant::now();
-    let sample_len: usize = 5000;
-    let repeat_penalty: f32 = 1.10;
-    let repeat_last_n: usize = 64;
-
-    let mut kv_caches = HashMap::new();
-    for index in 0..sample_len {
-        let context_size = if index > 0 { 1 } else { tokens.len() };
-        let ctxt = &tokens[tokens.len().saturating_sub(context_size)..];
-        let input = Tensor::from_array(ctxt, [ctxt.len()], backend).unsqueeze(0);
-        debug_data::<u32>("input", &input);
-
-        let (logits, new_caches) = model.forward(&(input, kv_caches));
-        kv_caches = new_caches;
-
-        debug_data::<f32>("logits", &logits);
-
-        let logits = logits.squeeze(0).as_type(F32);
-        let logits = if repeat_penalty == 1. {
-            logits
-        } else {
-            let start_at = tokens.len().saturating_sub(repeat_last_n);
-            apply_repeat_penalty(&logits, repeat_penalty, &tokens[start_at..])
-        };
-        debug_data::<f32>("logits after", &logits);
-        //break;
-
-        let next_token = sample_argmax(logits);
-
-        tokens.push(next_token);
-        generated_tokens += 1;
-        if next_token == eos_token {
-            break;
-        }
-        let token = tokenizer.decode(&[next_token], true).unwrap();
-        print!("{token}");
-        std::io::stdout().flush().unwrap();
-    }
-    let dt = start_gen.elapsed();
-    println!(
-        "\n{generated_tokens} tokens generated ({:.2} token/s)",
-        generated_tokens as f64 / dt.as_secs_f64(),
-    );
-}
-
 fn sample_argmax(logits: Tensor) -> u32 {
     // let t = logits.argmax(-1);
     // t.as_scalar::<u32>()
@@ -650,6 +549,58 @@ pub fn apply_repeat_penalty(logits: &Tensor, penalty: f32, context: &[u32]) -> T
     Tensor::from_array(logits, [logits_len], backend)
 }
 
-fn debug_data<D: ElemType>(msg: impl AsRef<str>, x: &Tensor) {
-    //println!("{} {:?}", msg.as_ref(), &x.flatten(..).as_vec::<D>()[0..5]);
+fn main() {
+    let backend = &Cpu;
+    backend.debug_info();
+
+    let dtype = F32;
+    let (tokenizer, model) = load_model(dtype, backend);
+
+    // inferencing
+    let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
+    println!("{prompt}");
+    std::io::stdout().flush().unwrap();
+
+    let tokens = tokenizer.encode(prompt, true).unwrap();
+    let mut tokens = tokens.get_ids().to_vec();
+    let mut generated_tokens = 0usize;
+    let eos_token = match tokenizer.get_vocab(true).get("<|endoftext|>") {
+        Some(token) => *token,
+        None => panic!("cannot find the endoftext token"),
+    };
+
+    let start_gen = std::time::Instant::now();
+    let sample_len: usize = 5000;
+    let repeat_penalty: f32 = 1.10;
+    let repeat_last_n: usize = 64;
+
+    let mut kv_caches = HashMap::new();
+    for index in 0..sample_len {
+        let context_size = if index > 0 { 1 } else { tokens.len() };
+        let ctxt = &tokens[tokens.len().saturating_sub(context_size)..];
+        let input = Tensor::from_array(ctxt, [ctxt.len()], backend).unsqueeze(0);
+        let (logits, new_caches) = model.forward(&(input, kv_caches));
+        kv_caches = new_caches;
+        let logits = logits.squeeze(0).as_type(F32);
+        let logits = if repeat_penalty == 1. {
+            logits
+        } else {
+            let start_at = tokens.len().saturating_sub(repeat_last_n);
+            apply_repeat_penalty(&logits, repeat_penalty, &tokens[start_at..])
+        };
+        let next_token = sample_argmax(logits);
+        tokens.push(next_token);
+        generated_tokens += 1;
+        if next_token == eos_token {
+            break;
+        }
+        let token = tokenizer.decode(&[next_token], true).unwrap();
+        print!("{token}");
+        std::io::stdout().flush().unwrap();
+    }
+    let dt = start_gen.elapsed();
+    println!(
+        "\n{generated_tokens} tokens generated ({:.2} token/s)",
+        generated_tokens as f64 / dt.as_secs_f64(),
+    );
 }
