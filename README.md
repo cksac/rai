@@ -4,7 +4,7 @@
 [![Docs Status](https://docs.rs/rai/badge.svg)](https://docs.rs/rai)
 [![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
 
-ML framework with Ergonomic APIs in Rust. Lazy computation and composable transformations.
+ML framework with ergonomic APIs in Rust. Lazy computation and composable transformations.
 ---
 
 ## Installation
