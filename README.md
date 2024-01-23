@@ -75,8 +75,7 @@ fn train_step<
 - [phi2](https://github.com/cksac/rai/blob/main/examples/phi2/src/main.rs)
     - `cargo run --bin phi2 --release`
 
-# LICENSE
-
+## LICENSE
 This project is licensed under either of
 
 - Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
