@@ -139,13 +139,8 @@ impl Primitive for MatMul {
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
-        let ndim = cotangent.ndim();
-        let mut dims = cotangent.dims(..);
-        // swap last two dims
-        dims.swap(ndim - 1, ndim - 2);
-        let dims = dims.as_slice();
-        let cotangent_lhs = cotangent.matmul(rhs.transpose(dims));
-        let cotangent_rhs = lhs.transpose(dims).matmul(cotangent);
+        let cotangent_lhs = cotangent.matmul(rhs.t());
+        let cotangent_rhs = lhs.t().matmul(cotangent);
         vec![cotangent_lhs, cotangent_rhs]
     }
 }

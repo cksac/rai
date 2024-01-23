@@ -14,6 +14,7 @@ pub trait Backend: Debug {
     fn equal(&self, rhs: &dyn Backend) -> bool;
     fn from_safetensor(&self, st: &TensorView) -> Tensor;
     fn to_safetensors(&self, tensors: HashMap<String, Tensor>, filename: &Path);
+    fn debug_info(&self) {}
 }
 
 impl<'a, T> From<&'a T> for Box<dyn Backend>

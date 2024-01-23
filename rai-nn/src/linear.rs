@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, Tensor};
+use rai_core::{nn::Module, trainable_module, Backend, DType, DynDType, Shape, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 
@@ -35,9 +35,14 @@ impl Module for Linear {
     type Output = Tensor;
 
     fn forward(&self, x: &Self::Input) -> Self::Output {
+        let w = &match x.shape() {
+            [b1, b2, _, _] => self.weight.broadcast_left(&[*b1, *b2]).t(),
+            [bsize, _, _] => self.weight.broadcast_left(&[*bsize]).t(),
+            _ => self.weight.t(),
+        };
         match &self.bias {
-            Some(bias) => x.matmul(self.weight.t()) + bias,
-            None => x.matmul(self.weight.t()),
+            Some(bias) => x.matmul(w) + bias,
+            None => x.matmul(w),
         }
     }
 
@@ -53,13 +58,13 @@ impl Module for Linear {
     }
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.gather_to(params, prefix, "w");
-        self.bias.gather_to(params, prefix, "b");
+        self.weight.gather_to(params, prefix, "weight");
+        self.bias.gather_to(params, prefix, "bias");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.update_by(params, prefix, "w");
-        self.bias.update_by(params, prefix, "b");
+        self.weight.update_by(params, prefix, "weight");
+        self.bias.update_by(params, prefix, "bias");
     }
 }
 

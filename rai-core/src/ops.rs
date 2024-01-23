@@ -1,4 +1,5 @@
 use std::{
+    f32::consts::PI,
     fmt::Debug,
     ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
 };
@@ -7,14 +8,14 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp, FromArray,
-        Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10, Log2,
-        LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual, ReduceMax, ReduceMin,
-        ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square, Sub, Transpose,
+        Abs, Add, Arange, ArgMax, ArgMin, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf,
+        Exp, FromArray, Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log,
+        Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual,
+        PowerFloat, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt,
+        Square, Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
-    utils::dot_graph,
-    Backend, DType, Dim, DynDType, ElemType, Shape, Tensor, F32, F64, U8,
+    Backend, DType, Dim, DynDType, ElemType, Shape, Tensor, F32, F64, U32, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -314,6 +315,7 @@ macro_rules! impl_arange_args {
 impl_arange_args!(f32, F32);
 impl_arange_args!(f64, F64);
 impl_arange_args!(f32, u8, U8);
+impl_arange_args!(f32, u32, U32);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn arange<D: DType, T: ArangeArgs<D>>(
@@ -359,15 +361,9 @@ pub fn from_array<T: ElemType>(
 pub fn add(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "add({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("add({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Add, inputs)
 }
@@ -378,15 +374,9 @@ impl_std_ops!(Add, add);
 pub fn sub(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "sub({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("sub({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Sub, inputs)
 }
@@ -397,15 +387,9 @@ impl_std_ops!(Sub, sub);
 pub fn mul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "mul({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("mul({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Mul, inputs)
 }
@@ -416,15 +400,9 @@ impl_std_ops!(Mul, mul);
 pub fn div(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "div({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("div({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Div, inputs)
 }
@@ -432,7 +410,7 @@ pub fn div(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 impl_std_ops!(Div, div);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn negative(x: &Tensor) -> Tensor {
+pub fn neg(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
@@ -444,15 +422,15 @@ impl Neg for Tensor {
     type Output = Tensor;
 
     fn neg(self) -> Self::Output {
-        negative(&self)
+        neg(&self)
     }
 }
 
-impl Neg for &Tensor {
+impl<'a> Neg for &'a Tensor {
     type Output = Tensor;
 
     fn neg(self) -> Self::Output {
-        negative(self)
+        neg(self)
     }
 }
 
@@ -463,6 +441,15 @@ pub fn square(x: &Tensor) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, shape, Square, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype(); // todo: promote to f64?
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, PowerFloat::new(exponent), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -484,18 +471,21 @@ pub fn cos(x: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn tanh(x: &Tensor) -> Tensor {
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Tanh, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast_matmul(rhs).unwrap_or_else(|e| {
-        panic!(
-            "matmul({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast_matmul(rhs)
+        .unwrap_or_else(|e| panic!("matmul({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let lhs_in = lhs;
     let rhs_in = rhs;
@@ -521,12 +511,14 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn transpose(x: &Tensor, dims: impl Into<Vec<usize>> + Debug) -> Tensor {
+pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
+    let dim0 = x.dim(dim0);
+    let dim1 = x.dim(dim1);
     let backend = x.backend();
     let dtype = x.dtype();
-    let shape = x.shape_transpose();
+    let shape = x.shape_transpose(dim0, dim1);
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Transpose::new(dims), inputs)
+    Tensor::new(backend, dtype, shape, Transpose::new(dim0, dim1), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -535,15 +527,20 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     let dtype = x.dtype();
     let out_shape = x.shape_broadcast(&shape).unwrap_or_else(|e| {
         panic!(
-            "{:?} broadcast_to shape {} with error {:?}\n{}",
+            "{:?} broadcast_to shape {} with error {:?}",
             x,
             shape.ndim(),
-            e,
-            dot_graph(x)
+            e
         )
     });
     let inputs = vec![x.clone()];
     Tensor::new(backend, dtype, out_shape, Broadcast::new(shape), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
+    let out_shape = x.shape_expand_left(&shape);
+    x.broadcast_to(out_shape)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -564,12 +561,7 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
             inputs,
         )
     } else {
-        panic!(
-            "reshape({:?}, {:?}) with error\n{}",
-            x,
-            shape.shape(),
-            dot_graph(x)
-        );
+        panic!("reshape({:?}, {:?}) with error", x, shape.shape());
     }
 }
 
@@ -649,15 +641,9 @@ pub fn log10(x: &Tensor) -> Tensor {
 pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = U8;
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "eq({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("eq({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Equal, inputs)
@@ -667,15 +653,9 @@ pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = U8;
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "ne({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("ne({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, NotEqual, inputs)
@@ -685,15 +665,9 @@ pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = U8;
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "gt({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("gt({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Greater, inputs)
@@ -703,15 +677,9 @@ pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = U8;
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "ge({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("ge({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, GreaterEqual, inputs)
 }
@@ -720,15 +688,9 @@ pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = U8;
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "lt({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("lt({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Less, inputs)
 }
@@ -737,15 +699,9 @@ pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn le(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = U8;
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "le({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("le({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, LessEqual, inputs)
 }
@@ -754,15 +710,9 @@ pub fn le(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let backend = lhs.backend();
     let dtype = lhs.dtype();
-    let shape = lhs.shape_broadcast(rhs).unwrap_or_else(|e| {
-        panic!(
-            "maximum({:?}, {:?}) with error {:?}\n{}",
-            lhs,
-            rhs,
-            e,
-            dot_graph([lhs, rhs])
-        )
-    });
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("maximum({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(backend, dtype, shape, Maximum, inputs)
 }
@@ -972,7 +922,12 @@ pub fn relu(x: &Tensor) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn gelu(x: &Tensor) -> Tensor {
-    x * (1 + (x / 2f32.sqrt()).erf()) / 2
+    x * 0.5f32 * (1.0f32 + (x / 2.0f32.sqrt()).erf())
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn new_gelu(x: &Tensor) -> Tensor {
+    0.5f32 * x * (1.0f32 + ((2.0f32 / PI).sqrt() * (x + 0.044715f32 * x.powf(3.0))).tanh())
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -1127,7 +1082,6 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
     if x.ndim() == 0 {
         x.reshape([1])
     } else {
-        dbg!(start_dim, end_dim);
         if start_dim < end_dim {
             let mut dst_dim = x.shape_of(..start_dim);
             dst_dim.push(x.size_of_dims(start_dim..=end_dim));
@@ -1155,34 +1109,133 @@ pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
-    let dim = x.dim(d) + 1;
+    let dim = x.dim(d);
     let mut shape = x.shape().to_vec();
     shape.insert(dim, 1);
     x.reshape(shape)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn cat(tensors: &[Tensor], d: impl Dim) -> Tensor {
-    let t1 = &tensors[0];
-    let dim = t1.dim(d);
+pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
+    let inputs: Vec<Tensor> = tensors.iter().map(AsRef::as_ref).cloned().collect();
+    let t1 = &inputs[0].clone();
+    let dim = t1.dim(dim);
     let backend = t1.backend();
     let dtype = t1.dtype();
     let mut shape = t1.shape().to_vec();
     shape[dim] = 0;
-    for t in tensors {
+    for t in inputs.iter() {
         // todo: check shape
         shape[dim] += t.shape_at(dim);
     }
-    let inputs = tensors.to_vec();
     Tensor::new(backend, dtype, shape, Concatenate::new(dim), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn narrow(x: &Tensor, d: impl Dim, start: usize, len: usize) -> Tensor {
-    let dim = x.dim(d);
+pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
+    let dim = x.dim(dim);
+    let backend = x.backend();
+    let dtype = x.dtype();
+    let mut shape = x.shape().to_vec();
+    shape[dim] = len;
+    let inputs = vec![x.clone()];
+    Tensor::new(backend, dtype, shape, Narrow::new(dim, start, len), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
+    let dim = x.dim(dim);
+    let size = x.shape_at(dim);
+    if size < chunks {
+        (0..size).map(|i| x.narrow(dim, i, 1)).collect::<Vec<_>>()
+    } else {
+        let chunk_size = size / chunks;
+        let cnt_additional = size % chunks;
+        let mut tensors = vec![];
+        let mut sum_chunk_size = 0;
+        for i in 0..chunks {
+            let chunk_size = if i < cnt_additional {
+                chunk_size + 1
+            } else {
+                chunk_size
+            };
+            let tensor = x.narrow(dim, sum_chunk_size, chunk_size);
+            tensors.push(tensor);
+            sum_chunk_size += chunk_size
+        }
+        tensors
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn where_cond(x: &Tensor, input: &Tensor, other: &Tensor) -> Tensor {
+    assert_eq!(input.dtype(), other.dtype());
+    let backend = x.backend();
+    let dtype = input.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone(), input.clone(), other.clone()];
+    Tensor::new(backend, dtype, shape, Where, inputs)
+}
+
+pub trait ArgReduceArgs: Debug {
+    fn dim(&self) -> &impl Dim;
+    fn keep_dim(&self) -> bool {
+        false
+    }
+}
+
+impl<T: Dim> ArgReduceArgs for T {
+    fn dim(&self) -> &impl Dim {
+        self
+    }
+}
+
+impl<T: Dim> ArgReduceArgs for (T, bool) {
+    fn dim(&self) -> &impl Dim {
+        &self.0
+    }
+    fn keep_dim(&self) -> bool {
+        self.1
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let backend = x.backend();
+    let dtype = U32;
+    let dim = x.dim(args.dim());
+    let shape = x.shape_reduce([dim], args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        backend,
+        dtype,
+        shape,
+        ArgMax::new(dim, args.keep_dim()),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let backend = x.backend();
+    let dtype = U32;
+    let dim = x.dim(args.dim());
+    let shape = x.shape_reduce([dim], args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        backend,
+        dtype,
+        shape,
+        ArgMin::new(dim, args.keep_dim()),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn to_contiguous(x: &Tensor) -> Tensor {
     let backend = x.backend();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Narrow::new(dim, start, len), inputs)
+    Tensor::new(backend, dtype, shape, ToContiguous, inputs)
 }

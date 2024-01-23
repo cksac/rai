@@ -55,7 +55,7 @@ fn test_broadcast_to() {
 #[test]
 fn test_transpose() {
     let backend = &Cpu;
-    let func = |x: &Tensor| x.t();
+    let func = |x: &Tensor| x.transpose(-2, -1);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], F32, backend);
     let (out, grad) = vg_func.apply((&a,));
@@ -145,8 +145,8 @@ fn test_softmax() {
 fn test_gather() {
     let backend = &Cpu;
 
-    let a = Tensor::from_array([1, 2, 3, 4, 5, 6], [2, 3], backend);
-    let index = Tensor::from_array([0, 0, 0, 1, 1, 1], [2, 3], backend);
+    let a = Tensor::from_array([1u32, 2, 3, 4, 5, 6], [2, 3], backend);
+    let index = Tensor::from_array([0u32, 0, 0, 1, 1, 1], [2, 3], backend);
     let out = a.gather(0, &index);
 
     println!("{}", a);
@@ -158,8 +158,8 @@ fn test_gather() {
 fn test_index_select() {
     let backend = &Cpu;
 
-    let a = Tensor::from_array([1, 2, 3, 4, 5, 6], [2, 3], backend);
-    let index = Tensor::from_array([1, 1, 0, 0], [4], backend);
+    let a = Tensor::from_array([1u32, 2, 3, 4, 5, 6], [2, 3], backend);
+    let index = Tensor::from_array([1u32, 1, 0, 0], [4], backend);
     let out = a.index_select(0, &index);
 
     println!("{}", a);

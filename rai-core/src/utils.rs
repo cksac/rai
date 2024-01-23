@@ -39,11 +39,11 @@ pub fn dot_graph<T: TensorIter>(args: T) -> String {
 }
 
 fn depth_first_traversal(tape: &mut Vec<Tensor>, tensor: &Tensor) {
-    for input in tensor.inputs().iter() {
-        depth_first_traversal(tape, input);
-    }
     if tape.contains(tensor) {
         return;
+    }
+    for input in tensor.inputs().iter() {
+        depth_first_traversal(tape, input);
     }
     tape.push(tensor.clone());
 }

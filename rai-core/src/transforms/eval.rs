@@ -54,13 +54,11 @@ where
 
 pub fn eval<T: EvalArgs>(args: T) {
     fn recurse(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
-        for input in t.inputs().iter() {
-            if !t.is_evaluated() {
-                recurse(tape, input);
-            }
-        }
         if t.is_evaluated() || tape.contains(t) {
             return;
+        }
+        for input in t.inputs().iter() {
+            recurse(tape, input);
         }
         tape.insert(t.clone());
     }
@@ -69,6 +67,7 @@ pub fn eval<T: EvalArgs>(args: T) {
     for output in args.outputs() {
         recurse(&mut tape, output);
     }
+
     for t in tape.into_iter() {
         {
             let backend = args.backend().unwrap_or(t.backend().clone_boxed());

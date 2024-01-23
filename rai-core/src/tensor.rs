@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     cell::{Ref, RefCell},
     collections::HashMap,
     fmt::{Debug, Display},
@@ -15,16 +16,19 @@ use safetensors::tensor::TensorView;
 use crate::{
     backend::Cpu,
     eval,
-    ops::{self, ArangeArgs, FlattenArgs, ReduceArgs, VarArgs},
+    nn::Module,
+    ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
     primitives,
     utils::{self, dot_graph},
     Backend, DType, Dim, Dims, DynDType, ElemType, Primitive, Shape,
 };
 
 pub trait TensorLike: Debug + Display {
-    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any(&self) -> &dyn Any;
     fn shape(&self) -> &[usize];
     fn dtype(&self) -> &dyn DynDType;
+    fn as_scalar(&self) -> Box<dyn Any>;
+    fn as_vec(&self) -> Box<dyn Any>;
 }
 
 struct TensorImpl {
@@ -166,8 +170,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn cat(tensors: &[Tensor], d: impl Dim) -> Tensor {
-        ops::cat(tensors, d)
+    pub fn neg(&self) -> Tensor {
+        ops::neg(self)
+    }
+
+    #[inline]
+    pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
+        ops::cat(tensors, dim)
     }
 
     #[inline]
@@ -212,21 +221,22 @@ impl Tensor {
 
     #[inline]
     pub fn t(&self) -> Tensor {
-        assert!(self.ndim() >= 2);
-        let ndim = self.ndim();
-        let mut dims = self.dims(..);
-        dims.swap(ndim - 1, ndim - 2);
-        ops::transpose(self, dims)
+        ops::transpose(self, -2, -1)
     }
 
     #[inline]
-    pub fn transpose(&self, dims: impl Into<Vec<usize>> + Debug) -> Tensor {
-        ops::transpose(self, dims)
+    pub fn transpose(&self, dim0: impl Dim, dim1: impl Dim) -> Tensor {
+        ops::transpose(self, dim0, dim1)
     }
 
     #[inline]
     pub fn broadcast_to(&self, shape: impl Shape) -> Tensor {
         ops::broadcast_to(self, shape)
+    }
+
+    #[inline]
+    pub fn broadcast_left(&self, shape: impl Shape) -> Tensor {
+        ops::broadcast_left(self, shape)
     }
 
     #[inline]
@@ -261,8 +271,18 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn tanh(&self) -> Tensor {
+        ops::tanh(self)
+    }
+
+    #[inline]
     pub fn square(&self) -> Tensor {
         ops::square(self)
+    }
+
+    #[inline]
+    pub fn powf(&self, exponent: f64) -> Tensor {
+        ops::powf(self, exponent)
     }
 
     #[inline]
@@ -331,6 +351,16 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn argmax<T: ArgReduceArgs>(&self, args: T) -> Tensor {
+        ops::argmax(self, args)
+    }
+
+    #[inline]
+    pub fn argmin<T: ArgReduceArgs>(&self, args: T) -> Tensor {
+        ops::argmin(self, args)
+    }
+
+    #[inline]
     pub fn gather(&self, dim: impl Dim, index: &Tensor) -> Tensor {
         ops::gather(self, dim, index)
     }
@@ -376,8 +406,18 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn new_gelu(&self) -> Tensor {
+        ops::new_gelu(self)
+    }
+
+    #[inline]
     pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
         ops::flatten(self, args)
+    }
+
+    #[inline]
+    pub fn to_contiguous(&self) -> Tensor {
+        ops::to_contiguous(self)
     }
 
     #[inline]
@@ -391,8 +431,18 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn narrow(&self, d: impl Dim, start: usize, len: usize) -> Tensor {
-        ops::narrow(self, d, start, len)
+    pub fn narrow(&self, dim: impl Dim, start: usize, len: usize) -> Tensor {
+        ops::narrow(self, dim, start, len)
+    }
+
+    #[inline]
+    pub fn chunk(&self, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
+        ops::chunk(self, chunks, dim)
+    }
+
+    #[inline]
+    pub fn where_cond(&self, input: &Tensor, other: &Tensor) -> Tensor {
+        ops::where_cond(self, input, other)
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
@@ -464,17 +514,15 @@ impl Tensor {
     pub fn set_data<T: TensorLike + 'static>(&self, data: T) {
         assert!(
             self.shape_eq(&data.shape()),
-            "{:?} not align with data shape: {:?}\n{}",
+            "{:?} not align with data shape: {:?}",
             self,
-            data.shape(),
-            self.dot_graph()
+            data.shape()
         );
         assert!(
             self.dtype() == data.dtype(),
-            "{:?} not align with data dtype: {:?}\n{}",
+            "{:?} not align with data dtype: {:?}",
             self,
-            data.dtype(),
-            self.dot_graph()
+            data.dtype()
         );
         self.0.data.replace(Some(Box::new(data)));
     }
@@ -491,6 +539,24 @@ impl Tensor {
         } else {
             None
         }
+    }
+
+    pub fn as_scalar<T: ElemType>(&self) -> T {
+        if !self.is_evaluated() {
+            eval(self);
+        }
+        let data = self.0.data.borrow();
+        let data = data.as_deref().unwrap();
+        data.as_scalar().downcast_ref::<T>().unwrap().clone()
+    }
+
+    pub fn as_vec<T: ElemType>(&self) -> Vec<T> {
+        if !self.is_evaluated() {
+            eval(self);
+        }
+        let data = self.0.data.borrow();
+        let data = data.as_deref().unwrap();
+        data.as_vec().downcast_ref::<Vec<T>>().unwrap().clone()
     }
 
     #[inline]

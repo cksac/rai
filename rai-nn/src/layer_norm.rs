@@ -1,19 +1,19 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, Tensor};
+use rai_core::{nn::Module, trainable_module, Backend, DType, DynDType, Shape, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 
 pub struct LayerNorm {
     weight: Option<Tensor>,
     bias: Option<Tensor>,
-    eps: f32,
+    eps: f64,
 }
 
 impl LayerNorm {
     pub fn new(
         dims: usize,
-        eps: f32,
+        eps: f64,
         affine: bool,
         dtype: impl DType,
         backend: impl Into<Box<dyn Backend>> + Debug,
@@ -40,7 +40,7 @@ impl Module for LayerNorm {
         let x = (x - mean) * (var + self.eps).rsqrt();
         if let Some(weight) = &self.weight {
             let bias = self.bias.as_ref().unwrap();
-            weight * x * bias
+            weight * x + bias
         } else {
             x
         }
@@ -57,13 +57,13 @@ impl Module for LayerNorm {
     }
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.gather_to(params, prefix, "w");
-        self.bias.gather_to(params, prefix, "b");
+        self.weight.gather_to(params, prefix, "weight");
+        self.bias.gather_to(params, prefix, "bias");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.update_by(params, prefix, "w");
-        self.bias.update_by(params, prefix, "b");
+        self.weight.update_by(params, prefix, "weight");
+        self.bias.update_by(params, prefix, "bias");
     }
 }
 

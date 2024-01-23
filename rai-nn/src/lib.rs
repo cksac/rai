@@ -13,7 +13,7 @@ mod layer_norm;
 pub use layer_norm::*;
 
 mod rms_norm;
-use rai_core::{Shape, Tensor};
+use rai_core::{eval, nn::Module, Shape, Tensor};
 pub use rms_norm::*;
 
 #[macro_export]
@@ -97,15 +97,16 @@ impl NamedParameter for Tensor {
                 );
             }
 
-            if self.dtype() != t.dtype() {
-                panic!(
-                    "parameter {} dtype {:?} not align with dtype {:?}",
-                    name,
-                    self.dtype(),
-                    t.dtype()
-                );
-            }
-
+            // if self.dtype() != t.dtype() {
+            //     panic!(
+            //         "parameter {} dtype {:?} not align with dtype {:?}",
+            //         name,
+            //         self.dtype(),
+            //         t.dtype()
+            //     );
+            // }
+            let t = t.as_type_of(self);
+            eval((&t, true));
             if self.backend() == t.backend() {
                 self.replace_data(t);
             } else {
@@ -128,6 +129,30 @@ impl NamedParameter for Option<Tensor> {
     fn update_by(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
         if let Some(t) = self {
             t.update_by(params, prefix, name)
+        }
+    }
+}
+
+pub trait NamePath {
+    fn push<'b>(&self, path: &'b str) -> Cow<'b, str>;
+}
+
+impl<'a> NamePath for &'a str {
+    fn push<'b>(&self, path: &'b str) -> Cow<'b, str> {
+        if self.is_empty() {
+            path.into()
+        } else {
+            format!("{}.{}", self, path).into()
+        }
+    }
+}
+
+impl<'a> NamePath for Cow<'a, str> {
+    fn push<'b>(&self, path: &'b str) -> Cow<'b, str> {
+        if self.is_empty() {
+            path.into()
+        } else {
+            format!("{}.{}", self, path).into()
         }
     }
 }

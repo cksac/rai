@@ -38,7 +38,7 @@ fn test_embedding() {
     let num_embeddings = 10;
     let features = 4;
     let embedding = Embedding::new(num_embeddings, features, F32, backend);
-    let input = Tensor::from_array([0, 1, 2, 3, 4], [5], backend);
+    let input = Tensor::from_array([0u32, 1, 2, 3, 4], [5], backend);
 
     let output = embedding.forward(&input);
     println!("embeddings = {}", embedding.weight());

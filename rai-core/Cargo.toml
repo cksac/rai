@@ -12,6 +12,7 @@ repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
 [dependencies]
+half = { version = "2.3.1", features = ["num-traits", "use-intrinsics", "rand_distr"] }
 safetensors = { workspace = true }
 candle-core = { workspace = true }
 dyn-clone = { workspace = true }

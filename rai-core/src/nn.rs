@@ -1,6 +1,6 @@
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, hash::Hash, path::Path};
 
-use crate::{backend::Cpu, Backend, GenericValue, ModuleValue, Tensor, ValueSpec};
+use crate::{backend::Cpu, dtype, Backend, DType, GenericValue, ModuleValue, Tensor, ValueSpec};
 
 pub trait Module {
     type Input;
@@ -37,18 +37,24 @@ pub trait Module {
         Cpu.to_safetensors(named_params, filename.as_ref());
     }
 
-    fn update_by_safetensors(&self, filename: &str) {
-        let data = std::fs::read(filename).unwrap();
-        let st = safetensors::SafeTensors::deserialize(&data).unwrap();
-        let mut st_tensors: HashMap<String, Tensor> = st
-            .tensors()
-            .into_iter()
-            .map(|(name, view)| {
+    fn update_by_safetensors<P: AsRef<std::path::Path>>(&self, filenames: &[P]) {
+        let mut st_tensors: HashMap<String, Tensor> = HashMap::new();
+        for filename in filenames {
+            let data = std::fs::read(filename).unwrap();
+            let st = safetensors::SafeTensors::deserialize(&data).unwrap();
+            for (name, view) in st.tensors() {
                 let t = Tensor::from_safetensor(&view, &Cpu);
-                (name, t)
-            })
-            .collect();
+                st_tensors.insert(name, t);
+            }
+        }
         self.update_named_params("", &mut st_tensors);
+    }
+
+    fn chain<B>(self, b: B) -> Chain<Self, B>
+    where
+        Self: Sized,
+    {
+        Chain::new(self, b)
     }
 }
 
@@ -140,4 +146,48 @@ where
     fn gv_tensors(&self) {}
     fn gv_grad(_: &(), _: &HashMap<usize, Tensor>) {}
     fn gv_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
+}
+
+pub struct Chain<A, B> {
+    a: A,
+    b: B,
+}
+
+impl<A, B> Chain<A, B> {
+    pub fn new(a: A, b: B) -> Self {
+        Self { a, b }
+    }
+}
+
+impl<A, B, T> Module for Chain<A, B>
+where
+    A: Module<Input = T>,
+    B: Module<Input = A::Output>,
+{
+    type Input = T;
+    type Output = B::Output;
+
+    fn forward(&self, x: &Self::Input) -> Self::Output {
+        self.b.forward(&self.a.forward(x))
+    }
+
+    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        self.a.gather_params(params);
+        self.b.gather_params(params);
+    }
+
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        self.a.update_params(params);
+        self.b.update_params(params);
+    }
+
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        self.a.gather_named_params(prefix, params);
+        self.b.gather_named_params(prefix, params);
+    }
+
+    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        self.a.update_named_params(prefix, params);
+        self.b.update_named_params(prefix, params);
+    }
 }

@@ -24,7 +24,10 @@ macro_rules! impl_activation {
 pub struct Relu;
 impl_activation!(Relu, relu);
 
-// TODO: GELU
 #[derive(Clone, Debug, Copy)]
 pub struct Gelu;
-impl_activation!(Gelu, relu);
+impl_activation!(Gelu, gelu);
+
+#[derive(Clone, Debug, Copy)]
+pub struct NewGelu;
+impl_activation!(NewGelu, new_gelu);

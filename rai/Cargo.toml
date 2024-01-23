@@ -15,3 +15,5 @@ homepage = "https://github.com/cksac/rai"
 rai-core = { workspace = true }
 rai-nn = { workspace = true }
 rai-opt = { workspace = true }
+hf-hub = { workspace = true }
+serde_json = { workspace = true }

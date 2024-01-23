@@ -169,3 +169,83 @@ fn reduce_chooser_jvp_rule(g: &Tensor, ans: &Tensor, operand: &Tensor, dims: &[u
     let counts = location_indicators.sum(dims);
     (g * location_indicators).sum(dims) / counts
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArgMax {
+    pub dim: usize,
+    pub keep_dim: bool,
+}
+
+impl ArgMax {
+    pub fn new(dim: usize, keep_dim: bool) -> Self {
+        Self { dim, keep_dim }
+    }
+
+    pub fn dim(&self) -> usize {
+        self.dim
+    }
+}
+
+impl Primitive for ArgMax {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("ArgMax({}, {})", &self.dim, &self.keep_dim)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArgMin {
+    pub dim: usize,
+    pub keep_dim: bool,
+}
+
+impl ArgMin {
+    pub fn new(dim: usize, keep_dim: bool) -> Self {
+        Self { dim, keep_dim }
+    }
+
+    pub fn dim(&self) -> usize {
+        self.dim
+    }
+}
+
+impl Primitive for ArgMin {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("ArgMin({}, {})", &self.dim, &self.keep_dim)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}

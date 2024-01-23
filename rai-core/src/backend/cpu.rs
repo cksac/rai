@@ -3,8 +3,10 @@ use std::{
     collections::HashMap,
     ops::Deref,
     path::Path,
+    primitive,
 };
 
+use half::{bf16, f16};
 use safetensors::tensor::TensorView;
 
 use crate::{
@@ -13,7 +15,7 @@ use crate::{
     primitives,
     tensor::TensorLike,
     utils::dot_graph,
-    Backend, DType, DynDType, Shape, Tensor, F32, F64, U8,
+    Backend, DType, DynDType, Shape, Tensor, F16, F32, F64, U32, U8,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -35,10 +37,34 @@ impl TensorLike for candle_core::Tensor {
             candle_core::DType::F32 => &F32,
             candle_core::DType::F64 => &F64,
             candle_core::DType::U8 => &U8,
-            candle_core::DType::U32 => todo!(),
+            candle_core::DType::U32 => &U32,
             candle_core::DType::I64 => todo!(),
             candle_core::DType::BF16 => todo!(),
-            candle_core::DType::F16 => todo!(),
+            candle_core::DType::F16 => &F16,
+        }
+    }
+
+    fn as_scalar(&self) -> Box<dyn std::any::Any> {
+        match self.dtype() {
+            candle_core::DType::F32 => Box::new(self.to_scalar::<f32>().unwrap()),
+            candle_core::DType::F64 => Box::new(self.to_scalar::<f64>().unwrap()),
+            candle_core::DType::U8 => Box::new(self.to_scalar::<u8>().unwrap()),
+            candle_core::DType::U32 => Box::new(self.to_scalar::<u32>().unwrap()),
+            candle_core::DType::I64 => Box::new(self.to_scalar::<i64>().unwrap()),
+            candle_core::DType::BF16 => Box::new(self.to_scalar::<bf16>().unwrap()),
+            candle_core::DType::F16 => Box::new(self.to_scalar::<f16>().unwrap()),
+        }
+    }
+
+    fn as_vec(&self) -> Box<dyn Any> {
+        match self.dtype() {
+            candle_core::DType::F32 => Box::new(self.to_vec1::<f32>().unwrap()),
+            candle_core::DType::F64 => Box::new(self.to_vec1::<f64>().unwrap()),
+            candle_core::DType::U8 => Box::new(self.to_vec1::<u8>().unwrap()),
+            candle_core::DType::U32 => Box::new(self.to_vec1::<u32>().unwrap()),
+            candle_core::DType::I64 => Box::new(self.to_vec1::<i64>().unwrap()),
+            candle_core::DType::BF16 => Box::new(self.to_vec1::<bf16>().unwrap()),
+            candle_core::DType::F16 => Box::new(self.to_vec1::<f16>().unwrap()),
         }
     }
 }
@@ -84,11 +110,33 @@ impl Backend for Cpu {
             .collect();
         candle_core::safetensors::save(&candle_tensors, filename).unwrap();
     }
+
+    fn debug_info(&self) {
+        println!(
+            "avx: {}, neon: {}, simd128: {}, f16c: {}",
+            candle_core::utils::with_avx(),
+            candle_core::utils::with_neon(),
+            candle_core::utils::with_simd128(),
+            candle_core::utils::with_f16c()
+        );
+    }
 }
 
 impl From<U8> for candle_core::DType {
     fn from(_: U8) -> Self {
         candle_core::DType::U8
+    }
+}
+
+impl From<U32> for candle_core::DType {
+    fn from(_: U32) -> Self {
+        candle_core::DType::U32
+    }
+}
+
+impl From<F16> for candle_core::DType {
+    fn from(_: F16) -> Self {
+        candle_core::DType::F16
     }
 }
 
@@ -147,6 +195,8 @@ macro_rules! impl_full {
 }
 
 impl_full!(U8);
+impl_full!(U32);
+impl_full!(F16);
 impl_full!(F32);
 impl_full!(F64);
 
@@ -187,6 +237,8 @@ macro_rules! impl_arange {
 }
 
 impl_arange!(U8);
+impl_arange!(U32);
+impl_arange!(F16);
 impl_arange!(F32);
 impl_arange!(F64);
 
@@ -212,6 +264,8 @@ macro_rules! impl_from_array {
 }
 
 impl_from_array!(U8);
+impl_from_array!(U32);
+impl_from_array!(F16);
 impl_from_array!(F32);
 impl_from_array!(F64);
 
@@ -299,7 +353,10 @@ impl Eval<Cpu, primitives::MatMul> for Dispatch<Cpu, primitives::MatMul> {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if t1.shape() != t2.shape() {
+        // todo: get is required broadcast info in primitives::MatMul
+        let lhs_sp = lhs.shape_of(..-2);
+        let rhs_sp = rhs.shape_of(..-2);
+        let t = if lhs_sp != rhs_sp {
             t1.broadcast_matmul(t2).unwrap()
         } else {
             t1.matmul(t2).unwrap()
@@ -416,11 +473,11 @@ impl Eval<Cpu, primitives::Rsqrt> for Dispatch<Cpu, primitives::Rsqrt> {
 }
 
 impl Eval<Cpu, primitives::Transpose> for Dispatch<Cpu, primitives::Transpose> {
-    fn eval(&self, _: &Cpu, _: &primitives::Transpose, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &Cpu, primitive: &primitives::Transpose, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.t().unwrap();
+        let t = t.transpose(primitive.dim0, primitive.dim1).unwrap();
         output.set_data(t)
     }
 }
@@ -645,6 +702,8 @@ macro_rules! impl_as_type {
     };
 }
 impl_as_type!(U8);
+impl_as_type!(U32);
+impl_as_type!(F16);
 impl_as_type!(F32);
 impl_as_type!(F64);
 
@@ -759,6 +818,98 @@ impl Eval<Cpu, primitives::Narrow> for Dispatch<Cpu, primitives::Narrow> {
         let t = t
             .narrow(primitive.dim, primitive.start, primitive.len)
             .unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::Where> for Dispatch<Cpu, primitives::Where> {
+    fn eval(&self, _: &Cpu, _: &primitives::Where, inputs: &[Tensor], output: &Tensor) {
+        let cond = &inputs[0];
+        let on_true = &inputs[1];
+        let on_false = &inputs[2];
+        let t1 = cond.get_data::<Data>().unwrap();
+        let t2 = on_true.get_data::<Data>().unwrap();
+        let t3 = on_false.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t3 = t3.deref();
+        let t = t1.where_cond(t2, t3).unwrap();
+        output.set_data(t);
+    }
+}
+
+impl Eval<Cpu, primitives::ArgMax> for Dispatch<Cpu, primitives::ArgMax> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::ArgMax, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let dim = primitive.dim();
+        let t = if primitive.keep_dim {
+            t.argmax_keepdim(dim).unwrap()
+        } else {
+            t.argmax(dim).unwrap()
+        };
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::ArgMin> for Dispatch<Cpu, primitives::ArgMin> {
+    fn eval(&self, _: &Cpu, primitive: &primitives::ArgMin, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let dim = primitive.dim();
+        let t = if primitive.keep_dim {
+            t.argmax_keepdim(dim).unwrap()
+        } else {
+            t.argmax(dim).unwrap()
+        };
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::Erf> for Dispatch<Cpu, primitives::Erf> {
+    fn eval(&self, _: &Cpu, _: &primitives::Erf, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.erf().unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::Tanh> for Dispatch<Cpu, primitives::Tanh> {
+    fn eval(&self, _: &Cpu, _: &primitives::Tanh, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.tanh().unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::PowerFloat> for Dispatch<Cpu, primitives::PowerFloat> {
+    fn eval(
+        &self,
+        _: &Cpu,
+        primitive: &primitives::PowerFloat,
+        inputs: &[Tensor],
+        output: &Tensor,
+    ) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.powf(primitive.exponent).unwrap();
+        output.set_data(t)
+    }
+}
+
+impl Eval<Cpu, primitives::ToContiguous> for Dispatch<Cpu, primitives::ToContiguous> {
+    fn eval(&self, _: &Cpu, _: &primitives::ToContiguous, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.contiguous().unwrap();
         output.set_data(t)
     }
 }

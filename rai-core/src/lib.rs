@@ -10,7 +10,7 @@ mod tensor;
 pub use tensor::Tensor;
 
 mod dtype;
-pub use dtype::{DType, DynDType, ElemType, F32, F64, U8};
+pub use dtype::{DType, DynDType, ElemType, F16, F32, F64, U32, U8};
 
 pub mod backend;
 pub use backend::Backend;

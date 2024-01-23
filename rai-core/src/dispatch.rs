@@ -3,7 +3,7 @@ use std::{any::TypeId, collections::HashMap, sync::Mutex};
 use dyn_clone::DynClone;
 use once_cell::sync::Lazy;
 
-use crate::{backend::Cpu, primitives, Backend, Primitive, Tensor, F32, F64, U8};
+use crate::{backend::Cpu, primitives, Backend, Primitive, Tensor, F16, F32, F64, U32, U8};
 
 pub trait Eval<B, P>: DynClone + Sync + Send + 'static
 where
@@ -65,13 +65,19 @@ macro_rules! register_backend {
     ($backend:ident, $rules:expr) => {
         // creation
         _register::<$backend, primitives::Full<U8>>(&mut $rules);
+        _register::<$backend, primitives::Full<U32>>(&mut $rules);
+        _register::<$backend, primitives::Full<F16>>(&mut $rules);
         _register::<$backend, primitives::Full<F32>>(&mut $rules);
         _register::<$backend, primitives::Full<F64>>(&mut $rules);
         _register::<$backend, primitives::Normal>(&mut $rules);
         _register::<$backend, primitives::Arange<U8>>(&mut $rules);
+        _register::<$backend, primitives::Arange<U32>>(&mut $rules);
+        _register::<$backend, primitives::Arange<F16>>(&mut $rules);
         _register::<$backend, primitives::Arange<F32>>(&mut $rules);
         _register::<$backend, primitives::Arange<F64>>(&mut $rules);
         _register::<$backend, primitives::FromArray<U8>>(&mut $rules);
+        _register::<$backend, primitives::FromArray<U32>>(&mut $rules);
+        _register::<$backend, primitives::FromArray<F16>>(&mut $rules);
         _register::<$backend, primitives::FromArray<F32>>(&mut $rules);
         _register::<$backend, primitives::FromArray<F64>>(&mut $rules);
         _register::<$backend, primitives::Concatenate>(&mut $rules);
@@ -93,8 +99,10 @@ macro_rules! register_backend {
         // unary
         _register::<$backend, primitives::Sin>(&mut $rules);
         _register::<$backend, primitives::Cos>(&mut $rules);
+        _register::<$backend, primitives::Tanh>(&mut $rules);
         _register::<$backend, primitives::Negative>(&mut $rules);
         _register::<$backend, primitives::Square>(&mut $rules);
+        _register::<$backend, primitives::PowerFloat>(&mut $rules);
         _register::<$backend, primitives::Sqrt>(&mut $rules);
         _register::<$backend, primitives::Rsqrt>(&mut $rules);
         _register::<$backend, primitives::Sign>(&mut $rules);
@@ -104,25 +112,32 @@ macro_rules! register_backend {
         _register::<$backend, primitives::Log2>(&mut $rules);
         _register::<$backend, primitives::Log10>(&mut $rules);
         _register::<$backend, primitives::AsType<U8>>(&mut $rules);
+        _register::<$backend, primitives::AsType<U32>>(&mut $rules);
+        _register::<$backend, primitives::AsType<F16>>(&mut $rules);
         _register::<$backend, primitives::AsType<F32>>(&mut $rules);
         _register::<$backend, primitives::AsType<F64>>(&mut $rules);
         _register::<$backend, primitives::Softmax>(&mut $rules);
         _register::<$backend, primitives::LogSoftmax>(&mut $rules);
+        _register::<$backend, primitives::Erf>(&mut $rules);
 
         // indexing
         _register::<$backend, primitives::Gather>(&mut $rules);
         _register::<$backend, primitives::IndexSelect>(&mut $rules);
         _register::<$backend, primitives::Narrow>(&mut $rules);
+        _register::<$backend, primitives::Where>(&mut $rules);
 
         // transform
         _register::<$backend, primitives::Transpose>(&mut $rules);
         _register::<$backend, primitives::Reshape>(&mut $rules);
         _register::<$backend, primitives::Broadcast>(&mut $rules);
+        _register::<$backend, primitives::ToContiguous>(&mut $rules);
 
         // reduce
         _register::<$backend, primitives::ReduceSum>(&mut $rules);
         _register::<$backend, primitives::ReduceMax>(&mut $rules);
         _register::<$backend, primitives::ReduceMin>(&mut $rules);
+        _register::<$backend, primitives::ArgMax>(&mut $rules);
+        _register::<$backend, primitives::ArgMin>(&mut $rules);
     };
 }
 

@@ -457,3 +457,65 @@ impl Primitive for Erf {
         todo!()
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Tanh;
+
+impl Primitive for Tanh {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PowerFloat {
+    pub exponent: f64,
+}
+
+impl PowerFloat {
+    pub fn new(exponent: f64) -> Self {
+        Self { exponent }
+    }
+
+    pub fn exponent(&self) -> f64 {
+        self.exponent
+    }
+}
+
+impl Primitive for PowerFloat {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn dot_label(&self) -> String {
+        format!("PowerFloat({:?})", &self.exponent)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
+    }
+}

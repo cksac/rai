@@ -100,16 +100,21 @@ impl Primitive for Reshape {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Transpose {
-    pub dims: Vec<usize>,
+    pub dim0: usize,
+    pub dim1: usize,
 }
 
 impl Transpose {
-    pub fn new(dims: impl Into<Vec<usize>>) -> Self {
-        Self { dims: dims.into() }
+    pub fn new(dim0: usize, dim1: usize) -> Self {
+        Self { dim0, dim1 }
     }
 
-    pub fn dims(&self) -> &[usize] {
-        &self.dims
+    pub fn dim0(&self) -> usize {
+        self.dim0
+    }
+
+    pub fn dim1(&self) -> usize {
+        self.dim1
     }
 }
 
@@ -123,22 +128,41 @@ impl Primitive for Transpose {
     }
 
     fn dot_label(&self) -> String {
-        format!("Transpose({:?})", self.dims())
+        format!("Transpose({}, {})", self.dim0(), self.dim1())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
-        tangent_x.transpose(self.dims())
+        tangent_x.transpose(self.dim0, self.dim1)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        let mut dims = vec![0; self.dims.len()];
-        for i in 0..dims.len() {
-            dims[self.dims[i]] = i;
-        }
-        let cotangent_x = cotangent.transpose(dims);
+        let cotangent_x = cotangent.transpose(self.dim1, self.dim0);
         vec![cotangent_x]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToContiguous;
+
+impl Primitive for ToContiguous {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!()
     }
 }

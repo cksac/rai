@@ -344,14 +344,11 @@ pub trait Shape: Debug {
             .product()
     }
 
-    fn shape_transpose(&self) -> Vec<usize> {
-        let shape = self.shape();
-        let ndim = self.ndim();
-        let mut transposed_shape = vec![0; ndim];
-        for (i, &s) in shape.iter().enumerate() {
-            transposed_shape[ndim - i - 1] = s;
-        }
-        transposed_shape
+    fn shape_transpose(&self, dim0: usize, dim1: usize) -> Vec<usize> {
+        let mut shape = self.shape().to_vec();
+        shape[dim0] = self.shape_at(dim1);
+        shape[dim1] = self.shape_at(dim0);
+        shape
     }
 
     #[inline]
@@ -367,6 +364,12 @@ pub trait Shape: Debug {
     #[inline]
     fn shape_size_eq<S: Shape + ?Sized>(&self, rhs: &S) -> bool {
         self.size() == rhs.size()
+    }
+
+    fn shape_expand_left<T: Shape + ?Sized>(&self, rhs: &T) -> Vec<usize> {
+        let mut dims = rhs.shape().to_vec();
+        dims.extend(self.shape());
+        dims
     }
 
     fn shape_broadcast<T: Shape + ?Sized>(&self, rhs: &T) -> Result<Vec<usize>> {

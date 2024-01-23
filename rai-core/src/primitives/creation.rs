@@ -139,7 +139,7 @@ where
     }
 
     fn dot_label(&self) -> String {
-        format!("FromArray({:?})", self.data)
+        format!("FromArray(...)")
     }
 
     fn as_any(&self) -> &dyn Any {

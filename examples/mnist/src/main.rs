@@ -151,7 +151,7 @@ fn main() {
 
     // load saved model and test
     let loaded_model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
-    loaded_model.update_by_safetensors("mnist.safetensors");
+    loaded_model.update_by_safetensors(&["mnist.safetensors"]);
 
     let input = Tensor::normal([batch_size, 784], dtype, backend);
     let labels = Tensor::full(0.123f32, [batch_size, 10], backend);

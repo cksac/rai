@@ -1,5 +1,7 @@
 use std::{any::Any, fmt::Debug};
 
+use half::f16;
+
 use crate::{
     primitives::{AsType, Full},
     Primitive,
@@ -111,6 +113,50 @@ impl DType for U8 {
     }
 }
 
+impl ElemType for u32 {
+    type DType = U32;
+
+    fn dtype() -> Self::DType {
+        U32
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct U32;
+impl DType for U32 {
+    type Repr = u32;
+
+    fn zero() -> Self::Repr {
+        0
+    }
+
+    fn one() -> Self::Repr {
+        1
+    }
+}
+
+impl ElemType for f16 {
+    type DType = F16;
+
+    fn dtype() -> Self::DType {
+        F16
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct F16;
+impl DType for F16 {
+    type Repr = f16;
+
+    fn zero() -> Self::Repr {
+        f16::from(0i8)
+    }
+
+    fn one() -> Self::Repr {
+        f16::from(1i8)
+    }
+}
+
 impl ElemType for f32 {
     type DType = F32;
 
@@ -163,7 +209,7 @@ impl From<safetensors::Dtype> for Box<dyn DynDType> {
             safetensors::Dtype::I8 => todo!(),
             safetensors::Dtype::I16 => todo!(),
             safetensors::Dtype::U16 => todo!(),
-            safetensors::Dtype::F16 => todo!(),
+            safetensors::Dtype::F16 => F16.into(),
             safetensors::Dtype::BF16 => todo!(),
             safetensors::Dtype::I32 => todo!(),
             safetensors::Dtype::U32 => todo!(),
