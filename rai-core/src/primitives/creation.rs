@@ -139,7 +139,7 @@ where
     }
 
     fn dot_label(&self) -> String {
-        format!("FromArray(...)")
+        "FromArray(...)".to_string()
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -164,12 +164,8 @@ pub struct FromSafetensor;
 
 impl Primitive for FromSafetensor {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
-
-    // fn dot_label(&self) -> String {
-    //     format!("FromSafetensor({:?})", self.data)
-    // }
 
     fn as_any(&self) -> &dyn Any {
         self

@@ -1081,17 +1081,15 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
     let end_dim = x.dim(args.end_dim());
     if x.ndim() == 0 {
         x.reshape([1])
-    } else {
-        if start_dim < end_dim {
-            let mut dst_dim = x.shape_of(..start_dim);
-            dst_dim.push(x.size_of_dims(start_dim..=end_dim));
-            if end_dim + 1 < x.ndim() {
-                dst_dim.extend(x.shape_of(end_dim + 1..));
-            }
-            x.reshape(dst_dim)
-        } else {
-            x.clone()
+    } else if start_dim < end_dim {
+        let mut dst_dim = x.shape_of(..start_dim);
+        dst_dim.push(x.size_of_dims(start_dim..=end_dim));
+        if end_dim + 1 < x.ndim() {
+            dst_dim.extend(x.shape_of(end_dim + 1..));
         }
+        x.reshape(dst_dim)
+    } else {
+        x.clone()
     }
 }
 
