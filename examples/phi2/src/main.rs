@@ -78,8 +78,6 @@ impl Module for RotaryEmbedding {
         let seqlen_offset = input.1;
         let [_b_size, _num_heads, seq_len, headdim]: [usize; 4] =
             xs.shape_of([0, 1, 2, 3]).try_into().unwrap();
-        // let xs_rot = xs.i((.., .., .., ..self.dim))?;
-        // let xs_pass = xs.i((.., .., .., self.dim..))?;
         let xs_rot = xs.narrow(3, 0, self.dim);
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
@@ -556,7 +554,6 @@ fn main() {
     let dtype = F32;
     let (tokenizer, model) = load_model(dtype, backend);
 
-    // inferencing
     let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
     println!("{prompt}");
     std::io::stdout().flush().unwrap();
