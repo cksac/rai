@@ -8,7 +8,13 @@ use rai::{
     trainable_module, Backend, DType, Shape, Tensor, F32,
 };
 use serde::Deserialize;
-use std::{collections::HashMap, fmt::Debug, io::Write, time::Instant};
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    fmt::Debug,
+    io::Write,
+    time::Instant,
+};
 use tokenizers::Tokenizer;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -165,6 +171,7 @@ pub struct Attention {
     num_heads: usize,
     num_kv_heads: usize,
     head_dim: usize,
+    kv_cache: RefCell<Option<(Tensor, Tensor)>>,
 }
 
 fn get_mask(size: usize, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
@@ -230,6 +237,7 @@ impl Attention {
             num_heads,
             num_kv_heads,
             head_dim,
+            kv_cache: RefCell::new(None),
         }
     }
 
@@ -248,13 +256,13 @@ impl Attention {
 }
 
 impl Module for Attention {
-    type Input = (Tensor, Option<Tensor>, Option<(Tensor, Tensor)>); // (x, mask, kv_cache)
-    type Output = (Tensor, Option<(Tensor, Tensor)>); // (output, kv_cache)
+    type Input = (Tensor, Option<Tensor>); // (x, mask)
+    type Output = Tensor; // output
 
     fn forward(&self, input: &Self::Input) -> Self::Output {
         let xs = &input.0;
         let mask = input.1.as_ref();
-        let kv_cache = input.2.as_ref();
+
         let [b_size, seq_len, _n_embd]: [usize; 3] = xs.shape_of([0, 1, 2]).try_into().unwrap();
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);
@@ -277,14 +285,15 @@ impl Module for Attention {
             .reshape([b_size, seq_len, self.num_kv_heads, self.head_dim])
             .transpose(1, 2);
         // Rotary embeddings.
-        let seqlen_offset = match &kv_cache {
+        let kv_cache = self.kv_cache.borrow();
+        let seqlen_offset = match &*kv_cache {
             None => 0,
             Some((prev_k, _)) => prev_k.shape_at(2),
         };
         let query_states = self.rotary_emb.forward(&(query_states, seqlen_offset));
         let key_states = self.rotary_emb.forward(&(key_states, seqlen_offset));
         // KV cache.
-        let (key_states, value_states) = match kv_cache {
+        let (key_states, value_states) = match &*kv_cache {
             None => (key_states, value_states),
             Some((prev_k, prev_v)) => {
                 let k = Tensor::cat(&[prev_k, &key_states], 2);
@@ -292,7 +301,9 @@ impl Module for Attention {
                 (k, v)
             }
         };
-        let kv_cache = Some((key_states.clone(), value_states.clone()));
+        drop(kv_cache);
+        self.kv_cache
+            .replace(Some((key_states.clone(), value_states.clone())));
         // Repeat kv.
         let key_states = self.repeat_kv(key_states).to_contiguous();
         let value_states = self.repeat_kv(value_states).to_contiguous();
@@ -312,7 +323,7 @@ impl Module for Attention {
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
         let attn_output = self.dense.forward(&attn_output);
-        (attn_output, kv_cache)
+        attn_output
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
@@ -369,19 +380,17 @@ impl DecoderLayer {
 }
 
 impl Module for DecoderLayer {
-    type Input = (Tensor, Option<Tensor>, Option<(Tensor, Tensor)>); // (x, mask, kv_cache)
-    type Output = (Tensor, Option<(Tensor, Tensor)>); // (output, kv_cache)
+    type Input = (Tensor, Option<Tensor>); // (x, mask)
+    type Output = Tensor; // output
 
     fn forward(&self, input: &Self::Input) -> Self::Output {
         let xs = &input.0;
         let mask = input.1.clone();
-        let kv_cache = input.2.clone();
         let residual = xs;
         let xs = self.input_layernorm.forward(xs);
-        let (attn_outputs, kv_cache) = self.self_attn.forward(&(xs.clone(), mask, kv_cache));
+        let attn_outputs = self.self_attn.forward(&(xs.clone(), mask));
         let feed_forward_hidden_states = self.mlp.forward(&xs);
-        let out = attn_outputs + feed_forward_hidden_states + residual;
-        (out, kv_cache)
+        attn_outputs + feed_forward_hidden_states + residual
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
@@ -434,14 +443,10 @@ impl Model {
 }
 
 impl Module for Model {
-    type Input = (Tensor, HashMap<usize, Option<(Tensor, Tensor)>>); // (x, kv_caches)
-    type Output = (Tensor, HashMap<usize, Option<(Tensor, Tensor)>>); // (logits, kv_caches)
+    type Input = Tensor; // x
+    type Output = Tensor; // logits
 
-    /// (x, kv_cache)
-    fn forward(&self, input: &Self::Input) -> Self::Output {
-        let xs = &input.0;
-        let mut kv_caches = input.1.clone();
-
+    fn forward(&self, xs: &Self::Input) -> Self::Output {
         let [_b_size, seq_len]: [usize; 2] = xs.shape_of([0, 1]).try_into().unwrap();
         let mut xs = self.embed_tokens.forward(xs);
         let mask = if seq_len <= 1 {
@@ -449,14 +454,11 @@ impl Module for Model {
         } else {
             Some(get_mask(seq_len, xs.backend()))
         };
-        for (i, layer) in self.layers.iter().enumerate() {
-            let mut kv_cache = kv_caches.get(&i).cloned().unwrap_or(None);
-            (xs, kv_cache) = layer.forward(&(xs, mask.clone(), kv_cache));
-            kv_caches.insert(i, kv_cache);
+        for layer in &self.layers {
+            xs = layer.forward(&(xs, mask.clone()));
         }
         let xs = self.final_layernorm.forward(&xs).narrow(1, seq_len - 1, 1);
-        let logits = self.lm_head.forward(&xs).squeeze(1);
-        (logits, kv_caches)
+        self.lm_head.forward(&xs).squeeze(1)
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
@@ -571,13 +573,11 @@ fn main() {
     let repeat_penalty: f32 = 1.10;
     let repeat_last_n: usize = 64;
 
-    let mut kv_caches = HashMap::new();
     for index in 0..sample_len {
         let context_size = if index > 0 { 1 } else { tokens.len() };
         let ctxt = &tokens[tokens.len().saturating_sub(context_size)..];
         let input = Tensor::from_array(ctxt, [ctxt.len()], backend).unsqueeze(0);
-        let (logits, new_caches) = model.forward(&(input, kv_caches));
-        kv_caches = new_caches;
+        let logits = model.forward(&input);
         let logits = logits.squeeze(0).as_type(F32);
         let logits = if repeat_penalty == 1. {
             logits
