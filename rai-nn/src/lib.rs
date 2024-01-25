@@ -107,7 +107,7 @@ impl NamedParameter for Tensor {
             }
 
             // todo: check if can promote type to self
-            let t = t.as_type_of(self);
+            let t = t.as_type(self);
             eval((&t, true));
             self.replace_data(t);
         } else {

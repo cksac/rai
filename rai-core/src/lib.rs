@@ -13,7 +13,7 @@ mod dtype;
 pub use dtype::{DType, DynDType, ElemType, F16, F32, F64, U32, U8};
 
 mod device;
-pub use device::{Cpu, Cuda, Device};
+pub use device::{Cpu, Cuda, DynDevice};
 
 mod backend;
 pub use backend::{Backend, CandleBackend, Eval};

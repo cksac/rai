@@ -1,8 +1,11 @@
 use crate::{
+    device::Device,
     eval,
-    ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
+    ops::{
+        self, ArangeArgs, ArgReduceArgs, AsTypeArgs, FlattenArgs, ReduceArgs, ToDeviceArgs, VarArgs,
+    },
     utils::{self, dot_graph},
-    DType, Device, Dim, Dims, DynDType, ElemType, Primitive, Shape,
+    DType, Dim, Dims, DynDType, DynDevice, ElemType, Primitive, Shape,
 };
 use safetensors::tensor::TensorView;
 use std::{
@@ -29,7 +32,7 @@ pub trait TensorLike: Debug + Display {
 
 struct TensorImpl {
     id: usize,
-    device: Box<dyn Device>,
+    device: Box<dyn DynDevice>,
     dtype: Box<dyn DynDType>,
     shape: Vec<usize>,
     primitive: Box<dyn Primitive>,
@@ -39,7 +42,7 @@ struct TensorImpl {
 
 impl Tensor {
     pub fn new(
-        device: impl Into<Box<dyn Device>>,
+        device: impl Into<Box<dyn DynDevice>>,
         dtype: impl Into<Box<dyn DynDType>>,
         shape: impl Shape,
         primitive: impl Into<Box<dyn Primitive>>,
@@ -65,7 +68,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn device(&self) -> &dyn Device {
+    pub fn device(&self) -> &dyn DynDevice {
         self.0.device.as_ref()
     }
 
@@ -88,7 +91,7 @@ impl Tensor {
     pub fn full<T: ElemType>(
         val: T,
         shape: impl Shape,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor {
         ops::full::<T>(val, shape, device)
     }
@@ -98,7 +101,7 @@ impl Tensor {
     pub fn ones<D: DType>(
         shape: impl Shape,
         dtype: D,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor {
         ops::full::<D::Repr>(D::one(), shape, device)
     }
@@ -108,7 +111,7 @@ impl Tensor {
     pub fn zeros<D: DType>(
         shape: impl Shape,
         dtype: D,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor {
         ops::full::<D::Repr>(D::zero(), shape, device)
     }
@@ -132,7 +135,7 @@ impl Tensor {
     pub fn normal(
         shape: impl Shape,
         dtype: impl DType,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor {
         ops::normal(shape, dtype, device)
     }
@@ -140,7 +143,7 @@ impl Tensor {
     #[inline]
     pub fn arange<D: DType, T: ArangeArgs<D>>(
         args: T,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor
     where
         D::Repr:
@@ -154,7 +157,7 @@ impl Tensor {
     pub fn from_array<T: ElemType>(
         data: impl Into<Vec<T>> + Debug,
         shape: impl Shape,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor {
         ops::from_array(data, shape, device)
     }
@@ -162,7 +165,7 @@ impl Tensor {
     #[inline]
     pub fn from_safetensor(
         view: &TensorView,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Tensor {
         ops::from_safetensor(view, device)
     }
@@ -369,13 +372,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn as_type(&self, dtype: impl DType) -> Tensor {
-        ops::as_type(self, dtype)
+    pub fn as_type(&self, args: impl AsTypeArgs) -> Tensor {
+        ops::as_type(self, args)
     }
 
     #[inline]
-    pub fn as_type_of(&self, rhs: &Tensor) -> Tensor {
-        ops::as_type_of(self, rhs)
+    pub fn to_device(&self, device: impl ToDeviceArgs) -> Tensor {
+        ops::to_device(self, device)
     }
 
     #[inline]

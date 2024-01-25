@@ -325,15 +325,15 @@ impl Primitive for Maximum {
         let rhs = &primals[1];
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
-        tangent_lhs * lhs.gt(rhs).as_type_of(lhs) + tangent_rhs * lhs.le(rhs).as_type_of(rhs)
+        tangent_lhs * lhs.gt(rhs).as_type(lhs) + tangent_rhs * lhs.le(rhs).as_type(rhs)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
-        let cotangent_lhs = cotangent * lhs.gt(rhs).as_type_of(cotangent);
-        let cotangent_rhs = cotangent * lhs.le(rhs).as_type_of(cotangent);
+        let cotangent_lhs = cotangent * lhs.gt(rhs).as_type(cotangent);
+        let cotangent_rhs = cotangent * lhs.le(rhs).as_type(cotangent);
         vec![cotangent_lhs, cotangent_rhs]
     }
 }

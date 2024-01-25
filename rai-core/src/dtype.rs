@@ -20,15 +20,15 @@ pub trait DType: Clone + Copy + Debug + PartialEq + 'static {
     fn zero() -> Self::Repr;
     fn one() -> Self::Repr;
 
-    fn full_zero() -> Full<Self> {
+    fn primitive_full_zero() -> Full<Self> {
         Full::new(Self::zero())
     }
 
-    fn full_one() -> Full<Self> {
+    fn primitive_full_one() -> Full<Self> {
         Full::new(Self::one())
     }
 
-    fn as_self_dtype(&self) -> AsType<Self> {
+    fn primitive_as_type(&self) -> AsType<Self> {
         AsType::new(*self)
     }
 
@@ -43,9 +43,9 @@ pub trait DynDType: Debug {
     fn as_any(&self) -> &dyn Any;
     fn clone_boxed(&self) -> Box<dyn DynDType>;
     fn equal(&self, rhs: &dyn DynDType) -> bool;
-    fn full_zero(&self) -> Box<dyn Primitive>;
-    fn full_one(&self) -> Box<dyn Primitive>;
-    fn as_self_dtype(&self) -> Box<dyn Primitive>;
+    fn primitive_full_zero(&self) -> Box<dyn Primitive>;
+    fn primitive_full_one(&self) -> Box<dyn Primitive>;
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive>;
     fn size_of_elem(&self) -> usize;
     fn safetensor_dtype(&self) -> safetensors::Dtype;
 }
@@ -86,16 +86,16 @@ impl<D: DType> DynDType for D {
             .map_or(false, |other| self == other)
     }
 
-    fn full_zero(&self) -> Box<dyn Primitive> {
-        Box::new(Self::full_zero())
+    fn primitive_full_zero(&self) -> Box<dyn Primitive> {
+        Box::new(Self::primitive_full_zero())
     }
 
-    fn full_one(&self) -> Box<dyn Primitive> {
-        Box::new(Self::full_one())
+    fn primitive_full_one(&self) -> Box<dyn Primitive> {
+        Box::new(Self::primitive_full_one())
     }
 
-    fn as_self_dtype(&self) -> Box<dyn Primitive> {
-        Box::new(self.as_self_dtype())
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
+        Box::new(self.primitive_as_type())
     }
 
     fn size_of_elem(&self) -> usize {

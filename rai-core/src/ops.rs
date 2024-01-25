@@ -2,6 +2,7 @@ use std::{
     f32::consts::PI,
     fmt::Debug,
     ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
+    primitive,
     slice::from_raw_parts,
 };
 
@@ -10,15 +11,16 @@ use safetensors::tensor::TensorView;
 use tracing::Level;
 
 use crate::{
+    device::Device,
     primitives::{
         Abs, Add, Arange, ArgMax, ArgMin, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf,
         Exp, FromArray, Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log,
         Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual,
         PowerFloat, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt,
-        Square, Sub, Tanh, ToContiguous, Transpose, Where,
+        Square, Sub, Tanh, ToContiguous, ToDevice, Transpose, Where,
     },
     shape::Dims,
-    DType, Device, Dim, DynDType, ElemType, Shape, Tensor, F16, F32, F64, U32, U8,
+    DType, Dim, DynDType, DynDevice, ElemType, Primitive, Shape, Tensor, F16, F32, F64, U32, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -107,7 +109,7 @@ macro_rules! impl_std_ops {
 pub fn full<T: ElemType>(
     val: T,
     shape: impl Shape,
-    device: impl Into<Box<dyn Device>> + Debug,
+    device: impl Into<Box<dyn DynDevice>> + Debug,
 ) -> Tensor {
     let device = device.into();
     let inputs = vec![];
@@ -126,7 +128,7 @@ pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
         full::<T>(val, x.shape(), x.device())
     } else {
         // TODO: check is type can be convert/promoted to x dtype?
-        full::<T>(val, x.shape(), x.device()).as_type_of(x)
+        full::<T>(val, x.shape(), x.device()).as_type(x)
     }
 }
 
@@ -135,7 +137,7 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
-    let primitive = dtype.full_zero();
+    let primitive = dtype.primitive_full_zero();
     let inputs = vec![];
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
@@ -145,7 +147,7 @@ pub fn ones_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
-    let primitive = dtype.full_one();
+    let primitive = dtype.primitive_full_one();
     let inputs = vec![];
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
@@ -154,7 +156,7 @@ pub fn ones_like(x: &Tensor) -> Tensor {
 pub fn normal(
     shape: impl Shape,
     dtype: impl DType,
-    device: impl Into<Box<dyn Device>> + Debug,
+    device: impl Into<Box<dyn DynDevice>> + Debug,
 ) -> Tensor {
     let device = device.into();
     let inputs = vec![];
@@ -333,7 +335,7 @@ impl_arange_args!(f64, u32, U32);
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn arange<D: DType, T: ArangeArgs<D>>(
     args: T,
-    device: impl Into<Box<dyn Device>> + Debug,
+    device: impl Into<Box<dyn DynDevice>> + Debug,
 ) -> Tensor {
     let start = args.start();
     let stop = args.stop();
@@ -355,7 +357,7 @@ pub fn arange<D: DType, T: ArangeArgs<D>>(
 pub fn from_array<T: ElemType>(
     data: impl Into<Vec<T>> + Debug,
     shape: impl Shape,
-    device: impl Into<Box<dyn Device>> + Debug,
+    device: impl Into<Box<dyn DynDevice>> + Debug,
 ) -> Tensor {
     let data = data.into();
     assert!(data.len() == shape.size());
@@ -396,7 +398,7 @@ fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn from_safetensor(view: &TensorView, device: impl Into<Box<dyn Device>> + Debug) -> Tensor {
+pub fn from_safetensor(view: &TensorView, device: impl Into<Box<dyn DynDevice>> + Debug) -> Tensor {
     let device = device.into();
     let shape = view.shape();
     let data = view.data();
@@ -793,27 +795,119 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Maximum, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn as_type(x: &Tensor, dtype: impl DType) -> Tensor {
-    if x.dtype() == &dtype {
-        return x.clone();
+pub trait AsTypeArgs: Debug {
+    fn dtype(&self) -> &dyn DynDType;
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive>;
+}
+
+impl<T: DynDType> AsTypeArgs for T {
+    fn dtype(&self) -> &dyn DynDType {
+        self
     }
-    let device = x.device();
-    let shape = x.shape().to_vec();
-    let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, AsType::new(dtype), inputs)
+
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
+        DynDType::primitive_as_dtype(self)
+    }
+}
+
+impl<'a> AsTypeArgs for &'a dyn DynDType {
+    fn dtype(&self) -> &dyn DynDType {
+        *self
+    }
+
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
+        DynDType::primitive_as_dtype(*self)
+    }
+}
+
+impl AsTypeArgs for Tensor {
+    fn dtype(&self) -> &dyn DynDType {
+        Tensor::dtype(self)
+    }
+
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
+        Tensor::dtype(self).primitive_as_dtype()
+    }
+}
+
+impl<'a> AsTypeArgs for &'a Tensor {
+    fn dtype(&self) -> &dyn DynDType {
+        Tensor::dtype(*self)
+    }
+
+    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
+        Tensor::dtype(*self).primitive_as_dtype()
+    }
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn as_type_of(x: &Tensor, rhs: &Tensor) -> Tensor {
-    if x.dtype() == rhs.dtype() {
+pub fn as_type(x: &Tensor, args: impl AsTypeArgs) -> Tensor {
+    let dtype = args.dtype();
+    if x.dtype() == dtype {
         return x.clone();
     }
     let device = x.device();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let dtype: &dyn DynDType = rhs.dtype();
-    let primitive = dtype.as_self_dtype();
+    let primitive = args.primitive_as_dtype();
+    Tensor::new(device, dtype, shape, primitive, inputs)
+}
+
+pub trait ToDeviceArgs: Debug {
+    fn device(&self) -> &dyn DynDevice;
+    fn primitive_to_device(&self) -> Box<dyn Primitive>;
+}
+
+impl<D: DynDevice> ToDeviceArgs for D {
+    fn device(&self) -> &dyn DynDevice {
+        self
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        DynDevice::primitive_to_device(self)
+    }
+}
+
+impl<'a> ToDeviceArgs for &'a dyn DynDevice {
+    fn device(&self) -> &'a dyn DynDevice {
+        *self
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        DynDevice::primitive_to_device(*self)
+    }
+}
+
+impl ToDeviceArgs for Tensor {
+    fn device(&self) -> &dyn DynDevice {
+        Tensor::device(self)
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        Tensor::device(self).primitive_to_device()
+    }
+}
+
+impl<'a> ToDeviceArgs for &'a Tensor {
+    fn device(&self) -> &dyn DynDevice {
+        Tensor::device(*self)
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        Tensor::device(*self).primitive_to_device()
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn to_device(x: &Tensor, args: impl ToDeviceArgs) -> Tensor {
+    let device = args.device();
+    if x.device() == device {
+        return x.clone();
+    }
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let primitive = args.primitive_to_device();
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
 

@@ -4,7 +4,7 @@ use rai::{
     nn::{
         self, gather_params, update_params, Embedding, LayerNorm, Linear, Module, NamePath, NewGelu,
     },
-    trainable_module, Cpu, DType, Device, Shape, Tensor, F32,
+    trainable_module, Cpu, DType, DynDevice, Shape, Tensor, F32,
 };
 use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, io::Write, time::Instant};
@@ -45,7 +45,7 @@ struct RotaryEmbedding {
 }
 
 impl RotaryEmbedding {
-    pub fn new(cfg: &Config, device: impl Into<Box<dyn Device>>) -> Self {
+    pub fn new(cfg: &Config, device: impl Into<Box<dyn DynDevice>>) -> Self {
         let device = device.into();
         let dim = (cfg.partial_rotary_factor * cfg.head_dim() as f64) as usize;
         let inv_freq: Vec<_> = (0..dim)
@@ -104,7 +104,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    pub fn new(cfg: &Config, dtype: impl DType, device: impl Into<Box<dyn Device>>) -> Self {
+    pub fn new(cfg: &Config, dtype: impl DType, device: impl Into<Box<dyn DynDevice>>) -> Self {
         let device = device.into();
         let fc1 = Linear::new(cfg.hidden_size, cfg.intermediate_size, true, dtype, &device);
         let fc2 = Linear::new(cfg.intermediate_size, cfg.hidden_size, true, dtype, &device);
@@ -155,7 +155,7 @@ pub struct Attention {
     kv_cache: RefCell<Option<(Tensor, Tensor)>>,
 }
 
-fn get_mask(size: usize, device: impl Into<Box<dyn Device>> + Debug) -> Tensor {
+fn get_mask(size: usize, device: impl Into<Box<dyn DynDevice>> + Debug) -> Tensor {
     let mask: Vec<_> = (0..size)
         .flat_map(|i| (0..size).map(move |j| u8::from(j > i)))
         .collect();
@@ -166,7 +166,7 @@ fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
     let shape = mask.shape();
     let on_true = &Tensor::full(on_true, shape, on_false.device())
         .broadcast_to(shape)
-        .as_type_of(on_false);
+        .as_type(on_false);
     mask.where_cond(on_true, on_false)
 }
 
@@ -174,7 +174,7 @@ impl Attention {
     pub fn new(
         cfg: &Config,
         dtype: impl DType,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Self {
         let device = device.into();
         let num_heads = cfg.num_attention_heads;
@@ -300,7 +300,7 @@ impl Module for Attention {
                 f32::NEG_INFINITY,
             ),
         };
-        let attn_weights = attn_weights.softmax(-1).as_type_of(&value_states);
+        let attn_weights = attn_weights.softmax(-1).as_type(&value_states);
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
         self.dense.forward(&attn_output)
@@ -344,7 +344,7 @@ impl DecoderLayer {
     pub fn new(
         cfg: &Config,
         dtype: impl DType,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Self {
         let device = device.into();
         let self_attn = Attention::new(cfg, dtype, &device);
@@ -403,7 +403,7 @@ impl Model {
     pub fn new(
         cfg: &Config,
         dtype: impl DType,
-        device: impl Into<Box<dyn Device>> + Debug,
+        device: impl Into<Box<dyn DynDevice>> + Debug,
     ) -> Self {
         let device = device.into();
         let embed_tokens = nn::Embedding::new(cfg.vocab_size, cfg.hidden_size, dtype, &device);
@@ -475,7 +475,10 @@ impl Module for Model {
 
 trainable_module!(Model);
 
-fn load_model(dtype: impl DType, device: impl Into<Box<dyn Device>> + Debug) -> (Tokenizer, Model) {
+fn load_model(
+    dtype: impl DType,
+    device: impl Into<Box<dyn DynDevice>> + Debug,
+) -> (Tokenizer, Model) {
     let start = Instant::now();
     let model_id = "microsoft/phi-2".to_string();
     let revision = "main".to_string();

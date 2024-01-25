@@ -354,7 +354,7 @@ impl<D: DType> Primitive for AsType<D> {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let cotangent_x = cotangent.as_type_of(x);
+        let cotangent_x = cotangent.as_type(x);
         vec![cotangent_x]
     }
 }
