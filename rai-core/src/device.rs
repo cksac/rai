@@ -2,7 +2,7 @@ use crate::{primitives::ToDevice, Primitive, Tensor};
 use std::{any::Any, fmt::Debug};
 
 pub trait IDevice: Clone + Debug + PartialEq {
-    type Repr: IDevice;
+    type Repr: IDevice + 'static;
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, rhs: &dyn Device) -> bool;
     fn primitive_to_device(&self) -> ToDevice<Self::Repr>;
