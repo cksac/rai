@@ -2,7 +2,7 @@ use rai_core::{Cpu, Tensor, F32};
 
 #[test]
 fn test_add() {
-    let device = &Cpu;
+    let device = Cpu;
     let a = &Tensor::ones([2, 3], F32, device);
     let b = &Tensor::ones([2, 3], F32, device);
     let c = &Tensor::ones([3], F32, device);
@@ -13,7 +13,7 @@ fn test_add() {
 
 #[test]
 fn test_add2() {
-    let device = &Cpu;
+    let device = Cpu;
 
     let a = &Tensor::ones([2, 3], F32, device);
     let b = &Tensor::full(1.4f32, [2, 3], device);
@@ -27,7 +27,7 @@ fn test_add2() {
 
 #[test]
 fn test_eval() {
-    let device = &Cpu;
+    let device = Cpu;
     let a = &Tensor::full(1.0f32, [2, 3], device);
     let b = &Tensor::full(2.0f32, [2, 3], device);
     let c = &Tensor::full(3.0f32, [2, 3], device);

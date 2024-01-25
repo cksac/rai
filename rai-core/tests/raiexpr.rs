@@ -2,7 +2,7 @@ use rai_core::{raiexpr, value_and_grad, Cpu, Tensor, F32};
 
 #[test]
 fn test_linear_grad_expr() {
-    let device = &Cpu;
+    let device = Cpu;
 
     // need explicit type annotations
     let func = |w: &Tensor, b: &Tensor, x: &Tensor| (x.matmul(w.t()) + b).sum(..);

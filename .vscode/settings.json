@@ -3,6 +3,7 @@
         "Arange",
         "argmax",
         "consts",
+        "Cuda",
         "ddof",
         "dtype",
         "endoftext",
@@ -28,6 +29,7 @@
         "simd",
         "softmax",
         "thiserror",
+        "unsqueeze",
         "vjps"
     ],
     "rust-analyzer.linkedProjects": [

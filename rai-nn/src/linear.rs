@@ -1,8 +1,6 @@
-use std::{collections::HashMap, fmt::Debug};
-
-use rai_core::{nn::Module, trainable_module, DType, DynDevice, Shape, Tensor};
-
 use crate::{gather_params, update_params, NamedParameter};
+use rai_core::{nn::Module, trainable_module, AsDevice, DType, Shape, Tensor};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Linear {
@@ -16,9 +14,9 @@ impl Linear {
         out_features: usize,
         has_bias: bool,
         dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
+        device: impl AsDevice,
     ) -> Self {
-        let device = &device.into();
+        let device = device.device();
         // TODO: init strategy
         let weight = Tensor::normal([out_features, in_features], dtype, device);
         let bias = if has_bias {

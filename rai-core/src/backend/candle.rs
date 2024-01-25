@@ -1,6 +1,6 @@
 use crate::{
-    primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, DType, DynDType, DynDevice,
-    Eval, Shape, Tensor, F16, F32, F64, U32, U8,
+    primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, DType, Device, DynDType, Eval,
+    Shape, Tensor, F16, F32, F64, U32, U8,
 };
 use half::{bf16, f16};
 use safetensors::View;
@@ -115,8 +115,8 @@ impl From<F64> for candle_core::DType {
     }
 }
 
-impl From<&Box<dyn DynDevice>> for candle_core::Device {
-    fn from(val: &Box<dyn DynDevice>) -> Self {
+impl From<&Box<dyn Device>> for candle_core::Device {
+    fn from(val: &Box<dyn Device>) -> Self {
         let d = val.as_any();
         if d.downcast_ref::<Cpu>().is_some() {
             return candle_core::Device::Cpu;
@@ -125,8 +125,8 @@ impl From<&Box<dyn DynDevice>> for candle_core::Device {
     }
 }
 
-impl From<&dyn DynDevice> for candle_core::Device {
-    fn from(val: &dyn DynDevice) -> Self {
+impl From<&dyn Device> for candle_core::Device {
+    fn from(val: &dyn Device) -> Self {
         let d = val.as_any();
         if d.downcast_ref::<Cpu>().is_some() {
             return candle_core::Device::Cpu;

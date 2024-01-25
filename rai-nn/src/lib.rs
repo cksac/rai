@@ -1,6 +1,7 @@
-mod linear;
+use rai_core::{eval, Shape, Tensor};
 use std::{borrow::Cow, collections::HashMap};
 
+mod linear;
 pub use linear::Linear;
 
 mod activations;
@@ -13,7 +14,6 @@ mod layer_norm;
 pub use layer_norm::*;
 
 mod rms_norm;
-use rai_core::{eval, Shape, Tensor};
 pub use rms_norm::*;
 
 #[macro_export]

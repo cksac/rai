@@ -1,8 +1,6 @@
-use core::fmt::Debug;
-use rai_core::{nn::Module, trainable_module, DType, DynDevice, Shape, Tensor};
-use std::collections::HashMap;
-
 use crate::{gather_params, update_params, NamedParameter};
+use rai_core::{nn::Module, trainable_module, AsDevice, DType, Shape, Tensor};
+use std::collections::HashMap;
 
 pub struct Embedding {
     weight: Tensor,
@@ -13,9 +11,8 @@ impl Embedding {
         num_embeddings: usize,
         features: usize,
         dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
+        device: impl AsDevice,
     ) -> Self {
-        let device = &device.into();
         // TODO: init strategy
         let weight = Tensor::normal([num_embeddings, features], dtype, device);
         Self { weight }

@@ -4,7 +4,7 @@ use rai::{
     nn::{
         self, gather_params, update_params, Embedding, LayerNorm, Linear, Module, NamePath, NewGelu,
     },
-    trainable_module, Cpu, DType, DynDevice, Shape, Tensor, F32,
+    trainable_module, AsDevice, Cpu, DType, Shape, Tensor, F32,
 };
 use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, io::Write, time::Instant};
@@ -45,16 +45,16 @@ struct RotaryEmbedding {
 }
 
 impl RotaryEmbedding {
-    pub fn new(cfg: &Config, device: impl Into<Box<dyn DynDevice>>) -> Self {
-        let device = device.into();
+    pub fn new(cfg: &Config, device: impl AsDevice) -> Self {
+        let device = device.device();
         let dim = (cfg.partial_rotary_factor * cfg.head_dim() as f64) as usize;
         let inv_freq: Vec<_> = (0..dim)
             .step_by(2)
             .map(|i| 1f32 / cfg.rope_theta.powf(i as f32 / dim as f32))
             .collect();
         let inv_freq_len = inv_freq.len();
-        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], &device);
-        let t = Tensor::arange((0u32, cfg.max_position_embeddings as u32), &device)
+        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], device);
+        let t = Tensor::arange((0u32, cfg.max_position_embeddings as u32), device)
             .as_type(F32)
             .reshape([cfg.max_position_embeddings, 1]);
         let freqs = t.matmul(&inv_freq);
@@ -104,10 +104,10 @@ pub struct MLP {
 }
 
 impl MLP {
-    pub fn new(cfg: &Config, dtype: impl DType, device: impl Into<Box<dyn DynDevice>>) -> Self {
-        let device = device.into();
-        let fc1 = Linear::new(cfg.hidden_size, cfg.intermediate_size, true, dtype, &device);
-        let fc2 = Linear::new(cfg.intermediate_size, cfg.hidden_size, true, dtype, &device);
+    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+        let device = device.device();
+        let fc1 = Linear::new(cfg.hidden_size, cfg.intermediate_size, true, dtype, device);
+        let fc2 = Linear::new(cfg.intermediate_size, cfg.hidden_size, true, dtype, device);
         Self {
             fc1,
             fc2,
@@ -155,7 +155,7 @@ pub struct Attention {
     kv_cache: RefCell<Option<(Tensor, Tensor)>>,
 }
 
-fn get_mask(size: usize, device: impl Into<Box<dyn DynDevice>> + Debug) -> Tensor {
+fn get_mask(size: usize, device: impl AsDevice) -> Tensor {
     let mask: Vec<_> = (0..size)
         .flat_map(|i| (0..size).map(move |j| u8::from(j > i)))
         .collect();
@@ -171,36 +171,32 @@ fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
 }
 
 impl Attention {
-    pub fn new(
-        cfg: &Config,
-        dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Self {
-        let device = device.into();
+    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+        let device = device.device();
         let num_heads = cfg.num_attention_heads;
         let num_kv_heads = cfg.num_key_value_heads();
         let head_dim = cfg.head_dim();
-        let q_proj = Linear::new(cfg.hidden_size, num_heads * head_dim, true, dtype, &device);
+        let q_proj = Linear::new(cfg.hidden_size, num_heads * head_dim, true, dtype, device);
         let k_proj = Linear::new(
             cfg.hidden_size,
             num_kv_heads * head_dim,
             true,
             dtype,
-            &device,
+            device,
         );
         let v_proj = Linear::new(
             cfg.hidden_size,
             num_kv_heads * head_dim,
             true,
             dtype,
-            &device,
+            device,
         );
-        let dense = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, &device);
+        let dense = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, device);
         // Alternative rope scaling are not supported.
-        let rotary_emb = RotaryEmbedding::new(cfg, &device);
+        let rotary_emb = RotaryEmbedding::new(cfg, device);
         let (q_layernorm, k_layernorm) = if cfg.qk_layernorm {
-            let q_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &device);
-            let k_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &device);
+            let q_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, device);
+            let k_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, device);
             (Some(q_layernorm), Some(k_layernorm))
         } else {
             (None, None)
@@ -341,16 +337,12 @@ pub struct DecoderLayer {
 }
 
 impl DecoderLayer {
-    pub fn new(
-        cfg: &Config,
-        dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Self {
-        let device = device.into();
-        let self_attn = Attention::new(cfg, dtype, &device);
-        let mlp = MLP::new(cfg, dtype, &device);
+    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+        let device = device.device();
+        let self_attn = Attention::new(cfg, dtype, device);
+        let mlp = MLP::new(cfg, dtype, device);
         let input_layernorm =
-            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, &device);
+            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, device);
         Self {
             self_attn,
             mlp,
@@ -400,19 +392,15 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(
-        cfg: &Config,
-        dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Self {
-        let device = device.into();
-        let embed_tokens = nn::Embedding::new(cfg.vocab_size, cfg.hidden_size, dtype, &device);
+    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+        let device = device.device();
+        let embed_tokens = nn::Embedding::new(cfg.vocab_size, cfg.hidden_size, dtype, device);
         let layers = (0..cfg.num_hidden_layers)
-            .map(|_| DecoderLayer::new(cfg, dtype, &device))
+            .map(|_| DecoderLayer::new(cfg, dtype, device))
             .collect();
         let final_layernorm =
-            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, &device);
-        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, true, dtype, &device);
+            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, device);
+        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, true, dtype, device);
         Self {
             embed_tokens,
             layers,
@@ -475,10 +463,7 @@ impl Module for Model {
 
 trainable_module!(Model);
 
-fn load_model(
-    dtype: impl DType,
-    device: impl Into<Box<dyn DynDevice>> + Debug,
-) -> (Tokenizer, Model) {
+fn load_model(dtype: impl DType, device: impl AsDevice) -> (Tokenizer, Model) {
     let start = Instant::now();
     let model_id = "microsoft/phi-2".to_string();
     let revision = "main".to_string();

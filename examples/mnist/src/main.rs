@@ -5,7 +5,7 @@ use rai::{
         losses::softmax_cross_entropy,
         optimizers::{Optimizer, SDG},
     },
-    trainable_module, value_and_grad, Aux, Cpu, DType, DynDevice, Func, Tensor, F32,
+    trainable_module, value_and_grad, AsDevice, Aux, Cpu, DType, Func, Tensor, F32,
 };
 use std::{collections::HashMap, fmt::Debug, time::Instant};
 
@@ -21,9 +21,9 @@ impl Mlp {
         hidden_dim: usize,
         output_dim: usize,
         dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
+        device: impl AsDevice,
     ) -> Self {
-        let device = &device.into();
+        let device = device.device();
         let mut layers = Vec::with_capacity(num_layers);
         layers.push(Linear::new(input_dim, hidden_dim, true, dtype, device));
         for _ in 1..num_layers - 2 {

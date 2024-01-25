@@ -2,7 +2,7 @@ use rai_core::{utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
 
 #[test]
 fn test_dot_graph() {
-    let device = &Cpu;
+    let device = Cpu;
 
     let a = &Tensor::ones([2, 3], F32, device);
     let b = &Tensor::full(1.4f32, [2, 3], device);
@@ -17,7 +17,7 @@ fn test_dot_graph() {
 
 #[test]
 fn test_arange() {
-    let device = &Cpu;
+    let device = Cpu;
     let a1 = Tensor::arange(10.0f32, device);
     let a2 = Tensor::arange((10.0f32, 20.0f32), device);
     let a3 = Tensor::arange((10.0f32, 20.0f32, 2.0f32), device);
@@ -30,7 +30,7 @@ fn test_arange() {
 
 #[test]
 fn test_reshape() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.reshape([6]);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], F32, device);
@@ -54,7 +54,7 @@ fn test_broadcast_to() {
 
 #[test]
 fn test_transpose() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.transpose(-2, -1);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], F32, device);
@@ -66,7 +66,7 @@ fn test_transpose() {
 
 #[test]
 fn test_matmul() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor, y: &Tensor| x.matmul(y);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], F32, device);
@@ -80,7 +80,7 @@ fn test_matmul() {
 
 #[test]
 fn test_matmul_2() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor, y: &Tensor| x.matmul(y);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], F32, device);
@@ -94,7 +94,7 @@ fn test_matmul_2() {
 
 #[test]
 fn test_sum() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.sum(..);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3f32, [2, 3], device);
@@ -106,7 +106,7 @@ fn test_sum() {
 
 #[test]
 fn test_max() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.max(0);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3f32, [2, 3], device);
@@ -118,7 +118,7 @@ fn test_max() {
 
 #[test]
 fn test_min() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.min(0);
     let vg_func = value_and_grad(func);
     let a = Tensor::full(2.3f32, [2, 3], device);
@@ -130,7 +130,7 @@ fn test_min() {
 
 #[test]
 fn test_softmax() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.softmax(1);
     let vg_func = value_and_grad(func);
 
@@ -143,7 +143,7 @@ fn test_softmax() {
 
 #[test]
 fn test_gather() {
-    let device = &Cpu;
+    let device = Cpu;
 
     let a = Tensor::from_array([1u32, 2, 3, 4, 5, 6], [2, 3], device);
     let index = Tensor::from_array([0u32, 0, 0, 1, 1, 1], [2, 3], device);
@@ -156,7 +156,7 @@ fn test_gather() {
 
 #[test]
 fn test_index_select() {
-    let device = &Cpu;
+    let device = Cpu;
 
     let a = Tensor::from_array([1u32, 2, 3, 4, 5, 6], [2, 3], device);
     let index = Tensor::from_array([1u32, 1, 0, 0], [4], device);
@@ -169,7 +169,7 @@ fn test_index_select() {
 
 #[test]
 fn test_flatten() {
-    let device = &Cpu;
+    let device = Cpu;
 
     let a = Tensor::normal([2, 3, 4], F32, device);
     let out = a.flatten(..);

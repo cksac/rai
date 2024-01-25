@@ -1,11 +1,10 @@
 use crate::{
-    device::Device,
     eval,
     ops::{
         self, ArangeArgs, ArgReduceArgs, AsTypeArgs, FlattenArgs, ReduceArgs, ToDeviceArgs, VarArgs,
     },
     utils::{self, dot_graph},
-    DType, Dim, Dims, DynDType, DynDevice, ElemType, Primitive, Shape,
+    AsDevice, DType, Device, Dim, Dims, DynDType, ElemType, Primitive, Shape,
 };
 use safetensors::tensor::TensorView;
 use std::{
@@ -32,7 +31,7 @@ pub trait TensorLike: Debug + Display {
 
 struct TensorImpl {
     id: usize,
-    device: Box<dyn DynDevice>,
+    device: Box<dyn Device>,
     dtype: Box<dyn DynDType>,
     shape: Vec<usize>,
     primitive: Box<dyn Primitive>,
@@ -42,7 +41,7 @@ struct TensorImpl {
 
 impl Tensor {
     pub fn new(
-        device: impl Into<Box<dyn DynDevice>>,
+        device: impl AsDevice,
         dtype: impl Into<Box<dyn DynDType>>,
         shape: impl Shape,
         primitive: impl Into<Box<dyn Primitive>>,
@@ -52,7 +51,7 @@ impl Tensor {
         let id = COUNTER.fetch_add(1, atomic::Ordering::Relaxed);
         let inner = TensorImpl {
             id,
-            device: device.into(),
+            device: device.boxed_device(),
             dtype: dtype.into(),
             shape: shape.shape().to_vec(),
             primitive: primitive.into(),
@@ -68,7 +67,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn device(&self) -> &dyn DynDevice {
+    pub fn device(&self) -> &dyn Device {
         self.0.device.as_ref()
     }
 
@@ -88,31 +87,19 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn full<T: ElemType>(
-        val: T,
-        shape: impl Shape,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Tensor {
+    pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
         ops::full::<T>(val, shape, device)
     }
 
     #[inline]
     #[allow(unused_variables)]
-    pub fn ones<D: DType>(
-        shape: impl Shape,
-        dtype: D,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Tensor {
+    pub fn ones<D: DType>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
         ops::full::<D::Repr>(D::one(), shape, device)
     }
 
     #[inline]
     #[allow(unused_variables)]
-    pub fn zeros<D: DType>(
-        shape: impl Shape,
-        dtype: D,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Tensor {
+    pub fn zeros<D: DType>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
         ops::full::<D::Repr>(D::zero(), shape, device)
     }
 
@@ -132,19 +119,12 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn normal(
-        shape: impl Shape,
-        dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Tensor {
+    pub fn normal(shape: impl Shape, dtype: impl DType, device: impl AsDevice) -> Tensor {
         ops::normal(shape, dtype, device)
     }
 
     #[inline]
-    pub fn arange<D: DType, T: ArangeArgs<D>>(
-        args: T,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Tensor
+    pub fn arange<D: DType, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor
     where
         D::Repr:
             std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
@@ -157,16 +137,13 @@ impl Tensor {
     pub fn from_array<T: ElemType>(
         data: impl Into<Vec<T>> + Debug,
         shape: impl Shape,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
+        device: impl AsDevice,
     ) -> Tensor {
         ops::from_array(data, shape, device)
     }
 
     #[inline]
-    pub fn from_safetensor(
-        view: &TensorView,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Tensor {
+    pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
         ops::from_safetensor(view, device)
     }
 
@@ -505,7 +482,12 @@ impl Tensor {
             dot_graph([self, &rhs])
         );
         assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
-        assert!(self.device() == rhs.device(), "device must be equal");
+        assert!(
+            self.device() == rhs.device(),
+            "lhs device {:?} not equal rhs device {:?}",
+            self.device(),
+            rhs.device()
+        );
         assert!(rhs.is_evaluated(), "rhs must be evaluated");
         self.0.data.replace(rhs.0.data.take());
         self.detach();

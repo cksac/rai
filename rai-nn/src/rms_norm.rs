@@ -1,8 +1,6 @@
-use std::{collections::HashMap, fmt::Debug};
-
-use rai_core::{nn::Module, trainable_module, DType, DynDevice, Shape, Tensor};
-
 use crate::{gather_params, update_params, NamedParameter};
+use rai_core::{nn::Module, trainable_module, AsDevice, DType, Shape, Tensor};
+use std::collections::HashMap;
 
 pub struct RMSNorm {
     weight: Tensor,
@@ -10,13 +8,7 @@ pub struct RMSNorm {
 }
 
 impl RMSNorm {
-    pub fn new(
-        dims: usize,
-        eps: f32,
-        dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
-    ) -> Self {
-        let device = &device.into();
+    pub fn new(dims: usize, eps: f32, dtype: impl DType, device: impl AsDevice) -> Self {
         let weight = Tensor::ones([dims], dtype, device);
         Self { weight, eps }
     }
@@ -41,11 +33,11 @@ impl Module for RMSNorm {
     }
 
     fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.gather_to(params, prefix, "w");
+        self.weight.gather_to(params, prefix, "weight");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.update_by(params, prefix, "w");
+        self.weight.update_by(params, prefix, "weight");
     }
 }
 

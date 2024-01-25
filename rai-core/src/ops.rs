@@ -2,7 +2,6 @@ use std::{
     f32::consts::PI,
     fmt::Debug,
     ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
-    primitive,
     slice::from_raw_parts,
 };
 
@@ -11,7 +10,6 @@ use safetensors::tensor::TensorView;
 use tracing::Level;
 
 use crate::{
-    device::Device,
     primitives::{
         Abs, Add, Arange, ArgMax, ArgMin, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf,
         Exp, FromArray, Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log,
@@ -20,7 +18,8 @@ use crate::{
         Square, Sub, Tanh, ToContiguous, ToDevice, Transpose, Where,
     },
     shape::Dims,
-    DType, Dim, DynDType, DynDevice, ElemType, Primitive, Shape, Tensor, F16, F32, F64, U32, U8,
+    AsDevice, DType, Device, Dim, DynDType, ElemType, Primitive, Shape, Tensor, F16, F32, F64, U32,
+    U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -106,12 +105,7 @@ macro_rules! impl_std_ops {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn full<T: ElemType>(
-    val: T,
-    shape: impl Shape,
-    device: impl Into<Box<dyn DynDevice>> + Debug,
-) -> Tensor {
-    let device = device.into();
+pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
     let inputs = vec![];
     Tensor::new(
         device,
@@ -153,12 +147,7 @@ pub fn ones_like(x: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn normal(
-    shape: impl Shape,
-    dtype: impl DType,
-    device: impl Into<Box<dyn DynDevice>> + Debug,
-) -> Tensor {
-    let device = device.into();
+pub fn normal(shape: impl Shape, dtype: impl DType, device: impl AsDevice) -> Tensor {
     let inputs = vec![];
     Tensor::new(device, dtype, shape, Normal, inputs)
 }
@@ -333,16 +322,12 @@ impl_arange_args!(f32, u8, U8);
 impl_arange_args!(f64, u32, U32);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn arange<D: DType, T: ArangeArgs<D>>(
-    args: T,
-    device: impl Into<Box<dyn DynDevice>> + Debug,
-) -> Tensor {
+pub fn arange<D: DType, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor {
     let start = args.start();
     let stop = args.stop();
     let step = args.step();
     let dtype = args.dtype();
     let size = args.size();
-    let device = device.into();
     let inputs = vec![];
     Tensor::new(
         device,
@@ -357,11 +342,10 @@ pub fn arange<D: DType, T: ArangeArgs<D>>(
 pub fn from_array<T: ElemType>(
     data: impl Into<Vec<T>> + Debug,
     shape: impl Shape,
-    device: impl Into<Box<dyn DynDevice>> + Debug,
+    device: impl AsDevice,
 ) -> Tensor {
     let data = data.into();
     assert!(data.len() == shape.size());
-    let device = device.into();
     let inputs = vec![];
     Tensor::new(
         device,
@@ -398,8 +382,7 @@ fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn from_safetensor(view: &TensorView, device: impl Into<Box<dyn DynDevice>> + Debug) -> Tensor {
-    let device = device.into();
+pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
     let shape = view.shape();
     let data = view.data();
     match view.dtype() {
@@ -854,32 +837,22 @@ pub fn as_type(x: &Tensor, args: impl AsTypeArgs) -> Tensor {
 }
 
 pub trait ToDeviceArgs: Debug {
-    fn device(&self) -> &dyn DynDevice;
+    fn device(&self) -> &dyn Device;
     fn primitive_to_device(&self) -> Box<dyn Primitive>;
 }
 
-impl<D: DynDevice> ToDeviceArgs for D {
-    fn device(&self) -> &dyn DynDevice {
+impl<D: Device> ToDeviceArgs for D {
+    fn device(&self) -> &dyn Device {
         self
     }
 
     fn primitive_to_device(&self) -> Box<dyn Primitive> {
-        DynDevice::primitive_to_device(self)
-    }
-}
-
-impl<'a> ToDeviceArgs for &'a dyn DynDevice {
-    fn device(&self) -> &'a dyn DynDevice {
-        *self
-    }
-
-    fn primitive_to_device(&self) -> Box<dyn Primitive> {
-        DynDevice::primitive_to_device(*self)
+        Device::primitive_to_device(self)
     }
 }
 
 impl ToDeviceArgs for Tensor {
-    fn device(&self) -> &dyn DynDevice {
+    fn device(&self) -> &dyn Device {
         Tensor::device(self)
     }
 
@@ -889,7 +862,7 @@ impl ToDeviceArgs for Tensor {
 }
 
 impl<'a> ToDeviceArgs for &'a Tensor {
-    fn device(&self) -> &dyn DynDevice {
+    fn device(&self) -> &dyn Device {
         Tensor::device(*self)
     }
 

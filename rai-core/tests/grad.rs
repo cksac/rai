@@ -2,7 +2,7 @@ use rai_core::{eval, utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
 
 #[test]
 fn test_add_grad() {
-    let device = &Cpu;
+    let device = Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x + y;
@@ -19,7 +19,7 @@ fn test_add_grad() {
 
 #[test]
 fn test_sub_grad() {
-    let device = &Cpu;
+    let device = Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x - y;
@@ -36,7 +36,7 @@ fn test_sub_grad() {
 
 #[test]
 fn test_mul_grad() {
-    let device = &Cpu;
+    let device = Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x * y;
@@ -53,7 +53,7 @@ fn test_mul_grad() {
 
 #[test]
 fn test_div_grad() {
-    let device = &Cpu;
+    let device = Cpu;
 
     // need explicit type annotations
     let func = |x: &Tensor, y: &Tensor| x / y;
@@ -70,7 +70,7 @@ fn test_div_grad() {
 
 #[test]
 fn test_linear_grad() {
-    let device = &Cpu;
+    let device = Cpu;
 
     // need explicit type annotations
     let func = |w: &Tensor, b: &Tensor, x: &Tensor| (x.matmul(w.t()) + b).sum(..);

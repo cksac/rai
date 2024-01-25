@@ -1,8 +1,6 @@
-use std::{collections::HashMap, fmt::Debug};
-
-use rai_core::{nn::Module, trainable_module, DType, DynDevice, Tensor};
-
 use crate::{gather_params, update_params, NamedParameter};
+use rai_core::{nn::Module, trainable_module, AsDevice, DType, Tensor};
+use std::collections::HashMap;
 
 pub struct LayerNorm {
     weight: Option<Tensor>,
@@ -16,9 +14,9 @@ impl LayerNorm {
         eps: f64,
         affine: bool,
         dtype: impl DType,
-        device: impl Into<Box<dyn DynDevice>> + Debug,
+        device: impl AsDevice,
     ) -> Self {
-        let device = &device.into();
+        let device = device.device();
         let (weight, bias) = if affine {
             let weight = Some(Tensor::ones([dims], dtype, device));
             let bias = Some(Tensor::zeros([dims], dtype, device));

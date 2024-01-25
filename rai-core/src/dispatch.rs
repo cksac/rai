@@ -1,5 +1,5 @@
 use crate::{
-    primitives, CandleBackend, Cpu, DynDevice, Eval, Primitive, Tensor, F16, F32, F64, U32, U8,
+    primitives, CandleBackend, Cpu, Device, Eval, Primitive, Tensor, F16, F32, F64, U32, U8,
 };
 use once_cell::sync::Lazy;
 use std::{any::TypeId, collections::HashMap, sync::Mutex};
@@ -10,16 +10,16 @@ pub struct BackendWrapper<D, P, B> {
     phantom: std::marker::PhantomData<(D, P)>,
 }
 
-impl<D, P, B> Eval<dyn DynDevice, dyn Primitive> for BackendWrapper<D, P, B>
+impl<D, P, B> Eval<dyn Device, dyn Primitive> for BackendWrapper<D, P, B>
 where
-    D: DynDevice + 'static + Sync + Send + Clone,
+    D: Device + 'static + Sync + Send + Clone,
     P: Primitive + 'static + Sync + Send + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
     fn eval(
         &self,
-        device: &dyn DynDevice,
+        device: &dyn Device,
         primitive: &dyn Primitive,
         inputs: &[Tensor],
         output: &Tensor,
@@ -30,16 +30,16 @@ where
     }
 }
 
-impl<D, P, B> Eval<Box<dyn DynDevice>, Box<dyn Primitive>> for BackendWrapper<D, P, B>
+impl<D, P, B> Eval<Box<dyn Device>, Box<dyn Primitive>> for BackendWrapper<D, P, B>
 where
-    D: DynDevice + 'static + Sync + Send + Clone,
+    D: Device + 'static + Sync + Send + Clone,
     P: Primitive + 'static + Sync + Send + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
     fn eval(
         &self,
-        device: &Box<dyn DynDevice>,
+        device: &Box<dyn Device>,
         primitive: &Box<dyn Primitive>,
         inputs: &[Tensor],
         output: &Tensor,
@@ -50,7 +50,7 @@ where
     }
 }
 
-type DynBackend = Box<dyn Eval<dyn DynDevice, dyn Primitive>>;
+type DynBackend = Box<dyn Eval<dyn Device, dyn Primitive>>;
 
 macro_rules! register_backend {
     ($backend:ident, $device:ident, $rules:expr) => {
@@ -143,7 +143,7 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Laz
 
 pub fn register<D, P, B>(backend: B)
 where
-    D: DynDevice + 'static + Sync + Send + Clone,
+    D: Device + 'static + Sync + Send + Clone,
     P: Primitive + 'static + Sync + Send + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
@@ -153,7 +153,7 @@ where
 
 fn _register<B, D, P>(backend: B, dispatcher: &mut HashMap<(TypeId, TypeId), DynBackend>)
 where
-    D: DynDevice + 'static + Sync + Send + Clone,
+    D: Device + 'static + Sync + Send + Clone,
     P: Primitive + 'static + Sync + Send + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
@@ -166,7 +166,7 @@ where
     );
 }
 
-pub fn eval_rule(device: &dyn DynDevice, primitive: &dyn Primitive) -> Option<DynBackend> {
+pub fn eval_rule(device: &dyn Device, primitive: &dyn Primitive) -> Option<DynBackend> {
     let dispatcher = EVAL_DISPATCHER.lock().unwrap();
     dispatcher
         .get(&(device.as_any().type_id(), primitive.as_any().type_id()))
