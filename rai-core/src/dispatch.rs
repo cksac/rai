@@ -1,20 +1,8 @@
-use std::{any::TypeId, collections::HashMap, sync::Mutex};
-
-use dyn_clone::DynClone;
-use once_cell::sync::Lazy;
-
 use crate::{
-    backend::CandleBackend, primitives, Cpu, Device, Primitive, Tensor, F16, F32, F64, U32, U8,
+    primitives, CandleBackend, Cpu, Device, Eval, Primitive, Tensor, F16, F32, F64, U32, U8,
 };
-
-pub trait Eval<D, P>: DynClone + Sync + Send + 'static
-where
-    D: ?Sized,
-    P: ?Sized,
-{
-    fn eval(&self, device: &D, primitive: &P, inputs: &[Tensor], output: &Tensor);
-}
-dyn_clone::clone_trait_object!(<D, P> Eval<D, P> where D: ?Sized, P: ?Sized);
+use once_cell::sync::Lazy;
+use std::{any::TypeId, collections::HashMap, sync::Mutex};
 
 #[derive(Debug, Clone)]
 pub struct BackendWrapper<D, P, B> {
@@ -147,6 +135,7 @@ macro_rules! register_backend {
 static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Lazy::new(|| {
     let mut rules: HashMap<(TypeId, TypeId), DynBackend> = HashMap::new();
 
+    #[cfg(feature = "candle-backend")]
     register_backend!(CandleBackend, Cpu, rules);
 
     Mutex::new(rules)
@@ -162,7 +151,7 @@ where
     _register::<B, D, P>(backend, &mut dispatcher);
 }
 
-pub fn _register<B, D, P>(backend: B, dispatcher: &mut HashMap<(TypeId, TypeId), DynBackend>)
+fn _register<B, D, P>(backend: B, dispatcher: &mut HashMap<(TypeId, TypeId), DynBackend>)
 where
     D: Device + 'static + Sync + Send + Clone,
     P: Primitive + 'static + Sync + Send + Clone,

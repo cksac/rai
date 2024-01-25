@@ -1,6 +1,6 @@
 use crate::{
-    dispatch::Eval, primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, DType, Device,
-    DynDType, Shape, Tensor, F16, F32, F64, U32, U8,
+    primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, DType, Device, DynDType, Eval,
+    Shape, Tensor, F16, F32, F64, U32, U8,
 };
 use half::{bf16, f16};
 use safetensors::View;

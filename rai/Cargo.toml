@@ -17,3 +17,12 @@ rai-nn = { workspace = true }
 rai-opt = { workspace = true }
 hf-hub = { workspace = true }
 serde_json = { workspace = true }
+
+[features]
+default = ["candle-backend"]
+candle-backend = ["rai-core/candle-backend", "rai-nn/candle-backend", "rai-opt/candle-backend"]
+cuda = ["rai-core/cuda", "rai-nn/cuda", "rai-opt/cuda"]
+cudnn = ["rai-core/cudnn", "rai-nn/cudnn", "rai-opt/cudnn"]
+mkl = ["rai-core/mkl", "rai-nn/mkl", "rai-opt/mkl"]
+accelerate = ["rai-core/accelerate", "rai-nn/accelerate", "rai-opt/accelerate"]
+metal = ["rai-core/metal", "rai-nn/metal", "rai-opt/metal"]

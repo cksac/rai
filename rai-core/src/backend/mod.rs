@@ -1,3 +1,4 @@
+use dyn_clone::DynClone;
 use std::{
     any::{Any, TypeId},
     fmt::Debug,
@@ -43,5 +44,16 @@ impl<'a> PartialEq for &'a dyn Backend {
     }
 }
 
+pub trait Eval<D, P>: DynClone + Sync + Send + 'static
+where
+    D: ?Sized,
+    P: ?Sized,
+{
+    fn eval(&self, device: &D, primitive: &P, inputs: &[Tensor], output: &Tensor);
+}
+dyn_clone::clone_trait_object!(<D, P> Eval<D, P> where D: ?Sized, P: ?Sized);
+
 mod candle;
 pub use candle::CandleBackend;
+
+use crate::Tensor;

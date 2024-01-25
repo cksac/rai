@@ -14,3 +14,12 @@ homepage = "https://github.com/cksac/rai"
 [dependencies]
 rai-core = { workspace = true }
 safetensors = { workspace = true }
+
+[features]
+default = ["candle-backend"]
+candle-backend = ["rai-core/candle-backend"]
+cuda = ["rai-core/cuda"]
+cudnn = ["rai-core/cudnn"]
+mkl = ["rai-core/mkl"]
+accelerate = ["rai-core/accelerate"]
+metal = ["rai-core/metal"]

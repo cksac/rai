@@ -16,7 +16,7 @@ mod device;
 pub use device::{Cpu, Cuda, Device};
 
 mod backend;
-pub use backend::{Backend, CandleBackend};
+pub use backend::{Backend, CandleBackend, Eval};
 
 mod value;
 pub use value::{Aux, BasicValue, GenericValue, ModuleValue, Value, ValueSpec};

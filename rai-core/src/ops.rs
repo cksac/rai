@@ -6,7 +6,6 @@ use std::{
 };
 
 use half::f16;
-use num_traits::float::FloatCore;
 use safetensors::tensor::TensorView;
 use tracing::Level;
 
