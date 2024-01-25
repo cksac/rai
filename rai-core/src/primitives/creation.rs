@@ -159,31 +159,6 @@ where
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FromSafetensor;
-
-impl Primitive for FromSafetensor {
-    fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(*self)
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[tracing::instrument(ret(level = Level::TRACE))]
-    #[inline]
-    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
-        output.ones_like()
-    }
-
-    #[tracing::instrument(ret(level = Level::TRACE))]
-    #[inline]
-    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
-        vec![]
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Concatenate {
     pub dim: usize,

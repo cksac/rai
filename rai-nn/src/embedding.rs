@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, DType, Device, Shape, Tensor};
 use std::collections::HashMap;
 
 use crate::{gather_params, update_params, NamedParameter};
@@ -13,11 +13,11 @@ impl Embedding {
         num_embeddings: usize,
         features: usize,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = &backend.into();
+        let device = &device.into();
         // TODO: init strategy
-        let weight = Tensor::normal([num_embeddings, features], dtype, backend);
+        let weight = Tensor::normal([num_embeddings, features], dtype, device);
         Self { weight }
     }
 

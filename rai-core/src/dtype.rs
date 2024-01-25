@@ -31,6 +31,12 @@ pub trait DType: Clone + Copy + Debug + PartialEq + 'static {
     fn as_self_dtype(&self) -> AsType<Self> {
         AsType::new(*self)
     }
+
+    fn size_of_elem() -> usize {
+        std::mem::size_of::<Self::Repr>()
+    }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype;
 }
 
 pub trait DynDType: Debug {
@@ -40,6 +46,8 @@ pub trait DynDType: Debug {
     fn full_zero(&self) -> Box<dyn Primitive>;
     fn full_one(&self) -> Box<dyn Primitive>;
     fn as_self_dtype(&self) -> Box<dyn Primitive>;
+    fn size_of_elem(&self) -> usize;
+    fn safetensor_dtype(&self) -> safetensors::Dtype;
 }
 
 impl<'a> PartialEq for &'a dyn DynDType {
@@ -89,6 +97,14 @@ impl<D: DType> DynDType for D {
     fn as_self_dtype(&self) -> Box<dyn Primitive> {
         Box::new(self.as_self_dtype())
     }
+
+    fn size_of_elem(&self) -> usize {
+        Self::size_of_elem()
+    }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        (*self).safetensor_dtype()
+    }
 }
 
 impl ElemType for u8 {
@@ -110,6 +126,10 @@ impl DType for U8 {
 
     fn one() -> Self::Repr {
         1
+    }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::U8
     }
 }
 
@@ -133,6 +153,10 @@ impl DType for U32 {
     fn one() -> Self::Repr {
         1
     }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::U32
+    }
 }
 
 impl ElemType for f16 {
@@ -154,6 +178,10 @@ impl DType for F16 {
 
     fn one() -> Self::Repr {
         f16::from(1i8)
+    }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::F16
     }
 }
 
@@ -177,6 +205,10 @@ impl DType for F32 {
     fn one() -> Self::Repr {
         1.0
     }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::F32
+    }
 }
 
 impl ElemType for f64 {
@@ -199,6 +231,10 @@ impl DType for F64 {
     fn one() -> Self::Repr {
         1.0
     }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::F64
+    }
 }
 
 impl From<safetensors::Dtype> for Box<dyn DynDType> {
@@ -219,5 +255,11 @@ impl From<safetensors::Dtype> for Box<dyn DynDType> {
             safetensors::Dtype::U64 => todo!(),
             _ => todo!(),
         }
+    }
+}
+
+impl<'a> From<&'a dyn DynDType> for safetensors::Dtype {
+    fn from(value: &'a dyn DynDType) -> Self {
+        value.safetensor_dtype()
     }
 }

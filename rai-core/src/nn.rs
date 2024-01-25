@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use crate::{backend::Cpu, Backend, GenericValue, ModuleValue, Tensor, ValueSpec};
+use crate::{Cpu, GenericValue, ModuleValue, Tensor, ValueSpec};
 
 pub trait Module {
     type Input;
@@ -31,10 +31,8 @@ pub trait Module {
     where
         Self: Sized,
     {
-        let named_params = self.named_params("");
-        // todo: add to_device ops, and move all tensors to cpu first
-        // todo: eval once after call to_device
-        Cpu.to_safetensors(named_params, filename.as_ref());
+        let data = self.named_params("");
+        safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
     }
 
     fn update_by_safetensors<P: AsRef<std::path::Path>>(&self, filenames: &[P]) {

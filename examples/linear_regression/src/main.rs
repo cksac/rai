@@ -1,4 +1,4 @@
-use rai::{backend::Cpu, eval, grad, Func, Tensor, F32};
+use rai::{eval, grad, Cpu, Func, Tensor, F32};
 use std::time::Instant;
 
 fn main() {
@@ -7,19 +7,19 @@ fn main() {
     let num_iters = 10000;
     let learning_rate = 0.01f32;
 
-    let backend = &Cpu;
+    let device = &Cpu;
     // True parameters
-    let w_star = Tensor::normal([num_features], F32, backend);
+    let w_star = Tensor::normal([num_features], F32, device);
 
     // The input examples (design matrix)
-    let x = Tensor::normal([num_samples, num_features], F32, backend);
+    let x = Tensor::normal([num_samples, num_features], F32, device);
 
     // Noisy labels
-    let eps = Tensor::normal([num_samples], F32, backend) * 1e-2f32;
+    let eps = Tensor::normal([num_samples], F32, device) * 1e-2f32;
     let y = x.matmul(&w_star) + eps;
 
     // Initialize random parameters
-    let w = &(Tensor::normal([num_features], F32, backend) * 1e-2f32);
+    let w = &(Tensor::normal([num_features], F32, device) * 1e-2f32);
 
     let loss_fn = move |w: &Tensor| {
         let y = &y;

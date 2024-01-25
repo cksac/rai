@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, DType, Device, Shape, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 
@@ -16,13 +16,13 @@ impl Linear {
         out_features: usize,
         has_bias: bool,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = &backend.into();
+        let device = &device.into();
         // TODO: init strategy
-        let weight = Tensor::normal([out_features, in_features], dtype, backend);
+        let weight = Tensor::normal([out_features, in_features], dtype, device);
         let bias = if has_bias {
-            Some(Tensor::normal([out_features], dtype, backend))
+            Some(Tensor::normal([out_features], dtype, device))
         } else {
             None
         };

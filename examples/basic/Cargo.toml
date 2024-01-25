@@ -1,0 +1,10 @@
+[package]
+name = "basic"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rai = { workspace = true }

@@ -1,20 +1,13 @@
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use rai::{
-    backend::Cpu,
     ext,
     nn::{
         self, gather_params, update_params, Embedding, LayerNorm, Linear, Module, NamePath, NewGelu,
     },
-    trainable_module, Backend, DType, Shape, Tensor, F32,
+    trainable_module, Cpu, DType, Device, Shape, Tensor, F32,
 };
 use serde::Deserialize;
-use std::{
-    cell::{Ref, RefCell},
-    collections::HashMap,
-    fmt::Debug,
-    io::Write,
-    time::Instant,
-};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, io::Write, time::Instant};
 use tokenizers::Tokenizer;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -52,16 +45,16 @@ struct RotaryEmbedding {
 }
 
 impl RotaryEmbedding {
-    pub fn new(cfg: &Config, backend: impl Into<Box<dyn Backend>>) -> Self {
-        let backend = backend.into();
+    pub fn new(cfg: &Config, device: impl Into<Box<dyn Device>>) -> Self {
+        let device = device.into();
         let dim = (cfg.partial_rotary_factor * cfg.head_dim() as f64) as usize;
         let inv_freq: Vec<_> = (0..dim)
             .step_by(2)
             .map(|i| 1f32 / cfg.rope_theta.powf(i as f32 / dim as f32))
             .collect();
         let inv_freq_len = inv_freq.len();
-        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], &backend);
-        let t = Tensor::arange((0u32, cfg.max_position_embeddings as u32), &backend)
+        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], &device);
+        let t = Tensor::arange((0u32, cfg.max_position_embeddings as u32), &device)
             .as_type(F32)
             .reshape([cfg.max_position_embeddings, 1]);
         let freqs = t.matmul(&inv_freq);
@@ -111,22 +104,10 @@ pub struct MLP {
 }
 
 impl MLP {
-    pub fn new(cfg: &Config, dtype: impl DType, backend: impl Into<Box<dyn Backend>>) -> Self {
-        let backend = backend.into();
-        let fc1 = Linear::new(
-            cfg.hidden_size,
-            cfg.intermediate_size,
-            true,
-            dtype,
-            &backend,
-        );
-        let fc2 = Linear::new(
-            cfg.intermediate_size,
-            cfg.hidden_size,
-            true,
-            dtype,
-            &backend,
-        );
+    pub fn new(cfg: &Config, dtype: impl DType, device: impl Into<Box<dyn Device>>) -> Self {
+        let device = device.into();
+        let fc1 = Linear::new(cfg.hidden_size, cfg.intermediate_size, true, dtype, &device);
+        let fc2 = Linear::new(cfg.intermediate_size, cfg.hidden_size, true, dtype, &device);
         Self {
             fc1,
             fc2,
@@ -174,16 +155,16 @@ pub struct Attention {
     kv_cache: RefCell<Option<(Tensor, Tensor)>>,
 }
 
-fn get_mask(size: usize, backend: impl Into<Box<dyn Backend>> + Debug) -> Tensor {
+fn get_mask(size: usize, device: impl Into<Box<dyn Device>> + Debug) -> Tensor {
     let mask: Vec<_> = (0..size)
         .flat_map(|i| (0..size).map(move |j| u8::from(j > i)))
         .collect();
-    Tensor::from_array(mask, [size, size], backend)
+    Tensor::from_array(mask, [size, size], device)
 }
 
 fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
     let shape = mask.shape();
-    let on_true = &Tensor::full(on_true, shape, on_false.backend())
+    let on_true = &Tensor::full(on_true, shape, on_false.device())
         .broadcast_to(shape)
         .as_type_of(on_false);
     mask.where_cond(on_true, on_false)
@@ -193,33 +174,33 @@ impl Attention {
     pub fn new(
         cfg: &Config,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = backend.into();
+        let device = device.into();
         let num_heads = cfg.num_attention_heads;
         let num_kv_heads = cfg.num_key_value_heads();
         let head_dim = cfg.head_dim();
-        let q_proj = Linear::new(cfg.hidden_size, num_heads * head_dim, true, dtype, &backend);
+        let q_proj = Linear::new(cfg.hidden_size, num_heads * head_dim, true, dtype, &device);
         let k_proj = Linear::new(
             cfg.hidden_size,
             num_kv_heads * head_dim,
             true,
             dtype,
-            &backend,
+            &device,
         );
         let v_proj = Linear::new(
             cfg.hidden_size,
             num_kv_heads * head_dim,
             true,
             dtype,
-            &backend,
+            &device,
         );
-        let dense = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, &backend);
+        let dense = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, &device);
         // Alternative rope scaling are not supported.
-        let rotary_emb = RotaryEmbedding::new(cfg, &backend);
+        let rotary_emb = RotaryEmbedding::new(cfg, &device);
         let (q_layernorm, k_layernorm) = if cfg.qk_layernorm {
-            let q_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &backend);
-            let k_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &backend);
+            let q_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &device);
+            let k_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, &device);
             (Some(q_layernorm), Some(k_layernorm))
         } else {
             (None, None)
@@ -322,8 +303,7 @@ impl Module for Attention {
         let attn_weights = attn_weights.softmax(-1).as_type_of(&value_states);
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
-        let attn_output = self.dense.forward(&attn_output);
-        attn_output
+        self.dense.forward(&attn_output)
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
@@ -364,13 +344,13 @@ impl DecoderLayer {
     pub fn new(
         cfg: &Config,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = backend.into();
-        let self_attn = Attention::new(cfg, dtype, &backend);
-        let mlp = MLP::new(cfg, dtype, &backend);
+        let device = device.into();
+        let self_attn = Attention::new(cfg, dtype, &device);
+        let mlp = MLP::new(cfg, dtype, &device);
         let input_layernorm =
-            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, &backend);
+            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, &device);
         Self {
             self_attn,
             mlp,
@@ -423,16 +403,16 @@ impl Model {
     pub fn new(
         cfg: &Config,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = backend.into();
-        let embed_tokens = nn::Embedding::new(cfg.vocab_size, cfg.hidden_size, dtype, &backend);
+        let device = device.into();
+        let embed_tokens = nn::Embedding::new(cfg.vocab_size, cfg.hidden_size, dtype, &device);
         let layers = (0..cfg.num_hidden_layers)
-            .map(|_| DecoderLayer::new(cfg, dtype, &backend))
+            .map(|_| DecoderLayer::new(cfg, dtype, &device))
             .collect();
         let final_layernorm =
-            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, &backend);
-        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, true, dtype, &backend);
+            LayerNorm::new(cfg.hidden_size, cfg.layer_norm_eps, true, dtype, &device);
+        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, true, dtype, &device);
         Self {
             embed_tokens,
             layers,
@@ -452,7 +432,7 @@ impl Module for Model {
         let mask = if seq_len <= 1 {
             None
         } else {
-            Some(get_mask(seq_len, xs.backend()))
+            Some(get_mask(seq_len, xs.device()))
         };
         for layer in &self.layers {
             xs = layer.forward(&(xs, mask.clone()));
@@ -495,10 +475,7 @@ impl Module for Model {
 
 trainable_module!(Model);
 
-fn load_model(
-    dtype: impl DType,
-    backend: impl Into<Box<dyn Backend>> + Debug,
-) -> (Tokenizer, Model) {
+fn load_model(dtype: impl DType, device: impl Into<Box<dyn Device>> + Debug) -> (Tokenizer, Model) {
     let start = Instant::now();
     let model_id = "microsoft/phi-2".to_string();
     let revision = "main".to_string();
@@ -512,18 +489,15 @@ fn load_model(
     let config = std::fs::read_to_string(config_filename).unwrap();
     let cfg: Config = serde_json::from_str(&config).unwrap();
     let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json");
-    let phi = Model::new(&cfg, dtype, backend);
+    let phi = Model::new(&cfg, dtype, device);
     phi.update_by_safetensors(&model_filenames);
     let elapsed = start.elapsed();
     println!("model loaded in : {:?}", elapsed);
     (tokenizer, phi)
 }
 
-fn sample_argmax(logits: Tensor) -> u32 {
-    // let t = logits.argmax(-1);
-    // t.as_scalar::<u32>()
-    let logits_v: Vec<f32> = logits.as_vec();
-    let next_token = logits_v
+fn sample_argmax(logits: &[f32]) -> u32 {
+    let next_token = logits
         .iter()
         .enumerate()
         .max_by(|(_, u), (_, v)| u.total_cmp(v))
@@ -532,9 +506,7 @@ fn sample_argmax(logits: Tensor) -> u32 {
     next_token
 }
 
-pub fn apply_repeat_penalty(logits: &Tensor, penalty: f32, context: &[u32]) -> Tensor {
-    let backend = logits.backend();
-    let mut logits = logits.as_vec::<f32>();
+pub fn apply_repeat_penalty(logits: &mut [f32], penalty: f32, context: &[u32]) {
     let context: std::collections::HashSet<_> = context.iter().collect();
     for (token_id, logit) in logits.iter_mut().enumerate() {
         if context.contains(&(token_id as u32)) {
@@ -545,16 +517,12 @@ pub fn apply_repeat_penalty(logits: &Tensor, penalty: f32, context: &[u32]) -> T
             }
         }
     }
-    let logits_len = logits.len();
-    Tensor::from_array(logits, [logits_len], backend)
 }
 
 fn main() {
-    let backend = &Cpu;
-    backend.debug_info();
-
+    let device = &Cpu;
     let dtype = F32;
-    let (tokenizer, model) = load_model(dtype, backend);
+    let (tokenizer, model) = load_model(dtype, device);
 
     let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
     println!("{prompt}");
@@ -576,16 +544,15 @@ fn main() {
     for index in 0..sample_len {
         let context_size = if index > 0 { 1 } else { tokens.len() };
         let ctxt = &tokens[tokens.len().saturating_sub(context_size)..];
-        let input = Tensor::from_array(ctxt, [ctxt.len()], backend).unsqueeze(0);
+        let input = Tensor::from_array(ctxt, [ctxt.len()], device).unsqueeze(0);
         let logits = model.forward(&input);
         let logits = logits.squeeze(0).as_type(F32);
-        let logits = if repeat_penalty == 1. {
-            logits
-        } else {
+        let mut logits = logits.as_vec::<f32>();
+        if repeat_penalty >= 1. {
             let start_at = tokens.len().saturating_sub(repeat_last_n);
-            apply_repeat_penalty(&logits, repeat_penalty, &tokens[start_at..])
+            apply_repeat_penalty(&mut logits, repeat_penalty, &tokens[start_at..])
         };
-        let next_token = sample_argmax(logits);
+        let next_token = sample_argmax(&logits);
         tokens.push(next_token);
         generated_tokens += 1;
         if next_token == eos_token {

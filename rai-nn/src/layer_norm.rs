@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, Tensor};
+use rai_core::{nn::Module, trainable_module, DType, Device, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 
@@ -16,12 +16,12 @@ impl LayerNorm {
         eps: f64,
         affine: bool,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = &backend.into();
+        let device = &device.into();
         let (weight, bias) = if affine {
-            let weight = Some(Tensor::ones([dims], dtype, backend));
-            let bias = Some(Tensor::zeros([dims], dtype, backend));
+            let weight = Some(Tensor::ones([dims], dtype, device));
+            let bias = Some(Tensor::zeros([dims], dtype, device));
             (weight, bias)
         } else {
             (None, None)

@@ -3,189 +3,183 @@ use std::{any::TypeId, collections::HashMap, sync::Mutex};
 use dyn_clone::DynClone;
 use once_cell::sync::Lazy;
 
-use crate::{backend::Cpu, primitives, Backend, Primitive, Tensor, F16, F32, F64, U32, U8};
+use crate::{
+    backend::CandleBackend, primitives, Cpu, Device, Primitive, Tensor, F16, F32, F64, U32, U8,
+};
 
-pub trait Eval<B, P>: DynClone + Sync + Send + 'static
+pub trait Eval<D, P>: DynClone + Sync + Send + 'static
 where
-    B: ?Sized,
+    D: ?Sized,
     P: ?Sized,
 {
-    fn eval(&self, backend: &B, primitive: &P, inputs: &[Tensor], output: &Tensor);
+    fn eval(&self, device: &D, primitive: &P, inputs: &[Tensor], output: &Tensor);
 }
-dyn_clone::clone_trait_object!(<B, P> Eval<B, P> where B: ?Sized, P: ?Sized);
+dyn_clone::clone_trait_object!(<D, P> Eval<D, P> where D: ?Sized, P: ?Sized);
 
 #[derive(Debug, Clone)]
-pub struct Dispatch<B, P> {
-    phantom: std::marker::PhantomData<(B, P)>,
+pub struct BackendWrapper<D, P, B> {
+    backend: B,
+    phantom: std::marker::PhantomData<(D, P)>,
 }
 
-impl<B, P> Eval<dyn Backend, dyn Primitive> for Dispatch<B, P>
+impl<D, P, B> Eval<dyn Device, dyn Primitive> for BackendWrapper<D, P, B>
 where
-    B: Backend + 'static + Sync + Send,
-    P: Primitive + 'static + Sync + Send,
-    Self: Eval<B, P> + 'static,
+    D: Device + 'static + Sync + Send + Clone,
+    P: Primitive + 'static + Sync + Send + Clone,
+    B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
     fn eval(
         &self,
-        backend: &dyn Backend,
+        device: &dyn Device,
         primitive: &dyn Primitive,
         inputs: &[Tensor],
         output: &Tensor,
     ) {
-        let backend = backend.as_any().downcast_ref::<B>().unwrap();
+        let device = device.as_any().downcast_ref::<D>().unwrap();
         let primitive = primitive.as_any().downcast_ref::<P>().unwrap();
-        self.eval(backend, primitive, inputs, output);
+        self.backend.eval(device, primitive, inputs, output);
     }
 }
 
-impl<B, P> Eval<Box<dyn Backend>, Box<dyn Primitive>> for Dispatch<B, P>
+impl<D, P, B> Eval<Box<dyn Device>, Box<dyn Primitive>> for BackendWrapper<D, P, B>
 where
-    B: Backend + 'static + Sync + Send,
-    P: Primitive + 'static + Sync + Send,
-    Self: Eval<B, P> + 'static,
+    D: Device + 'static + Sync + Send + Clone,
+    P: Primitive + 'static + Sync + Send + Clone,
+    B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
     fn eval(
         &self,
-        backend: &Box<dyn Backend>,
+        device: &Box<dyn Device>,
         primitive: &Box<dyn Primitive>,
         inputs: &[Tensor],
         output: &Tensor,
     ) {
-        let backend = backend.as_any().downcast_ref::<B>().unwrap();
+        let device = device.as_any().downcast_ref::<D>().unwrap();
         let primitive = primitive.as_any().downcast_ref::<P>().unwrap();
-        self.eval(backend, primitive, inputs, output);
+        self.backend.eval(device, primitive, inputs, output);
     }
 }
 
-type ErasedEval = Box<dyn Eval<dyn Backend, dyn Primitive>>;
+type DynBackend = Box<dyn Eval<dyn Device, dyn Primitive>>;
 
 macro_rules! register_backend {
-    ($backend:ident, $rules:expr) => {
+    ($backend:ident, $device:ident, $rules:expr) => {
         // creation
-        _register::<$backend, primitives::Full<U8>>(&mut $rules);
-        _register::<$backend, primitives::Full<U32>>(&mut $rules);
-        _register::<$backend, primitives::Full<F16>>(&mut $rules);
-        _register::<$backend, primitives::Full<F32>>(&mut $rules);
-        _register::<$backend, primitives::Full<F64>>(&mut $rules);
-        _register::<$backend, primitives::Normal>(&mut $rules);
-        _register::<$backend, primitives::Arange<U8>>(&mut $rules);
-        _register::<$backend, primitives::Arange<U32>>(&mut $rules);
-        _register::<$backend, primitives::Arange<F16>>(&mut $rules);
-        _register::<$backend, primitives::Arange<F32>>(&mut $rules);
-        _register::<$backend, primitives::Arange<F64>>(&mut $rules);
-        _register::<$backend, primitives::FromArray<U8>>(&mut $rules);
-        _register::<$backend, primitives::FromArray<U32>>(&mut $rules);
-        _register::<$backend, primitives::FromArray<F16>>(&mut $rules);
-        _register::<$backend, primitives::FromArray<F32>>(&mut $rules);
-        _register::<$backend, primitives::FromArray<F64>>(&mut $rules);
-        _register::<$backend, primitives::Concatenate>(&mut $rules);
+        _register::<$backend, $device, primitives::Full<U8>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Full<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Full<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Full<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Full<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Normal>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<U8>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<U8>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Concatenate>($backend, &mut $rules);
 
         // binary
-        _register::<$backend, primitives::Add>(&mut $rules);
-        _register::<$backend, primitives::Sub>(&mut $rules);
-        _register::<$backend, primitives::Mul>(&mut $rules);
-        _register::<$backend, primitives::Div>(&mut $rules);
-        _register::<$backend, primitives::MatMul>(&mut $rules);
-        _register::<$backend, primitives::Equal>(&mut $rules);
-        _register::<$backend, primitives::NotEqual>(&mut $rules);
-        _register::<$backend, primitives::Greater>(&mut $rules);
-        _register::<$backend, primitives::GreaterEqual>(&mut $rules);
-        _register::<$backend, primitives::Less>(&mut $rules);
-        _register::<$backend, primitives::LessEqual>(&mut $rules);
-        _register::<$backend, primitives::Maximum>(&mut $rules);
+        _register::<$backend, $device, primitives::Add>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Sub>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Mul>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Div>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::MatMul>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Equal>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::NotEqual>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Greater>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::GreaterEqual>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Less>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::LessEqual>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Maximum>($backend, &mut $rules);
 
         // unary
-        _register::<$backend, primitives::Sin>(&mut $rules);
-        _register::<$backend, primitives::Cos>(&mut $rules);
-        _register::<$backend, primitives::Tanh>(&mut $rules);
-        _register::<$backend, primitives::Negative>(&mut $rules);
-        _register::<$backend, primitives::Square>(&mut $rules);
-        _register::<$backend, primitives::PowerFloat>(&mut $rules);
-        _register::<$backend, primitives::Sqrt>(&mut $rules);
-        _register::<$backend, primitives::Rsqrt>(&mut $rules);
-        _register::<$backend, primitives::Sign>(&mut $rules);
-        _register::<$backend, primitives::Abs>(&mut $rules);
-        _register::<$backend, primitives::Exp>(&mut $rules);
-        _register::<$backend, primitives::Log>(&mut $rules);
-        _register::<$backend, primitives::Log2>(&mut $rules);
-        _register::<$backend, primitives::Log10>(&mut $rules);
-        _register::<$backend, primitives::AsType<U8>>(&mut $rules);
-        _register::<$backend, primitives::AsType<U32>>(&mut $rules);
-        _register::<$backend, primitives::AsType<F16>>(&mut $rules);
-        _register::<$backend, primitives::AsType<F32>>(&mut $rules);
-        _register::<$backend, primitives::AsType<F64>>(&mut $rules);
-        _register::<$backend, primitives::Softmax>(&mut $rules);
-        _register::<$backend, primitives::LogSoftmax>(&mut $rules);
-        _register::<$backend, primitives::Erf>(&mut $rules);
+        _register::<$backend, $device, primitives::Sin>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Cos>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Tanh>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Negative>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Square>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::PowerFloat>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Sqrt>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Rsqrt>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Sign>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Abs>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Exp>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Log>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Log2>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Log10>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AsType<U8>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AsType<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AsType<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AsType<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AsType<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Softmax>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::LogSoftmax>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Erf>($backend, &mut $rules);
 
         // indexing
-        _register::<$backend, primitives::Gather>(&mut $rules);
-        _register::<$backend, primitives::IndexSelect>(&mut $rules);
-        _register::<$backend, primitives::Narrow>(&mut $rules);
-        _register::<$backend, primitives::Where>(&mut $rules);
+        _register::<$backend, $device, primitives::Gather>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::IndexSelect>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Narrow>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Where>($backend, &mut $rules);
 
         // transform
-        _register::<$backend, primitives::Transpose>(&mut $rules);
-        _register::<$backend, primitives::Reshape>(&mut $rules);
-        _register::<$backend, primitives::Broadcast>(&mut $rules);
-        _register::<$backend, primitives::ToContiguous>(&mut $rules);
+        _register::<$backend, $device, primitives::Transpose>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Reshape>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Broadcast>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToContiguous>($backend, &mut $rules);
 
         // reduce
-        _register::<$backend, primitives::ReduceSum>(&mut $rules);
-        _register::<$backend, primitives::ReduceMax>(&mut $rules);
-        _register::<$backend, primitives::ReduceMin>(&mut $rules);
-        _register::<$backend, primitives::ArgMax>(&mut $rules);
-        _register::<$backend, primitives::ArgMin>(&mut $rules);
+        _register::<$backend, $device, primitives::ReduceSum>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ReduceMax>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ReduceMin>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ArgMax>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ArgMin>($backend, &mut $rules);
     };
 }
 
-static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), ErasedEval>>> = Lazy::new(|| {
-    let mut rules: HashMap<(TypeId, TypeId), ErasedEval> = HashMap::new();
+static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Lazy::new(|| {
+    let mut rules: HashMap<(TypeId, TypeId), DynBackend> = HashMap::new();
 
-    register_backend!(Cpu, rules);
+    register_backend!(CandleBackend, Cpu, rules);
 
     Mutex::new(rules)
 });
 
-pub fn register<B, P>()
+pub fn register<D, P, B>(backend: B)
 where
-    B: Backend + 'static + Sync + Send,
-    P: Primitive + 'static + Sync + Send,
-    Dispatch<B, P>: Eval<B, P> + 'static,
+    D: Device + 'static + Sync + Send + Clone,
+    P: Primitive + 'static + Sync + Send + Clone,
+    B: Eval<D, P> + 'static + Clone,
 {
-    let mut rules = EVAL_DISPATCHER.lock().unwrap();
-    _register::<B, P>(&mut rules)
+    let mut dispatcher = EVAL_DISPATCHER.lock().unwrap();
+    _register::<B, D, P>(backend, &mut dispatcher);
 }
 
-pub fn register_custom<B, P, R>(rule: R)
+pub fn _register<B, D, P>(backend: B, dispatcher: &mut HashMap<(TypeId, TypeId), DynBackend>)
 where
-    B: Backend + 'static + Sync + Send,
-    P: Primitive + 'static + Sync + Send,
-    R: Eval<B, P> + 'static + Eval<dyn Backend, dyn Primitive>,
+    D: Device + 'static + Sync + Send + Clone,
+    P: Primitive + 'static + Sync + Send + Clone,
+    B: Eval<D, P> + 'static + Clone,
 {
-    let mut rules = EVAL_DISPATCHER.lock().unwrap();
-    rules.insert((TypeId::of::<B>(), TypeId::of::<P>()), Box::new(rule));
-}
-
-pub fn eval_rule(backend: &dyn Backend, primitive: &dyn Primitive) -> Option<ErasedEval> {
-    let rules = EVAL_DISPATCHER.lock().unwrap();
-    rules
-        .get(&(backend.as_any().type_id(), primitive.as_any().type_id()))
-        .cloned()
-}
-
-fn _register<B, P>(rules: &mut HashMap<(TypeId, TypeId), ErasedEval>)
-where
-    B: Backend + 'static + Sync + Send,
-    P: Primitive + 'static + Sync + Send,
-    Dispatch<B, P>: Eval<B, P> + 'static,
-{
-    rules.insert(
-        (TypeId::of::<B>(), TypeId::of::<P>()),
-        Box::new(Dispatch {
-            phantom: std::marker::PhantomData::<(B, P)>,
+    dispatcher.insert(
+        (TypeId::of::<D>(), TypeId::of::<P>()),
+        Box::new(BackendWrapper {
+            backend,
+            phantom: std::marker::PhantomData::<(D, P)>,
         }),
     );
+}
+
+pub fn eval_rule(device: &dyn Device, primitive: &dyn Primitive) -> Option<DynBackend> {
+    let dispatcher = EVAL_DISPATCHER.lock().unwrap();
+    dispatcher
+        .get(&(device.as_any().type_id(), primitive.as_any().type_id()))
+        .cloned()
 }

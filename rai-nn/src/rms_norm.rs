@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use rai_core::{nn::Module, trainable_module, Backend, DType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, DType, Device, Shape, Tensor};
 
 use crate::{gather_params, update_params, NamedParameter};
 
@@ -14,10 +14,10 @@ impl RMSNorm {
         dims: usize,
         eps: f32,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = &backend.into();
-        let weight = Tensor::ones([dims], dtype, backend);
+        let device = &device.into();
+        let weight = Tensor::ones([dims], dtype, device);
         Self { weight, eps }
     }
 }

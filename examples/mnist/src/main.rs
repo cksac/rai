@@ -1,14 +1,13 @@
-use rai::backend::Cpu;
-use rai::opt::losses::softmax_cross_entropy;
-use rai::opt::optimizers::{Optimizer, SDG};
-use rai::{eval, trainable_module, Aux, DType, F32};
 use rai::{
+    eval,
     nn::{Linear, Module, TrainableModule},
-    value_and_grad, Backend, Func, Tensor,
+    opt::{
+        losses::softmax_cross_entropy,
+        optimizers::{Optimizer, SDG},
+    },
+    trainable_module, value_and_grad, Aux, Cpu, DType, Device, Func, Tensor, F32,
 };
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::time::Instant;
+use std::{collections::HashMap, fmt::Debug, time::Instant};
 
 #[derive(Debug, Clone)]
 struct Mlp {
@@ -22,15 +21,15 @@ impl Mlp {
         hidden_dim: usize,
         output_dim: usize,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Self {
-        let backend = &backend.into();
+        let device = &device.into();
         let mut layers = Vec::with_capacity(num_layers);
-        layers.push(Linear::new(input_dim, hidden_dim, true, dtype, backend));
+        layers.push(Linear::new(input_dim, hidden_dim, true, dtype, device));
         for _ in 1..num_layers - 2 {
-            layers.push(Linear::new(hidden_dim, hidden_dim, true, dtype, backend));
+            layers.push(Linear::new(hidden_dim, hidden_dim, true, dtype, device));
         }
-        layers.push(Linear::new(hidden_dim, output_dim, true, dtype, backend));
+        layers.push(Linear::new(hidden_dim, output_dim, true, dtype, device));
         Self { layers }
     }
 }
@@ -123,18 +122,18 @@ fn main() {
     let num_epochs = 10;
     let learning_rate = 1e-1;
 
-    let backend = &Cpu;
+    let device = &Cpu;
     let dtype = F32;
 
-    let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
+    let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
     let mut optimizer = SDG::new(model.params(), learning_rate);
 
     let start = Instant::now();
     for i in 0..num_epochs {
         let start = Instant::now();
         // todo: get image input and label
-        let input = Tensor::normal([batch_size, 784], dtype, backend);
-        let labels = Tensor::full(0.123f32, [batch_size, 10], backend);
+        let input = Tensor::normal([batch_size, 784], dtype, device);
+        let labels = Tensor::full(0.123f32, [batch_size, 10], device);
         train_step(&mut optimizer, &model, &input, &labels);
         let elapsed = start.elapsed();
         println!("Epoch {i}: Time: {:?}", elapsed);
@@ -150,11 +149,11 @@ fn main() {
     model.to_safetensors("mnist.safetensors");
 
     // load saved model and test
-    let loaded_model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, backend);
+    let loaded_model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
     loaded_model.update_by_safetensors(&["mnist.safetensors"]);
 
-    let input = Tensor::normal([batch_size, 784], dtype, backend);
-    let labels = Tensor::full(0.123f32, [batch_size, 10], backend);
+    let input = Tensor::normal([batch_size, 784], dtype, device);
+    let labels = Tensor::full(0.123f32, [batch_size, 10], device);
     let (loss, ..) = loss_fn(&loaded_model, &input, &labels);
     println!("loss = {}", loss);
 }

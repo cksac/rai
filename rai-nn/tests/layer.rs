@@ -1,6 +1,4 @@
-use rai_core::{
-    backend::Cpu, nn::Module, utils::dot_graph, value_and_grad, Aux, Func, Tensor, F32,
-};
+use rai_core::{nn::Module, utils::dot_graph, value_and_grad, Aux, Cpu, Func, Tensor, F32};
 
 use rai_nn::{Embedding, Linear};
 
@@ -12,12 +10,12 @@ fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {
 
 #[test]
 fn test_linear_batch_input() {
-    let backend = &Cpu;
+    let device = &Cpu;
     let in_size = 5;
     let out_size = 2;
     let batch_size = 8;
-    let linear = Linear::new(in_size, out_size, true, F32, backend);
-    let input = Tensor::normal([batch_size, in_size], F32, backend);
+    let linear = Linear::new(in_size, out_size, true, F32, device);
+    let input = Tensor::normal([batch_size, in_size], F32, device);
 
     let vg_fn = value_and_grad(loss_fn);
     let ((loss, Aux(output)), (grads, ..)) = vg_fn.apply((&linear, &input));
@@ -34,11 +32,11 @@ fn test_linear_batch_input() {
 
 #[test]
 fn test_embedding() {
-    let backend = &Cpu;
+    let device = &Cpu;
     let num_embeddings = 10;
     let features = 4;
-    let embedding = Embedding::new(num_embeddings, features, F32, backend);
-    let input = Tensor::from_array([0u32, 1, 2, 3, 4], [5], backend);
+    let embedding = Embedding::new(num_embeddings, features, F32, device);
+    let input = Tensor::from_array([0u32, 1, 2, 3, 4], [5], device);
 
     let output = embedding.forward(&input);
     println!("embeddings = {}", embedding.weight());

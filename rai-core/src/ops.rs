@@ -2,8 +2,12 @@ use std::{
     f32::consts::PI,
     fmt::Debug,
     ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
+    slice::from_raw_parts,
 };
 
+use half::f16;
+use num_traits::float::FloatCore;
+use safetensors::tensor::TensorView;
 use tracing::Level;
 
 use crate::{
@@ -15,7 +19,7 @@ use crate::{
         Square, Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
-    Backend, DType, Dim, DynDType, ElemType, Shape, Tensor, F32, F64, U32, U8,
+    DType, Device, Dim, DynDType, ElemType, Shape, Tensor, F16, F32, F64, U32, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -104,12 +108,12 @@ macro_rules! impl_std_ops {
 pub fn full<T: ElemType>(
     val: T,
     shape: impl Shape,
-    backend: impl Into<Box<dyn Backend>> + Debug,
+    device: impl Into<Box<dyn Device>> + Debug,
 ) -> Tensor {
-    let backend = backend.into();
+    let device = device.into();
     let inputs = vec![];
     Tensor::new(
-        backend,
+        device,
         T::dyn_dtype(),
         shape,
         Full::<T::DType>::new(val),
@@ -120,42 +124,42 @@ pub fn full<T: ElemType>(
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
     if x.dtype() == T::dyn_dtype().as_ref() {
-        full::<T>(val, x.shape(), x.backend())
+        full::<T>(val, x.shape(), x.device())
     } else {
         // TODO: check is type can be convert/promoted to x dtype?
-        full::<T>(val, x.shape(), x.backend()).as_type_of(x)
+        full::<T>(val, x.shape(), x.device()).as_type_of(x)
     }
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn zeros_like(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
     let primitive = dtype.full_zero();
     let inputs = vec![];
-    Tensor::new(backend, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ones_like(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
     let primitive = dtype.full_one();
     let inputs = vec![];
-    Tensor::new(backend, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn normal(
     shape: impl Shape,
     dtype: impl DType,
-    backend: impl Into<Box<dyn Backend>> + Debug,
+    device: impl Into<Box<dyn Device>> + Debug,
 ) -> Tensor {
-    let backend = backend.into();
+    let device = device.into();
     let inputs = vec![];
-    Tensor::new(backend, dtype, shape, Normal, inputs)
+    Tensor::new(device, dtype, shape, Normal, inputs)
 }
 
 pub trait ArangeArgs<D: DType>: Debug {
@@ -243,7 +247,7 @@ macro_rules! impl_arange_args {
         }
     };
 
-    ($AS:ty, $R:ty, $T:tt) => {
+    ($AS:ident, $R:ty, $T:tt) => {
         impl ArangeArgs<$T> for $R {
             fn stop(&self) -> $R {
                 *self
@@ -257,7 +261,10 @@ macro_rules! impl_arange_args {
                 let start = self.start();
                 let stop = self.stop();
                 let step = self.step();
-                let size = std::cmp::max(((stop - start) as $AS / step as $AS).ceil() as usize, 0);
+                let size = std::cmp::max(
+                    ($AS::from(stop - start) / $AS::from(step)).ceil() as usize,
+                    0,
+                );
                 size
             }
         }
@@ -279,7 +286,10 @@ macro_rules! impl_arange_args {
                 let start = self.start();
                 let stop = self.stop();
                 let step = self.step();
-                let size = std::cmp::max(((stop - start) as $AS / step as $AS).ceil() as usize, 0);
+                let size = std::cmp::max(
+                    ($AS::from(stop - start) / $AS::from(step)).ceil() as usize,
+                    0,
+                );
                 size
             }
         }
@@ -305,7 +315,10 @@ macro_rules! impl_arange_args {
                 let start = self.start();
                 let stop = self.stop();
                 let step = self.step();
-                let size = std::cmp::max(((stop - start) as $AS / step as $AS).ceil() as usize, 0);
+                let size = std::cmp::max(
+                    ($AS::from(stop - start) / $AS::from(step)).ceil() as usize,
+                    0,
+                );
                 size
             }
         }
@@ -314,23 +327,24 @@ macro_rules! impl_arange_args {
 
 impl_arange_args!(f32, F32);
 impl_arange_args!(f64, F64);
+impl_arange_args!(f32, f16, F16);
 impl_arange_args!(f32, u8, U8);
-impl_arange_args!(f32, u32, U32);
+impl_arange_args!(f64, u32, U32);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn arange<D: DType, T: ArangeArgs<D>>(
     args: T,
-    backend: impl Into<Box<dyn Backend>> + Debug,
+    device: impl Into<Box<dyn Device>> + Debug,
 ) -> Tensor {
     let start = args.start();
     let stop = args.stop();
     let step = args.step();
     let dtype = args.dtype();
     let size = args.size();
-    let backend = backend.into();
+    let device = device.into();
     let inputs = vec![];
     Tensor::new(
-        backend,
+        device,
         dtype,
         [size],
         Arange::<D>::new(start, stop, step),
@@ -342,14 +356,14 @@ pub fn arange<D: DType, T: ArangeArgs<D>>(
 pub fn from_array<T: ElemType>(
     data: impl Into<Vec<T>> + Debug,
     shape: impl Shape,
-    backend: impl Into<Box<dyn Backend>> + Debug,
+    device: impl Into<Box<dyn Device>> + Debug,
 ) -> Tensor {
     let data = data.into();
     assert!(data.len() == shape.size());
-    let backend = backend.into();
+    let device = device.into();
     let inputs = vec![];
     Tensor::new(
-        backend,
+        device,
         T::dyn_dtype(),
         shape,
         FromArray::<T::DType>::new(data),
@@ -357,65 +371,128 @@ pub fn from_array<T: ElemType>(
     )
 }
 
+// Note: modified from candle candle_core::safetensors::convert_slice
+fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
+    let size_in_bytes = std::mem::size_of::<T>();
+    let elem_count = data.len() / size_in_bytes;
+    if (data.as_ptr() as usize) % size_in_bytes == 0 {
+        // SAFETY This is safe because we just checked that this
+        // was correctly aligned.
+        let data: &[T] = unsafe { from_raw_parts(data.as_ptr() as *const T, elem_count) };
+        data.to_vec()
+    } else {
+        // XXX: We need to specify `T` here, otherwise the compiler will infer u8 because of the following cast
+        // Making this vector too small to fit a full f16/f32/f64 weights, resulting in out-of-bounds access
+        let mut c: Vec<T> = Vec::with_capacity(elem_count);
+        // SAFETY: We just created c, so the allocated memory is necessarily
+        // contiguous and non overlapping with the view's data.
+        // We're downgrading the `c` pointer from T to u8, which removes alignment
+        // constraints.
+        unsafe {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), c.as_mut_ptr() as *mut u8, data.len());
+            c.set_len(elem_count)
+        }
+        c
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn from_safetensor(view: &TensorView, device: impl Into<Box<dyn Device>> + Debug) -> Tensor {
+    let device = device.into();
+    let shape = view.shape();
+    let data = view.data();
+    match view.dtype() {
+        safetensors::Dtype::BOOL => todo!(),
+        safetensors::Dtype::U8 => {
+            let data = convert_slice::<u8>(data);
+            from_array(data, shape, device)
+        }
+        safetensors::Dtype::I8 => todo!(),
+        safetensors::Dtype::I16 => todo!(),
+        safetensors::Dtype::U16 => todo!(),
+        safetensors::Dtype::F16 => {
+            let data = convert_slice::<f16>(data);
+            from_array(data, shape, device)
+        }
+        safetensors::Dtype::BF16 => todo!(),
+        safetensors::Dtype::I32 => todo!(),
+        safetensors::Dtype::U32 => {
+            let data = convert_slice::<u32>(data);
+            from_array(data, shape, device)
+        }
+        safetensors::Dtype::F32 => {
+            let data = convert_slice::<f32>(data);
+            from_array(data, shape, device)
+        }
+        safetensors::Dtype::F64 => {
+            let data = convert_slice::<f64>(data);
+            from_array(data, shape, device)
+        }
+        safetensors::Dtype::I64 => todo!(),
+        safetensors::Dtype::U64 => todo!(),
+        _ => todo!(),
+    }
+}
+
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn add(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = lhs.dtype();
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("add({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Add, inputs)
+    Tensor::new(device, dtype, shape, Add, inputs)
 }
 
 impl_std_ops!(Add, add);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sub(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = lhs.dtype();
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("sub({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Sub, inputs)
+    Tensor::new(device, dtype, shape, Sub, inputs)
 }
 
 impl_std_ops!(Sub, sub);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn mul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = lhs.dtype();
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("mul({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Mul, inputs)
+    Tensor::new(device, dtype, shape, Mul, inputs)
 }
 
 impl_std_ops!(Mul, mul);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn div(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = lhs.dtype();
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("div({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Div, inputs)
+    Tensor::new(device, dtype, shape, Div, inputs)
 }
 
 impl_std_ops!(Div, div);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn neg(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Negative, inputs)
+    Tensor::new(device, dtype, shape, Negative, inputs)
 }
 
 impl Neg for Tensor {
@@ -436,52 +513,52 @@ impl<'a> Neg for &'a Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn square(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Square, inputs)
+    Tensor::new(device, dtype, shape, Square, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype(); // todo: promote to f64?
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, PowerFloat::new(exponent), inputs)
+    Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sin(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Sin, inputs)
+    Tensor::new(device, dtype, shape, Sin, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn cos(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Cos, inputs)
+    Tensor::new(device, dtype, shape, Cos, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn tanh(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Tanh, inputs)
+    Tensor::new(device, dtype, shape, Tanh, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = lhs.dtype();
     let shape = lhs
         .shape_broadcast_matmul(rhs)
@@ -503,10 +580,10 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
         let first = shape.ndim() - if lhs_in.ndim() == 1 { 2 } else { 1 };
         let last = shape.ndim() - if rhs_in.ndim() == 1 { 0 } else { 1 };
         let out_shape = [&shape[..first], &shape[last..]].concat();
-        let out = Tensor::new(backend, dtype, shape, MatMul, inputs);
+        let out = Tensor::new(device, dtype, shape, MatMul, inputs);
         out.reshape(out_shape)
     } else {
-        Tensor::new(backend, dtype, shape, MatMul, inputs)
+        Tensor::new(device, dtype, shape, MatMul, inputs)
     }
 }
 
@@ -514,16 +591,16 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
     let dim0 = x.dim(dim0);
     let dim1 = x.dim(dim1);
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape_transpose(dim0, dim1);
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Transpose::new(dim0, dim1), inputs)
+    Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let out_shape = x.shape_broadcast(&shape).unwrap_or_else(|e| {
         panic!(
@@ -534,7 +611,7 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
         )
     });
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, out_shape, Broadcast::new(shape), inputs)
+    Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -550,11 +627,11 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     }
 
     if x.shape_size_eq(&shape) {
-        let backend = x.backend();
+        let device = x.device();
         let dtype = x.dtype();
         let inputs = vec![x.clone()];
         Tensor::new(
-            backend,
+            device,
             dtype,
             shape.shape().to_owned(),
             Reshape::new(shape),
@@ -567,154 +644,154 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sqrt(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Sqrt, inputs)
+    Tensor::new(device, dtype, shape, Sqrt, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn rsqrt(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Rsqrt, inputs)
+    Tensor::new(device, dtype, shape, Rsqrt, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sign(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Sign, inputs)
+    Tensor::new(device, dtype, shape, Sign, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn abs(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Abs, inputs)
+    Tensor::new(device, dtype, shape, Abs, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn exp(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Exp, inputs)
+    Tensor::new(device, dtype, shape, Exp, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn log(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Log, inputs)
+    Tensor::new(device, dtype, shape, Log, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn log2(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Log2, inputs)
+    Tensor::new(device, dtype, shape, Log2, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn log10(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Log10, inputs)
+    Tensor::new(device, dtype, shape, Log10, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = U8;
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("eq({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Equal, inputs)
+    Tensor::new(device, dtype, shape, Equal, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = U8;
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("ne({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, NotEqual, inputs)
+    Tensor::new(device, dtype, shape, NotEqual, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = U8;
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("gt({:?}, {:?}) with error {:?}", lhs, rhs, e));
 
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Greater, inputs)
+    Tensor::new(device, dtype, shape, Greater, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = U8;
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("ge({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, GreaterEqual, inputs)
+    Tensor::new(device, dtype, shape, GreaterEqual, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = U8;
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("lt({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Less, inputs)
+    Tensor::new(device, dtype, shape, Less, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn le(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = U8;
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("le({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, LessEqual, inputs)
+    Tensor::new(device, dtype, shape, LessEqual, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let backend = lhs.backend();
+    let device = lhs.device();
     let dtype = lhs.dtype();
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("maximum({:?}, {:?}) with error {:?}", lhs, rhs, e));
     let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(backend, dtype, shape, Maximum, inputs)
+    Tensor::new(device, dtype, shape, Maximum, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -722,10 +799,10 @@ pub fn as_type(x: &Tensor, dtype: impl DType) -> Tensor {
     if x.dtype() == &dtype {
         return x.clone();
     }
-    let backend = x.backend();
+    let device = x.device();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, AsType::new(dtype), inputs)
+    Tensor::new(device, dtype, shape, AsType::new(dtype), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -733,12 +810,12 @@ pub fn as_type_of(x: &Tensor, rhs: &Tensor) -> Tensor {
     if x.dtype() == rhs.dtype() {
         return x.clone();
     }
-    let backend = x.backend();
+    let device = x.device();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     let dtype: &dyn DynDType = rhs.dtype();
     let primitive = dtype.as_self_dtype();
-    Tensor::new(backend, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
 pub trait ReduceArgs: Debug {
@@ -820,13 +897,13 @@ where
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let dims = x.dims(args.dims());
     let shape = x.shape_reduce(&dims, args.keep_dim());
     let inputs = vec![x.clone()];
     Tensor::new(
-        backend,
+        device,
         dtype,
         shape,
         ReduceSum::new(dims, args.keep_dim()),
@@ -836,13 +913,13 @@ pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let dims = x.dims(args.dims());
     let shape = x.shape_reduce(&dims, args.keep_dim());
     let inputs = vec![x.clone()];
     Tensor::new(
-        backend,
+        device,
         dtype,
         shape,
         ReduceMax::new(dims, args.keep_dim()),
@@ -852,13 +929,13 @@ pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let dims = x.dims(args.dims());
     let shape = x.shape_reduce(&dims, args.keep_dim());
     let inputs = vec![x.clone()];
     Tensor::new(
-        backend,
+        device,
         dtype,
         shape,
         ReduceMin::new(dims, args.keep_dim()),
@@ -888,31 +965,31 @@ pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     let dim = shape.dim(d);
-    Tensor::new(backend, dtype, shape, Softmax::new(dim), inputs)
+    Tensor::new(device, dtype, shape, Softmax::new(dim), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     let dim = shape.dim(d);
-    Tensor::new(backend, dtype, shape, LogSoftmax::new(dim), inputs)
+    Tensor::new(device, dtype, shape, LogSoftmax::new(dim), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn erf(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Erf, inputs)
+    Tensor::new(device, dtype, shape, Erf, inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -934,24 +1011,24 @@ pub fn new_gelu(x: &Tensor) -> Tensor {
 pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     assert!(x.shape_eq(index));
     let dim = x.dim(dim);
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone(), index.clone()];
     // TODO: asserts
-    Tensor::new(backend, dtype, shape, Gather::new(dim), inputs)
+    Tensor::new(device, dtype, shape, Gather::new(dim), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let dim = x.dim(dim);
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let mut shape = x.shape().to_vec();
     shape[dim] = index.size();
     let inputs = vec![x.clone(), index.clone()];
     // TODO: asserts
-    Tensor::new(backend, dtype, shape, IndexSelect::new(dim), inputs)
+    Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs)
 }
 
 pub trait FlattenArgs: Debug {
@@ -1118,7 +1195,7 @@ pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
     let inputs: Vec<Tensor> = tensors.iter().map(AsRef::as_ref).cloned().collect();
     let t1 = &inputs[0].clone();
     let dim = t1.dim(dim);
-    let backend = t1.backend();
+    let device = t1.device();
     let dtype = t1.dtype();
     let mut shape = t1.shape().to_vec();
     shape[dim] = 0;
@@ -1126,18 +1203,18 @@ pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
         // todo: check shape
         shape[dim] += t.shape_at(dim);
     }
-    Tensor::new(backend, dtype, shape, Concatenate::new(dim), inputs)
+    Tensor::new(device, dtype, shape, Concatenate::new(dim), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
     let dim = x.dim(dim);
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let mut shape = x.shape().to_vec();
     shape[dim] = len;
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, Narrow::new(dim, start, len), inputs)
+    Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -1168,11 +1245,11 @@ pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn where_cond(x: &Tensor, input: &Tensor, other: &Tensor) -> Tensor {
     assert_eq!(input.dtype(), other.dtype());
-    let backend = x.backend();
+    let device = x.device();
     let dtype = input.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone(), input.clone(), other.clone()];
-    Tensor::new(backend, dtype, shape, Where, inputs)
+    Tensor::new(device, dtype, shape, Where, inputs)
 }
 
 pub trait ArgReduceArgs: Debug {
@@ -1199,13 +1276,13 @@ impl<T: Dim> ArgReduceArgs for (T, bool) {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = U32;
     let dim = x.dim(args.dim());
     let shape = x.shape_reduce([dim], args.keep_dim());
     let inputs = vec![x.clone()];
     Tensor::new(
-        backend,
+        device,
         dtype,
         shape,
         ArgMax::new(dim, args.keep_dim()),
@@ -1215,13 +1292,13 @@ pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = U32;
     let dim = x.dim(args.dim());
     let shape = x.shape_reduce([dim], args.keep_dim());
     let inputs = vec![x.clone()];
     Tensor::new(
-        backend,
+        device,
         dtype,
         shape,
         ArgMin::new(dim, args.keep_dim()),
@@ -1231,9 +1308,9 @@ pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn to_contiguous(x: &Tensor) -> Tensor {
-    let backend = x.backend();
+    let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(backend, dtype, shape, ToContiguous, inputs)
+    Tensor::new(device, dtype, shape, ToContiguous, inputs)
 }

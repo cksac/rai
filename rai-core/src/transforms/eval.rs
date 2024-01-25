@@ -1,14 +1,10 @@
+use crate::{dispatch::eval_rule, Tensor, TensorIter};
 use std::collections::BTreeSet;
-
-use crate::{dispatch::eval_rule, Backend, Tensor, TensorIter};
 
 pub trait EvalArgs {
     fn outputs(&self) -> impl Iterator<Item = &Tensor>;
     fn retain_graph(&self) -> bool {
         false
-    }
-    fn backend(&self) -> Option<Box<dyn Backend>> {
-        None
     }
 }
 
@@ -34,24 +30,6 @@ where
     }
 }
 
-impl<T, B> EvalArgs for (T, bool, B)
-where
-    T: TensorIter,
-    B: Backend,
-{
-    fn outputs(&self) -> impl Iterator<Item = &Tensor> {
-        self.0.tensor_iter()
-    }
-
-    fn retain_graph(&self) -> bool {
-        self.1
-    }
-
-    fn backend(&self) -> Option<Box<dyn Backend>> {
-        Some(self.2.clone_boxed())
-    }
-}
-
 pub fn eval<T: EvalArgs>(args: T) {
     fn recurse(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
         if t.is_evaluated() || tape.contains(t) {
@@ -70,18 +48,18 @@ pub fn eval<T: EvalArgs>(args: T) {
 
     for t in tape.into_iter() {
         {
-            let backend = args.backend().unwrap_or(t.backend().clone_boxed());
-            let backend = backend.as_ref();
+            let device = t.device().clone_boxed();
+            let device = device.as_ref();
             let primitive = t.primitive().clone_boxed();
             let primitive = primitive.as_ref();
             let inputs = &*t.inputs();
-            let rule = eval_rule(backend, primitive).unwrap_or_else(|| {
+            let rule = eval_rule(device, primitive).unwrap_or_else(|| {
                 panic!(
-                    "no eval rule for backend: {:?}, primitive: {:?}",
-                    backend, primitive
+                    "no eval rule for device: {:?}, primitive: {:?}",
+                    device, primitive
                 )
             });
-            rule.eval(backend, primitive, inputs, &t);
+            rule.eval(device, primitive, inputs, &t);
         }
         if !args.retain_graph() {
             t.detach();

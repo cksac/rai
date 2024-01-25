@@ -1,5 +1,13 @@
+use crate::{
+    eval,
+    ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
+    utils::{self, dot_graph},
+    DType, Device, Dim, Dims, DynDType, ElemType, Primitive, Shape,
+};
+use safetensors::tensor::TensorView;
 use std::{
     any::Any,
+    borrow::Cow,
     cell::{Ref, RefCell},
     collections::HashMap,
     fmt::{Debug, Display},
@@ -10,26 +18,18 @@ use std::{
     sync::atomic,
 };
 
-use safetensors::tensor::TensorView;
-
-use crate::{
-    eval,
-    ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
-    utils::{self, dot_graph},
-    Backend, DType, Dim, Dims, DynDType, ElemType, Primitive, Shape,
-};
-
 pub trait TensorLike: Debug + Display {
     fn as_any(&self) -> &dyn Any;
     fn shape(&self) -> &[usize];
     fn dtype(&self) -> &dyn DynDType;
     fn as_scalar(&self) -> Box<dyn Any>;
     fn as_vec(&self) -> Box<dyn Any>;
+    fn as_bytes(&self) -> Vec<u8>;
 }
 
 struct TensorImpl {
     id: usize,
-    backend: Box<dyn Backend>,
+    device: Box<dyn Device>,
     dtype: Box<dyn DynDType>,
     shape: Vec<usize>,
     primitive: Box<dyn Primitive>,
@@ -39,7 +39,7 @@ struct TensorImpl {
 
 impl Tensor {
     pub fn new(
-        backend: impl Into<Box<dyn Backend>>,
+        device: impl Into<Box<dyn Device>>,
         dtype: impl Into<Box<dyn DynDType>>,
         shape: impl Shape,
         primitive: impl Into<Box<dyn Primitive>>,
@@ -49,7 +49,7 @@ impl Tensor {
         let id = COUNTER.fetch_add(1, atomic::Ordering::Relaxed);
         let inner = TensorImpl {
             id,
-            backend: backend.into(),
+            device: device.into(),
             dtype: dtype.into(),
             shape: shape.shape().to_vec(),
             primitive: primitive.into(),
@@ -60,19 +60,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn from_safetensor(st: &TensorView, backend: impl Into<Box<dyn Backend>>) -> Tensor {
-        let backend = backend.into();
-        backend.from_safetensor(st)
-    }
-
-    #[inline]
     pub fn id(&self) -> usize {
         self.0.id
     }
 
     #[inline]
-    pub fn backend(&self) -> &dyn Backend {
-        self.0.backend.as_ref()
+    pub fn device(&self) -> &dyn Device {
+        self.0.device.as_ref()
     }
 
     #[inline]
@@ -94,9 +88,9 @@ impl Tensor {
     pub fn full<T: ElemType>(
         val: T,
         shape: impl Shape,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Tensor {
-        ops::full::<T>(val, shape, backend)
+        ops::full::<T>(val, shape, device)
     }
 
     #[inline]
@@ -104,9 +98,9 @@ impl Tensor {
     pub fn ones<D: DType>(
         shape: impl Shape,
         dtype: D,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Tensor {
-        ops::full::<D::Repr>(D::one(), shape, backend)
+        ops::full::<D::Repr>(D::one(), shape, device)
     }
 
     #[inline]
@@ -114,9 +108,9 @@ impl Tensor {
     pub fn zeros<D: DType>(
         shape: impl Shape,
         dtype: D,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Tensor {
-        ops::full::<D::Repr>(D::zero(), shape, backend)
+        ops::full::<D::Repr>(D::zero(), shape, device)
     }
 
     #[inline]
@@ -138,31 +132,39 @@ impl Tensor {
     pub fn normal(
         shape: impl Shape,
         dtype: impl DType,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Tensor {
-        ops::normal(shape, dtype, backend)
+        ops::normal(shape, dtype, device)
     }
 
     #[inline]
     pub fn arange<D: DType, T: ArangeArgs<D>>(
         args: T,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Tensor
     where
         D::Repr:
             std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
         D::Repr: Into<f64> + Copy,
     {
-        ops::arange(args, backend)
+        ops::arange(args, device)
     }
 
     #[inline]
     pub fn from_array<T: ElemType>(
         data: impl Into<Vec<T>> + Debug,
         shape: impl Shape,
-        backend: impl Into<Box<dyn Backend>> + Debug,
+        device: impl Into<Box<dyn Device>> + Debug,
     ) -> Tensor {
-        ops::from_array(data, shape, backend)
+        ops::from_array(data, shape, device)
+    }
+
+    #[inline]
+    pub fn from_safetensor(
+        view: &TensorView,
+        device: impl Into<Box<dyn Device>> + Debug,
+    ) -> Tensor {
+        ops::from_safetensor(view, device)
     }
 
     #[inline]
@@ -500,7 +502,7 @@ impl Tensor {
             dot_graph([self, &rhs])
         );
         assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
-        assert!(self.backend() == rhs.backend(), "backend must be equal");
+        assert!(self.device() == rhs.device(), "device must be equal");
         assert!(rhs.is_evaluated(), "rhs must be evaluated");
         self.0.data.replace(rhs.0.data.take());
         self.detach();
@@ -557,18 +559,13 @@ impl Tensor {
 
     #[inline]
     pub fn is_evaluated(&self) -> bool {
-        self.0
-            .data
-            .borrow()
-            .as_ref()
-            .filter(|v| v.as_any().type_id() == self.backend().data_type_id())
-            .is_some()
+        self.0.data.borrow().as_ref().is_some()
     }
 
     #[inline]
     pub fn to_safetensors(&self, name: impl Into<String>, filename: &Path) {
-        let tensors = HashMap::from([(name.into(), self.clone())]);
-        self.0.backend.to_safetensors(tensors, filename);
+        let data = HashMap::from([(name.into(), self.clone())]);
+        safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
     }
 }
 
@@ -610,7 +607,7 @@ impl Debug for Tensor {
             .field("id", &self.id())
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
-            .field("backend", &self.backend())
+            .field("device", &self.device())
             .field("primitive", &self.primitive())
             .field(
                 "inputs",
@@ -630,7 +627,7 @@ impl Display for Tensor {
             .field("id", &self.id())
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
-            .field("backend", &self.backend())
+            .field("device", &self.device())
             .field("primitive", &self.primitive())
             .field(
                 "inputs",
@@ -650,5 +647,31 @@ impl AsRef<Tensor> for Tensor {
 impl Shape for Tensor {
     fn shape(&self) -> &[usize] {
         self.0.shape.shape()
+    }
+}
+
+impl<'a> safetensors::View for &'a Tensor {
+    fn dtype(&self) -> safetensors::Dtype {
+        self.0.dtype.safetensor_dtype()
+    }
+
+    fn shape(&self) -> &[usize] {
+        &self.0.shape
+    }
+
+    fn data(&self) -> Cow<[u8]> {
+        if !self.is_evaluated() {
+            eval((self, true));
+        }
+        let data = self.0.data.borrow();
+        let data = data.as_deref().unwrap();
+        let bytes = data.as_bytes();
+        assert_eq!(bytes.len(), self.data_len());
+        bytes.into()
+    }
+
+    fn data_len(&self) -> usize {
+        // number of elements * byte size of element
+        self.0.shape.size() * self.0.dtype.size_of_elem()
     }
 }

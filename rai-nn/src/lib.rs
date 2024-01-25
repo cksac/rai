@@ -97,12 +97,12 @@ impl NamedParameter for Tensor {
                 );
             }
 
-            if self.backend() != t.backend() {
+            if self.device() != t.device() {
                 panic!(
-                    "parameter {} backend {:?} not align with data backend {:?}",
+                    "parameter {} device {:?} not align with data device {:?}",
                     name,
-                    self.backend(),
-                    t.backend()
+                    self.device(),
+                    t.device()
                 );
             }
 

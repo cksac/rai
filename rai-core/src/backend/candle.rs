@@ -1,24 +1,16 @@
+use crate::{
+    dispatch::Eval, primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, DType, Device,
+    DynDType, Shape, Tensor, F16, F32, F64, U32, U8,
+};
+use half::{bf16, f16};
+use safetensors::View;
 use std::{
     any::{Any, TypeId},
-    collections::HashMap,
     ops::Deref,
-    path::Path,
-};
-
-use half::{bf16, f16};
-use safetensors::tensor::TensorView;
-
-use crate::{
-    backend,
-    dispatch::{Dispatch, Eval},
-    primitives,
-    tensor::TensorLike,
-    utils::dot_graph,
-    Backend, DType, DynDType, Shape, Tensor, F16, F32, F64, U32, U8,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Cpu;
+pub struct CandleBackend;
 
 type Data = candle_core::Tensor;
 
@@ -66,9 +58,13 @@ impl TensorLike for candle_core::Tensor {
             candle_core::DType::F16 => Box::new(self.to_vec1::<f16>().unwrap()),
         }
     }
+
+    fn as_bytes(&self) -> Vec<u8> {
+        View::data(self).into_owned()
+    }
 }
 
-impl Backend for Cpu {
+impl Backend for CandleBackend {
     fn clone_boxed(&self) -> Box<dyn Backend> {
         Box::new(self.clone())
     }
@@ -86,38 +82,6 @@ impl Backend for Cpu {
         rhs.as_any()
             .downcast_ref()
             .map_or(false, |other| self == other)
-    }
-
-    fn from_safetensor(&self, st: &TensorView) -> Tensor {
-        let dtype: Box<dyn DynDType> = st.dtype().into();
-        let primitive = primitives::FromSafetensor;
-        let t = Tensor::new(&Cpu, dtype, st.shape(), primitive, vec![]);
-        let device = candle_core::Device::Cpu;
-        let candle_tensor = candle_core::safetensors::Load::load(st, &device).unwrap();
-        t.set_data(candle_tensor);
-        t
-    }
-
-    fn to_safetensors(&self, tensors: HashMap<String, Tensor>, filename: &Path) {
-        let candle_tensors: HashMap<String, candle_core::Tensor> = tensors
-            .into_iter()
-            .map(|(n, t)| {
-                let ct = t.get_data::<Data>().unwrap();
-                let ct = ct.deref().clone();
-                (n, ct)
-            })
-            .collect();
-        candle_core::safetensors::save(&candle_tensors, filename).unwrap();
-    }
-
-    fn debug_info(&self) {
-        println!(
-            "avx: {}, neon: {}, simd128: {}, f16c: {}",
-            candle_core::utils::with_avx(),
-            candle_core::utils::with_neon(),
-            candle_core::utils::with_simd128(),
-            candle_core::utils::with_f16c()
-        );
     }
 }
 
@@ -151,29 +115,29 @@ impl From<F64> for candle_core::DType {
     }
 }
 
-impl From<&Box<dyn Backend>> for candle_core::Device {
-    fn from(val: &Box<dyn Backend>) -> Self {
+impl From<&Box<dyn Device>> for candle_core::Device {
+    fn from(val: &Box<dyn Device>) -> Self {
         let d = val.as_any();
-        if d.downcast_ref::<backend::Cpu>().is_some() {
+        if d.downcast_ref::<Cpu>().is_some() {
             return candle_core::Device::Cpu;
         }
-        panic!("unsupported backend: {:?}", val);
+        panic!("unsupported device: {:?}", val);
     }
 }
 
-impl From<&dyn Backend> for candle_core::Device {
-    fn from(val: &dyn Backend) -> Self {
+impl From<&dyn Device> for candle_core::Device {
+    fn from(val: &dyn Device) -> Self {
         let d = val.as_any();
-        if d.downcast_ref::<backend::Cpu>().is_some() {
+        if d.downcast_ref::<Cpu>().is_some() {
             return candle_core::Device::Cpu;
         }
-        panic!("unsupported backend: {:?}", val);
+        panic!("unsupported device: {:?}", val);
     }
 }
 
 macro_rules! impl_full {
     ($T:ty) => {
-        impl Eval<Cpu, primitives::Full<$T>> for Dispatch<Cpu, primitives::Full<$T>> {
+        impl Eval<Cpu, primitives::Full<$T>> for CandleBackend {
             fn eval(
                 &self,
                 _: &Cpu,
@@ -184,7 +148,7 @@ macro_rules! impl_full {
                 let t = candle_core::Tensor::full(
                     primitive.val,
                     output.shape(),
-                    &output.backend().into(),
+                    &output.device().into(),
                 )
                 .unwrap();
                 output.set_data(t);
@@ -199,11 +163,10 @@ impl_full!(F16);
 impl_full!(F32);
 impl_full!(F64);
 
-impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
+impl Eval<Cpu, primitives::Normal> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Normal, _: &[Tensor], output: &Tensor) {
         // TODO: not always f32
-        let t =
-            candle_core::Tensor::rand(-1.0f32, 1.0f32, output.shape(), &output.backend().into());
+        let t = candle_core::Tensor::rand(-1.0f32, 1.0f32, output.shape(), &output.device().into());
         let t = t.unwrap();
         output.set_data(t);
     }
@@ -211,7 +174,7 @@ impl Eval<Cpu, primitives::Normal> for Dispatch<Cpu, primitives::Normal> {
 
 macro_rules! impl_arange {
     ($T:ty) => {
-        impl Eval<Cpu, primitives::Arange<$T>> for Dispatch<Cpu, primitives::Arange<$T>> {
+        impl Eval<Cpu, primitives::Arange<$T>> for CandleBackend {
             fn eval(
                 &self,
                 _: &Cpu,
@@ -226,7 +189,7 @@ macro_rules! impl_arange {
                     start,
                     end,
                     step,
-                    &output.backend().into(),
+                    &output.device().into(),
                 )
                 .unwrap();
                 output.set_data(t);
@@ -243,7 +206,7 @@ impl_arange!(F64);
 
 macro_rules! impl_from_array {
     ($T:ty) => {
-        impl Eval<Cpu, primitives::FromArray<$T>> for Dispatch<Cpu, primitives::FromArray<$T>> {
+        impl Eval<Cpu, primitives::FromArray<$T>> for CandleBackend {
             fn eval(
                 &self,
                 _: &Cpu,
@@ -251,7 +214,7 @@ macro_rules! impl_from_array {
                 _: &[Tensor],
                 output: &Tensor,
             ) {
-                let device = &output.backend().into();
+                let device = &output.device().into();
                 let t = candle_core::Tensor::new(primitive.data.as_slice(), device)
                     .unwrap()
                     .reshape(output.shape())
@@ -268,7 +231,7 @@ impl_from_array!(F16);
 impl_from_array!(F32);
 impl_from_array!(F64);
 
-impl Eval<Cpu, primitives::Add> for Dispatch<Cpu, primitives::Add> {
+impl Eval<Cpu, primitives::Add> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Add, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -285,7 +248,7 @@ impl Eval<Cpu, primitives::Add> for Dispatch<Cpu, primitives::Add> {
     }
 }
 
-impl Eval<Cpu, primitives::Sub> for Dispatch<Cpu, primitives::Sub> {
+impl Eval<Cpu, primitives::Sub> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Sub, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -302,7 +265,7 @@ impl Eval<Cpu, primitives::Sub> for Dispatch<Cpu, primitives::Sub> {
     }
 }
 
-impl Eval<Cpu, primitives::Mul> for Dispatch<Cpu, primitives::Mul> {
+impl Eval<Cpu, primitives::Mul> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Mul, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -327,7 +290,7 @@ impl Eval<Cpu, primitives::Mul> for Dispatch<Cpu, primitives::Mul> {
     }
 }
 
-impl Eval<Cpu, primitives::Div> for Dispatch<Cpu, primitives::Div> {
+impl Eval<Cpu, primitives::Div> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Div, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -344,7 +307,7 @@ impl Eval<Cpu, primitives::Div> for Dispatch<Cpu, primitives::Div> {
     }
 }
 
-impl Eval<Cpu, primitives::MatMul> for Dispatch<Cpu, primitives::MatMul> {
+impl Eval<Cpu, primitives::MatMul> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::MatMul, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -364,7 +327,7 @@ impl Eval<Cpu, primitives::MatMul> for Dispatch<Cpu, primitives::MatMul> {
     }
 }
 
-impl Eval<Cpu, primitives::Sin> for Dispatch<Cpu, primitives::Sin> {
+impl Eval<Cpu, primitives::Sin> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Sin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -374,7 +337,7 @@ impl Eval<Cpu, primitives::Sin> for Dispatch<Cpu, primitives::Sin> {
     }
 }
 
-impl Eval<Cpu, primitives::Cos> for Dispatch<Cpu, primitives::Cos> {
+impl Eval<Cpu, primitives::Cos> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Cos, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -384,7 +347,7 @@ impl Eval<Cpu, primitives::Cos> for Dispatch<Cpu, primitives::Cos> {
     }
 }
 
-impl Eval<Cpu, primitives::Negative> for Dispatch<Cpu, primitives::Negative> {
+impl Eval<Cpu, primitives::Negative> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Negative, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -394,7 +357,7 @@ impl Eval<Cpu, primitives::Negative> for Dispatch<Cpu, primitives::Negative> {
     }
 }
 
-impl Eval<Cpu, primitives::ReduceSum> for Dispatch<Cpu, primitives::ReduceSum> {
+impl Eval<Cpu, primitives::ReduceSum> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::ReduceSum, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -409,7 +372,7 @@ impl Eval<Cpu, primitives::ReduceSum> for Dispatch<Cpu, primitives::ReduceSum> {
     }
 }
 
-impl Eval<Cpu, primitives::ReduceMax> for Dispatch<Cpu, primitives::ReduceMax> {
+impl Eval<Cpu, primitives::ReduceMax> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::ReduceMax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -425,7 +388,7 @@ impl Eval<Cpu, primitives::ReduceMax> for Dispatch<Cpu, primitives::ReduceMax> {
     }
 }
 
-impl Eval<Cpu, primitives::ReduceMin> for Dispatch<Cpu, primitives::ReduceMin> {
+impl Eval<Cpu, primitives::ReduceMin> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::ReduceMin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -441,7 +404,7 @@ impl Eval<Cpu, primitives::ReduceMin> for Dispatch<Cpu, primitives::ReduceMin> {
     }
 }
 
-impl Eval<Cpu, primitives::Square> for Dispatch<Cpu, primitives::Square> {
+impl Eval<Cpu, primitives::Square> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Square, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -451,7 +414,7 @@ impl Eval<Cpu, primitives::Square> for Dispatch<Cpu, primitives::Square> {
     }
 }
 
-impl Eval<Cpu, primitives::Sqrt> for Dispatch<Cpu, primitives::Sqrt> {
+impl Eval<Cpu, primitives::Sqrt> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Sqrt, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -461,7 +424,7 @@ impl Eval<Cpu, primitives::Sqrt> for Dispatch<Cpu, primitives::Sqrt> {
     }
 }
 
-impl Eval<Cpu, primitives::Rsqrt> for Dispatch<Cpu, primitives::Rsqrt> {
+impl Eval<Cpu, primitives::Rsqrt> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Rsqrt, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -471,7 +434,7 @@ impl Eval<Cpu, primitives::Rsqrt> for Dispatch<Cpu, primitives::Rsqrt> {
     }
 }
 
-impl Eval<Cpu, primitives::Transpose> for Dispatch<Cpu, primitives::Transpose> {
+impl Eval<Cpu, primitives::Transpose> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::Transpose, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -481,7 +444,7 @@ impl Eval<Cpu, primitives::Transpose> for Dispatch<Cpu, primitives::Transpose> {
     }
 }
 
-impl Eval<Cpu, primitives::Reshape> for Dispatch<Cpu, primitives::Reshape> {
+impl Eval<Cpu, primitives::Reshape> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::Reshape, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -491,7 +454,7 @@ impl Eval<Cpu, primitives::Reshape> for Dispatch<Cpu, primitives::Reshape> {
     }
 }
 
-impl Eval<Cpu, primitives::Broadcast> for Dispatch<Cpu, primitives::Broadcast> {
+impl Eval<Cpu, primitives::Broadcast> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::Broadcast, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -501,7 +464,7 @@ impl Eval<Cpu, primitives::Broadcast> for Dispatch<Cpu, primitives::Broadcast> {
     }
 }
 
-impl Eval<Cpu, primitives::Sign> for Dispatch<Cpu, primitives::Sign> {
+impl Eval<Cpu, primitives::Sign> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Sign, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -512,7 +475,7 @@ impl Eval<Cpu, primitives::Sign> for Dispatch<Cpu, primitives::Sign> {
     }
 }
 
-impl Eval<Cpu, primitives::Abs> for Dispatch<Cpu, primitives::Abs> {
+impl Eval<Cpu, primitives::Abs> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Abs, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -522,7 +485,7 @@ impl Eval<Cpu, primitives::Abs> for Dispatch<Cpu, primitives::Abs> {
     }
 }
 
-impl Eval<Cpu, primitives::Exp> for Dispatch<Cpu, primitives::Exp> {
+impl Eval<Cpu, primitives::Exp> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Exp, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -532,7 +495,7 @@ impl Eval<Cpu, primitives::Exp> for Dispatch<Cpu, primitives::Exp> {
     }
 }
 
-impl Eval<Cpu, primitives::Log> for Dispatch<Cpu, primitives::Log> {
+impl Eval<Cpu, primitives::Log> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Log, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -542,7 +505,7 @@ impl Eval<Cpu, primitives::Log> for Dispatch<Cpu, primitives::Log> {
     }
 }
 
-impl Eval<Cpu, primitives::Log2> for Dispatch<Cpu, primitives::Log2> {
+impl Eval<Cpu, primitives::Log2> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Log2, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -552,7 +515,7 @@ impl Eval<Cpu, primitives::Log2> for Dispatch<Cpu, primitives::Log2> {
     }
 }
 
-impl Eval<Cpu, primitives::Log10> for Dispatch<Cpu, primitives::Log10> {
+impl Eval<Cpu, primitives::Log10> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Log10, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -562,7 +525,7 @@ impl Eval<Cpu, primitives::Log10> for Dispatch<Cpu, primitives::Log10> {
     }
 }
 
-impl Eval<Cpu, primitives::Equal> for Dispatch<Cpu, primitives::Equal> {
+impl Eval<Cpu, primitives::Equal> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Equal, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -579,7 +542,7 @@ impl Eval<Cpu, primitives::Equal> for Dispatch<Cpu, primitives::Equal> {
     }
 }
 
-impl Eval<Cpu, primitives::NotEqual> for Dispatch<Cpu, primitives::NotEqual> {
+impl Eval<Cpu, primitives::NotEqual> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::NotEqual, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -596,7 +559,7 @@ impl Eval<Cpu, primitives::NotEqual> for Dispatch<Cpu, primitives::NotEqual> {
     }
 }
 
-impl Eval<Cpu, primitives::Greater> for Dispatch<Cpu, primitives::Greater> {
+impl Eval<Cpu, primitives::Greater> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Greater, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -613,7 +576,7 @@ impl Eval<Cpu, primitives::Greater> for Dispatch<Cpu, primitives::Greater> {
     }
 }
 
-impl Eval<Cpu, primitives::GreaterEqual> for Dispatch<Cpu, primitives::GreaterEqual> {
+impl Eval<Cpu, primitives::GreaterEqual> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::GreaterEqual, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -630,7 +593,7 @@ impl Eval<Cpu, primitives::GreaterEqual> for Dispatch<Cpu, primitives::GreaterEq
     }
 }
 
-impl Eval<Cpu, primitives::Less> for Dispatch<Cpu, primitives::Less> {
+impl Eval<Cpu, primitives::Less> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Less, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -647,7 +610,7 @@ impl Eval<Cpu, primitives::Less> for Dispatch<Cpu, primitives::Less> {
     }
 }
 
-impl Eval<Cpu, primitives::LessEqual> for Dispatch<Cpu, primitives::LessEqual> {
+impl Eval<Cpu, primitives::LessEqual> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::LessEqual, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -664,7 +627,7 @@ impl Eval<Cpu, primitives::LessEqual> for Dispatch<Cpu, primitives::LessEqual> {
     }
 }
 
-impl Eval<Cpu, primitives::Maximum> for Dispatch<Cpu, primitives::Maximum> {
+impl Eval<Cpu, primitives::Maximum> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Maximum, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -683,7 +646,7 @@ impl Eval<Cpu, primitives::Maximum> for Dispatch<Cpu, primitives::Maximum> {
 
 macro_rules! impl_as_type {
     ($T:ty) => {
-        impl Eval<Cpu, primitives::AsType<$T>> for Dispatch<Cpu, primitives::AsType<$T>> {
+        impl Eval<Cpu, primitives::AsType<$T>> for CandleBackend {
             fn eval(
                 &self,
                 _: &Cpu,
@@ -732,7 +695,7 @@ fn log_softmax<D: candle_core::shape::Dim>(
     Ok(log_sm)
 }
 
-impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
+impl Eval<Cpu, primitives::Softmax> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::Softmax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -742,7 +705,7 @@ impl Eval<Cpu, primitives::Softmax> for Dispatch<Cpu, primitives::Softmax> {
     }
 }
 
-impl Eval<Cpu, primitives::LogSoftmax> for Dispatch<Cpu, primitives::LogSoftmax> {
+impl Eval<Cpu, primitives::LogSoftmax> for CandleBackend {
     fn eval(
         &self,
         _: &Cpu,
@@ -758,7 +721,7 @@ impl Eval<Cpu, primitives::LogSoftmax> for Dispatch<Cpu, primitives::LogSoftmax>
     }
 }
 
-impl Eval<Cpu, primitives::Gather> for Dispatch<Cpu, primitives::Gather> {
+impl Eval<Cpu, primitives::Gather> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::Gather, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -772,7 +735,7 @@ impl Eval<Cpu, primitives::Gather> for Dispatch<Cpu, primitives::Gather> {
     }
 }
 
-impl Eval<Cpu, primitives::IndexSelect> for Dispatch<Cpu, primitives::IndexSelect> {
+impl Eval<Cpu, primitives::IndexSelect> for CandleBackend {
     fn eval(
         &self,
         _: &Cpu,
@@ -792,7 +755,7 @@ impl Eval<Cpu, primitives::IndexSelect> for Dispatch<Cpu, primitives::IndexSelec
     }
 }
 
-impl Eval<Cpu, primitives::Concatenate> for Dispatch<Cpu, primitives::Concatenate> {
+impl Eval<Cpu, primitives::Concatenate> for CandleBackend {
     fn eval(
         &self,
         _: &Cpu,
@@ -809,7 +772,7 @@ impl Eval<Cpu, primitives::Concatenate> for Dispatch<Cpu, primitives::Concatenat
     }
 }
 
-impl Eval<Cpu, primitives::Narrow> for Dispatch<Cpu, primitives::Narrow> {
+impl Eval<Cpu, primitives::Narrow> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::Narrow, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -821,7 +784,7 @@ impl Eval<Cpu, primitives::Narrow> for Dispatch<Cpu, primitives::Narrow> {
     }
 }
 
-impl Eval<Cpu, primitives::Where> for Dispatch<Cpu, primitives::Where> {
+impl Eval<Cpu, primitives::Where> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Where, inputs: &[Tensor], output: &Tensor) {
         let cond = &inputs[0];
         let on_true = &inputs[1];
@@ -837,7 +800,7 @@ impl Eval<Cpu, primitives::Where> for Dispatch<Cpu, primitives::Where> {
     }
 }
 
-impl Eval<Cpu, primitives::ArgMax> for Dispatch<Cpu, primitives::ArgMax> {
+impl Eval<Cpu, primitives::ArgMax> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::ArgMax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -852,7 +815,7 @@ impl Eval<Cpu, primitives::ArgMax> for Dispatch<Cpu, primitives::ArgMax> {
     }
 }
 
-impl Eval<Cpu, primitives::ArgMin> for Dispatch<Cpu, primitives::ArgMin> {
+impl Eval<Cpu, primitives::ArgMin> for CandleBackend {
     fn eval(&self, _: &Cpu, primitive: &primitives::ArgMin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -867,7 +830,7 @@ impl Eval<Cpu, primitives::ArgMin> for Dispatch<Cpu, primitives::ArgMin> {
     }
 }
 
-impl Eval<Cpu, primitives::Erf> for Dispatch<Cpu, primitives::Erf> {
+impl Eval<Cpu, primitives::Erf> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Erf, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -877,7 +840,7 @@ impl Eval<Cpu, primitives::Erf> for Dispatch<Cpu, primitives::Erf> {
     }
 }
 
-impl Eval<Cpu, primitives::Tanh> for Dispatch<Cpu, primitives::Tanh> {
+impl Eval<Cpu, primitives::Tanh> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::Tanh, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
@@ -887,7 +850,7 @@ impl Eval<Cpu, primitives::Tanh> for Dispatch<Cpu, primitives::Tanh> {
     }
 }
 
-impl Eval<Cpu, primitives::PowerFloat> for Dispatch<Cpu, primitives::PowerFloat> {
+impl Eval<Cpu, primitives::PowerFloat> for CandleBackend {
     fn eval(
         &self,
         _: &Cpu,
@@ -903,7 +866,7 @@ impl Eval<Cpu, primitives::PowerFloat> for Dispatch<Cpu, primitives::PowerFloat>
     }
 }
 
-impl Eval<Cpu, primitives::ToContiguous> for Dispatch<Cpu, primitives::ToContiguous> {
+impl Eval<Cpu, primitives::ToContiguous> for CandleBackend {
     fn eval(&self, _: &Cpu, _: &primitives::ToContiguous, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
