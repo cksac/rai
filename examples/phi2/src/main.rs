@@ -90,13 +90,13 @@ impl Module for RotaryEmbedding {
         Tensor::cat(&[xs_rot, xs_pass], -1)
     }
 
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {}
+    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {}
 
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {}
+    fn update_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {}
 }
 
 pub struct MLP {
@@ -126,11 +126,11 @@ impl Module for MLP {
         (&self.fc1).chain(&self.act).chain(&self.fc2).forward(x)
     }
 
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
         todo!()
     }
 
@@ -306,11 +306,11 @@ impl Module for Attention {
         self.dense.forward(&attn_output)
     }
 
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
         todo!()
     }
 
@@ -369,11 +369,11 @@ impl Module for DecoderLayer {
         attn_outputs + feed_forward_hidden_states + residual
     }
 
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
         todo!()
     }
 
@@ -445,7 +445,7 @@ impl Module for Model {
         update_params!(params, @self.final_layernorm);
     }
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
         todo!()
     }
 

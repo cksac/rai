@@ -1,4 +1,4 @@
-use crate::{Primitive, Tensor, Type};
+use crate::{Primitive, Tensor};
 use std::any::Any;
 use tracing::Level;
 
