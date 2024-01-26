@@ -42,7 +42,7 @@ fn test_reshape() {
 
 #[test]
 fn test_broadcast_to() {
-    let device = &Cpu;
+    let device = Cpu;
     let func = |x: &Tensor| x.broadcast_to([3, 2, 3]);
     let vg_func = value_and_grad(func);
     let a = Tensor::ones([2, 3], F32, device);
@@ -134,7 +134,7 @@ fn test_softmax() {
     let func = |x: &Tensor| x.softmax(1);
     let vg_func = value_and_grad(func);
 
-    let a = Tensor::normal([2, 3], F32, device);
+    let a = Tensor::rand([2, 3], F32, device);
     let (out, grad) = vg_func.apply((&a,));
     println!("{}", dot_graph([&out, &grad]));
     println!("{}", out);
@@ -171,7 +171,7 @@ fn test_index_select() {
 fn test_flatten() {
     let device = Cpu;
 
-    let a = Tensor::normal([2, 3, 4], F32, device);
+    let a = Tensor::rand([2, 3, 4], F32, device);
     let out = a.flatten(..);
     println!("{}", a);
     println!("{}", out);

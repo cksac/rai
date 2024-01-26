@@ -2,18 +2,18 @@ use std::any::Any;
 
 use tracing::Level;
 
-use crate::{DType, Primitive, Tensor};
+use crate::{Primitive, Tensor, Type};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Full<D>
 where
-    D: DType,
+    D: Type,
 {
     pub val: D::Repr,
 }
 impl<D> Full<D>
 where
-    D: DType,
+    D: Type,
 {
     pub fn new(val: D::Repr) -> Self {
         Full { val }
@@ -22,10 +22,10 @@ where
 
 impl<D> Primitive for Full<D>
 where
-    D: DType,
+    D: Type,
 {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn dot_label(&self) -> String {
@@ -50,15 +50,66 @@ where
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Normal;
+pub struct Normal<D: Type> {
+    pub mean: D::Repr,
+    pub std: D::Repr,
+}
 
-impl Primitive for Normal {
+impl<D: Type> Normal<D> {
+    pub fn new(mean: D::Repr, std: D::Repr) -> Self {
+        Self { mean, std }
+    }
+}
+
+impl<D: Type> Primitive for Normal<D> {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("Normal({:?}, {:?})", self.mean, self.std)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    #[inline]
+    fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
+        output.ones_like()
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    #[inline]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
+        vec![]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Random<D: Type> {
+    pub from: D::Repr,
+    pub to: D::Repr,
+}
+
+impl<D: Type> Random<D> {
+    pub fn new(from: D::Repr, to: D::Repr) -> Self {
+        Self { from, to }
+    }
+}
+
+impl<D: Type> Primitive for Random<D> {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("Random({:?}, {:?})", self.from, self.to)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
@@ -75,19 +126,19 @@ impl Primitive for Normal {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Arange<D: DType> {
+pub struct Arange<D: Type> {
     pub start: D::Repr,
     pub stop: D::Repr,
     pub step: D::Repr,
 }
 
-impl<D: DType> Arange<D> {
+impl<D: Type> Arange<D> {
     pub fn new(start: D::Repr, stop: D::Repr, step: D::Repr) -> Self {
         Self { start, stop, step }
     }
 }
 
-impl<D: DType> Primitive for Arange<D> {
+impl<D: Type> Primitive for Arange<D> {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
     }
@@ -116,14 +167,14 @@ impl<D: DType> Primitive for Arange<D> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FromArray<D>
 where
-    D: DType,
+    D: Type,
 {
     pub data: Vec<D::Repr>,
 }
 
 impl<D> FromArray<D>
 where
-    D: DType,
+    D: Type,
 {
     pub fn new(data: impl Into<Vec<D::Repr>>) -> Self {
         Self { data: data.into() }
@@ -132,7 +183,7 @@ where
 
 impl<D> Primitive for FromArray<D>
 where
-    D: DType,
+    D: Type,
 {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())

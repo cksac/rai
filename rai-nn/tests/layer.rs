@@ -10,12 +10,12 @@ fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {
 
 #[test]
 fn test_linear_batch_input() {
-    let device = &Cpu;
+    let device = Cpu;
     let in_size = 5;
     let out_size = 2;
     let batch_size = 8;
     let linear = Linear::new(in_size, out_size, true, F32, device);
-    let input = Tensor::normal([batch_size, in_size], F32, device);
+    let input = Tensor::randn([batch_size, in_size], F32, device);
 
     let vg_fn = value_and_grad(loss_fn);
     let ((loss, Aux(output)), (grads, ..)) = vg_fn.apply((&linear, &input));
@@ -32,7 +32,7 @@ fn test_linear_batch_input() {
 
 #[test]
 fn test_embedding() {
-    let device = &Cpu;
+    let device = Cpu;
     let num_embeddings = 10;
     let features = 4;
     let embedding = Embedding::new(num_embeddings, features, F32, device);

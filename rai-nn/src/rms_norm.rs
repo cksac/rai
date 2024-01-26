@@ -1,5 +1,5 @@
 use crate::{gather_params, update_params, NamedParameter};
-use rai_core::{nn::Module, trainable_module, AsDevice, DType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, AsDevice, Shape, Tensor, Type};
 use std::collections::HashMap;
 
 pub struct RMSNorm {
@@ -8,7 +8,7 @@ pub struct RMSNorm {
 }
 
 impl RMSNorm {
-    pub fn new(dims: usize, eps: f32, dtype: impl DType, device: impl AsDevice) -> Self {
+    pub fn new(dims: usize, eps: f32, dtype: impl Type, device: impl AsDevice) -> Self {
         let weight = Tensor::ones([dims], dtype, device);
         Self { weight, eps }
     }

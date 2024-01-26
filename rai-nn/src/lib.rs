@@ -97,17 +97,8 @@ impl NamedParameter for Tensor {
                 );
             }
 
-            if self.device() != t.device() {
-                panic!(
-                    "parameter {} device {:?} not align with data device {:?}",
-                    name,
-                    self.device(),
-                    t.device()
-                );
-            }
-
             // todo: check if can promote type to self
-            let t = t.as_type(self);
+            let t = t.to_device(self).as_type(self);
             eval((&t, true));
             self.replace_data(t);
         } else {

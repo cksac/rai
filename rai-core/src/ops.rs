@@ -11,15 +11,14 @@ use tracing::Level;
 
 use crate::{
     primitives::{
-        Abs, Add, Arange, ArgMax, ArgMin, AsType, Broadcast, Concatenate, Cos, Div, Equal, Erf,
-        Exp, FromArray, Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log,
-        Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual,
-        PowerFloat, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt,
-        Square, Sub, Tanh, ToContiguous, ToDevice, Transpose, Where,
+        Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp,
+        FromArray, Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10,
+        Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual, PowerFloat,
+        Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square,
+        Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
-    AsDevice, DType, Device, Dim, DynDType, ElemType, Primitive, Shape, Tensor, F16, F32, F64, U32,
-    U8,
+    AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
 };
 
 macro_rules! impl_std_ops_for_scalar {
@@ -109,7 +108,7 @@ pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Te
     let inputs = vec![];
     Tensor::new(
         device,
-        T::dyn_dtype(),
+        T::DType::boxed_dtype(),
         shape,
         Full::<T::DType>::new(val),
         inputs,
@@ -118,7 +117,7 @@ pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Te
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
-    if x.dtype() == T::dyn_dtype().as_ref() {
+    if x.dtype() == T::DType::boxed_dtype().as_ref() {
         full::<T>(val, x.shape(), x.device())
     } else {
         // TODO: check is type can be convert/promoted to x dtype?
@@ -147,25 +146,45 @@ pub fn ones_like(x: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn normal(shape: impl Shape, dtype: impl DType, device: impl AsDevice) -> Tensor {
+pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+    let dtype = T::boxed_dtype();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, Normal, inputs)
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Normal::<T>::new(T::zero(), T::one()),
+        inputs,
+    )
 }
 
-pub trait ArangeArgs<D: DType>: Debug {
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+    let dtype = T::boxed_dtype();
+    let inputs = vec![];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Random::<T>::new(T::zero(), T::one()),
+        inputs,
+    )
+}
+
+pub trait ArangeArgs<D: Type>: Debug {
     fn start(&self) -> D::Repr {
-        D::zero()
+        D::Repr::zero()
     }
 
     fn stop(&self) -> D::Repr;
 
     fn step(&self) -> D::Repr {
-        D::one()
+        D::Repr::one()
     }
 
-    fn dtype(&self) -> D;
-
-    fn size(&self) -> usize;
+    fn size(&self) -> usize {
+        D::Repr::elem_count(self.start(), self.stop(), self.step())
+    }
 }
 
 macro_rules! impl_arange_args {
@@ -174,18 +193,6 @@ macro_rules! impl_arange_args {
             fn stop(&self) -> $R {
                 *self
             }
-
-            fn dtype(&self) -> $T {
-                $T
-            }
-
-            fn size(&self) -> usize {
-                let start = self.start();
-                let stop = self.stop();
-                let step = self.step();
-                let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
-                size
-            }
         }
 
         impl ArangeArgs<$T> for ($R, $R) {
@@ -195,18 +202,6 @@ macro_rules! impl_arange_args {
 
             fn stop(&self) -> $R {
                 self.1
-            }
-
-            fn dtype(&self) -> $T {
-                $T
-            }
-
-            fn size(&self) -> usize {
-                let start = self.start();
-                let stop = self.stop();
-                let step = self.step();
-                let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
-                size
             }
         }
 
@@ -221,95 +216,6 @@ macro_rules! impl_arange_args {
 
             fn step(&self) -> $R {
                 self.2
-            }
-
-            fn dtype(&self) -> $T {
-                $T
-            }
-
-            fn size(&self) -> usize {
-                let start = self.start();
-                let stop = self.stop();
-                let step = self.step();
-                let size = std::cmp::max(((stop - start) / step).ceil() as usize, 0);
-                size
-            }
-        }
-    };
-
-    ($AS:ident, $R:ty, $T:tt) => {
-        impl ArangeArgs<$T> for $R {
-            fn stop(&self) -> $R {
-                *self
-            }
-
-            fn dtype(&self) -> $T {
-                $T
-            }
-
-            fn size(&self) -> usize {
-                let start = self.start();
-                let stop = self.stop();
-                let step = self.step();
-                let size = std::cmp::max(
-                    ($AS::from(stop - start) / $AS::from(step)).ceil() as usize,
-                    0,
-                );
-                size
-            }
-        }
-
-        impl ArangeArgs<$T> for ($R, $R) {
-            fn start(&self) -> $R {
-                self.0
-            }
-
-            fn stop(&self) -> $R {
-                self.1
-            }
-
-            fn dtype(&self) -> $T {
-                $T
-            }
-
-            fn size(&self) -> usize {
-                let start = self.start();
-                let stop = self.stop();
-                let step = self.step();
-                let size = std::cmp::max(
-                    ($AS::from(stop - start) / $AS::from(step)).ceil() as usize,
-                    0,
-                );
-                size
-            }
-        }
-
-        impl ArangeArgs<$T> for ($R, $R, $R) {
-            fn start(&self) -> $R {
-                self.0
-            }
-
-            fn stop(&self) -> $R {
-                self.1
-            }
-
-            fn step(&self) -> $R {
-                self.2
-            }
-
-            fn dtype(&self) -> $T {
-                $T
-            }
-
-            fn size(&self) -> usize {
-                let start = self.start();
-                let stop = self.stop();
-                let step = self.step();
-                let size = std::cmp::max(
-                    ($AS::from(stop - start) / $AS::from(step)).ceil() as usize,
-                    0,
-                );
-                size
             }
         }
     };
@@ -317,16 +223,16 @@ macro_rules! impl_arange_args {
 
 impl_arange_args!(f32, F32);
 impl_arange_args!(f64, F64);
-impl_arange_args!(f32, f16, F16);
-impl_arange_args!(f32, u8, U8);
-impl_arange_args!(f64, u32, U32);
+impl_arange_args!(f16, F16);
+impl_arange_args!(u8, U8);
+impl_arange_args!(u32, U32);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn arange<D: DType, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor {
+pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor {
     let start = args.start();
     let stop = args.stop();
     let step = args.step();
-    let dtype = args.dtype();
+    let dtype = D::boxed_dtype();
     let size = args.size();
     let inputs = vec![];
     Tensor::new(
@@ -349,7 +255,7 @@ pub fn from_array<T: ElemType>(
     let inputs = vec![];
     Tensor::new(
         device,
-        T::dyn_dtype(),
+        T::DType::boxed_dtype(),
         shape,
         FromArray::<T::DType>::new(data),
         inputs,
@@ -778,109 +684,29 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Maximum, inputs)
 }
 
-pub trait AsTypeArgs: Debug {
-    fn dtype(&self) -> &dyn DynDType;
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive>;
-}
-
-impl<T: DynDType> AsTypeArgs for T {
-    fn dtype(&self) -> &dyn DynDType {
-        self
-    }
-
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
-        DynDType::primitive_as_dtype(self)
-    }
-}
-
-impl<'a> AsTypeArgs for &'a dyn DynDType {
-    fn dtype(&self) -> &dyn DynDType {
-        *self
-    }
-
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
-        DynDType::primitive_as_dtype(*self)
-    }
-}
-
-impl AsTypeArgs for Tensor {
-    fn dtype(&self) -> &dyn DynDType {
-        Tensor::dtype(self)
-    }
-
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
-        Tensor::dtype(self).primitive_as_dtype()
-    }
-}
-
-impl<'a> AsTypeArgs for &'a Tensor {
-    fn dtype(&self) -> &dyn DynDType {
-        Tensor::dtype(*self)
-    }
-
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
-        Tensor::dtype(*self).primitive_as_dtype()
-    }
-}
-
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn as_type(x: &Tensor, args: impl AsTypeArgs) -> Tensor {
-    let dtype = args.dtype();
+pub fn as_type(x: &Tensor, dtype: impl AsDType) -> Tensor {
+    let dtype = dtype.dtype();
     if x.dtype() == dtype {
         return x.clone();
     }
     let device = x.device();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let primitive = args.primitive_as_dtype();
+    let primitive = dtype.primitive_as_dtype();
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
-pub trait ToDeviceArgs: Debug {
-    fn device(&self) -> &dyn Device;
-    fn primitive_to_device(&self) -> Box<dyn Primitive>;
-}
-
-impl<D: Device> ToDeviceArgs for D {
-    fn device(&self) -> &dyn Device {
-        self
-    }
-
-    fn primitive_to_device(&self) -> Box<dyn Primitive> {
-        Device::primitive_to_device(self)
-    }
-}
-
-impl ToDeviceArgs for Tensor {
-    fn device(&self) -> &dyn Device {
-        Tensor::device(self)
-    }
-
-    fn primitive_to_device(&self) -> Box<dyn Primitive> {
-        Tensor::device(self).primitive_to_device()
-    }
-}
-
-impl<'a> ToDeviceArgs for &'a Tensor {
-    fn device(&self) -> &dyn Device {
-        Tensor::device(*self)
-    }
-
-    fn primitive_to_device(&self) -> Box<dyn Primitive> {
-        Tensor::device(*self).primitive_to_device()
-    }
-}
-
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn to_device(x: &Tensor, args: impl ToDeviceArgs) -> Tensor {
-    let device = args.device();
+pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
+    let device = device.device();
     if x.device() == device {
         return x.clone();
     }
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let primitive = args.primitive_to_device();
+    let primitive = device.primitive_to_device();
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
 

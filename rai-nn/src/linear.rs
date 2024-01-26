@@ -1,5 +1,5 @@
 use crate::{gather_params, update_params, NamedParameter};
-use rai_core::{nn::Module, trainable_module, AsDevice, DType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, AsDevice, Shape, Tensor, Type};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -9,18 +9,18 @@ pub struct Linear {
 }
 
 impl Linear {
-    pub fn new(
+    pub fn new<T: Type>(
         in_features: usize,
         out_features: usize,
         has_bias: bool,
-        dtype: impl DType,
+        dtype: T,
         device: impl AsDevice,
     ) -> Self {
         let device = device.device();
         // TODO: init strategy
-        let weight = Tensor::normal([out_features, in_features], dtype, device);
+        let weight = Tensor::rand([out_features, in_features], dtype, device);
         let bias = if has_bias {
-            Some(Tensor::normal([out_features], dtype, device))
+            Some(Tensor::rand([out_features], dtype, device))
         } else {
             None
         };

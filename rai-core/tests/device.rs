@@ -14,5 +14,5 @@ fn test_device() {
     assert!(cuda0.device() != cpu_ref);
     assert!(cpu.device() == cpu_ref);
     assert!(cpu.device() == cpu_ref.device());
-    assert!(cpu.boxed_device() == cpu_ref.boxed_device());
+    assert!(cpu.into_boxed_device() == cpu_ref.into_boxed_device());
 }

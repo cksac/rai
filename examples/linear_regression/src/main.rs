@@ -7,19 +7,21 @@ fn main() {
     let num_iters = 10000;
     let learning_rate = 0.01f32;
 
-    let device = &Cpu;
+    let device = Cpu;
+    let dtype = F32;
+
     // True parameters
-    let w_star = Tensor::normal([num_features], F32, device);
+    let w_star = Tensor::randn([num_features], dtype, device);
 
     // The input examples (design matrix)
-    let x = Tensor::normal([num_samples, num_features], F32, device);
+    let x = Tensor::randn([num_samples, num_features], dtype, device);
 
     // Noisy labels
-    let eps = Tensor::normal([num_samples], F32, device) * 1e-2f32;
+    let eps = Tensor::randn([num_samples], dtype, device) * 1e-2f32;
     let y = x.matmul(&w_star) + eps;
 
     // Initialize random parameters
-    let w = &(Tensor::normal([num_features], F32, device) * 1e-2f32);
+    let w = &(Tensor::randn([num_features], dtype, device) * 1e-2f32);
 
     let loss_fn = move |w: &Tensor| {
         let y = &y;

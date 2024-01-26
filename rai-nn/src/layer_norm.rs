@@ -1,5 +1,5 @@
 use crate::{gather_params, update_params, NamedParameter};
-use rai_core::{nn::Module, trainable_module, AsDevice, DType, Tensor};
+use rai_core::{nn::Module, trainable_module, AsDevice, Tensor, Type};
 use std::collections::HashMap;
 
 pub struct LayerNorm {
@@ -13,7 +13,7 @@ impl LayerNorm {
         dims: usize,
         eps: f64,
         affine: bool,
-        dtype: impl DType,
+        dtype: impl Type,
         device: impl AsDevice,
     ) -> Self {
         let device = device.device();

@@ -53,14 +53,19 @@ where
 type DynBackend = Box<dyn Eval<dyn Device, dyn Primitive>>;
 
 macro_rules! register_backend {
-    ($backend:ident, $device:ident, $rules:expr) => {
+    ($backend:ident, $device:ty, $rules:expr) => {
         // creation
         _register::<$backend, $device, primitives::Full<U8>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<U32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<F16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<F32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<F64>>($backend, &mut $rules);
-        _register::<$backend, $device, primitives::Normal>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Random<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Random<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Random<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Normal<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Normal<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Normal<F64>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<U8>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<U32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<F16>>($backend, &mut $rules);
@@ -110,6 +115,9 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::Softmax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::LogSoftmax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Erf>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDevice<Cpu>>($backend, &mut $rules);
+        #[cfg(feature = "cuda")]
+        _register::<$backend, $device, primitives::ToDevice<crate::Cuda>>($backend, &mut $rules);
 
         // indexing
         _register::<$backend, $device, primitives::Gather>($backend, &mut $rules);
@@ -137,6 +145,9 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Laz
 
     #[cfg(feature = "candle-backend")]
     register_backend!(CandleBackend, Cpu, rules);
+
+    #[cfg(all(feature = "candle-backend", feature = "cuda"))]
+    register_backend!(CandleBackend, crate::Cuda, rules);
 
     Mutex::new(rules)
 });

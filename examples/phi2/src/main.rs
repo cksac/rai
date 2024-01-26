@@ -4,7 +4,9 @@ use rai::{
     nn::{
         self, gather_params, update_params, Embedding, LayerNorm, Linear, Module, NamePath, NewGelu,
     },
-    trainable_module, AsDevice, Cpu, DType, Shape, Tensor, F32,
+    trainable_module,
+    utils::cuda_enabled,
+    AsDevice, Cpu, Cuda, Device, Shape, Tensor, Type, F32,
 };
 use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, io::Write, time::Instant};
@@ -45,7 +47,7 @@ struct RotaryEmbedding {
 }
 
 impl RotaryEmbedding {
-    pub fn new(cfg: &Config, device: impl AsDevice) -> Self {
+    pub fn new(cfg: &Config, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let dim = (cfg.partial_rotary_factor * cfg.head_dim() as f64) as usize;
         let inv_freq: Vec<_> = (0..dim)
@@ -53,9 +55,9 @@ impl RotaryEmbedding {
             .map(|i| 1f32 / cfg.rope_theta.powf(i as f32 / dim as f32))
             .collect();
         let inv_freq_len = inv_freq.len();
-        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], device);
+        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], device).as_type(dtype);
         let t = Tensor::arange((0u32, cfg.max_position_embeddings as u32), device)
-            .as_type(F32)
+            .as_type(dtype)
             .reshape([cfg.max_position_embeddings, 1]);
         let freqs = t.matmul(&inv_freq);
         let emb = Tensor::cat(&[&freqs, &freqs], -1);
@@ -81,8 +83,8 @@ impl Module for RotaryEmbedding {
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
         let (xs1, xs2) = (&xs12[0], &xs12[1]);
-        let c = &self.cos.narrow(0, seqlen_offset, seq_len);
-        let s = &self.sin.narrow(0, seqlen_offset, seq_len);
+        let c = &self.cos.narrow(0, seqlen_offset, seq_len).as_type(xs);
+        let s = &self.sin.narrow(0, seqlen_offset, seq_len).as_type(xs);
         let rotate_half = Tensor::cat(&[&xs2.neg(), xs1], -1);
         let xs_rot = xs_rot * c + rotate_half * s;
         Tensor::cat(&[xs_rot, xs_pass], -1)
@@ -104,7 +106,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+    pub fn new(cfg: &Config, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let fc1 = Linear::new(cfg.hidden_size, cfg.intermediate_size, true, dtype, device);
         let fc2 = Linear::new(cfg.intermediate_size, cfg.hidden_size, true, dtype, device);
@@ -171,7 +173,7 @@ fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
 }
 
 impl Attention {
-    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+    pub fn new(cfg: &Config, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let num_heads = cfg.num_attention_heads;
         let num_kv_heads = cfg.num_key_value_heads();
@@ -193,7 +195,7 @@ impl Attention {
         );
         let dense = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, device);
         // Alternative rope scaling are not supported.
-        let rotary_emb = RotaryEmbedding::new(cfg, device);
+        let rotary_emb = RotaryEmbedding::new(cfg, dtype, device);
         let (q_layernorm, k_layernorm) = if cfg.qk_layernorm {
             let q_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, device);
             let k_layernorm = LayerNorm::new(head_dim, cfg.layer_norm_eps, true, dtype, device);
@@ -284,6 +286,8 @@ impl Module for Attention {
         // Repeat kv.
         let key_states = self.repeat_kv(key_states).to_contiguous();
         let value_states = self.repeat_kv(value_states).to_contiguous();
+
+        // Queries and keys upcast to fp32 is required by Phi-2 to avoid overflow
         let attn_weights = query_states
             .as_type(F32)
             .to_contiguous()
@@ -337,7 +341,7 @@ pub struct DecoderLayer {
 }
 
 impl DecoderLayer {
-    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+    pub fn new(cfg: &Config, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let self_attn = Attention::new(cfg, dtype, device);
         let mlp = MLP::new(cfg, dtype, device);
@@ -392,7 +396,7 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(cfg: &Config, dtype: impl DType, device: impl AsDevice) -> Self {
+    pub fn new(cfg: &Config, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let embed_tokens = nn::Embedding::new(cfg.vocab_size, cfg.hidden_size, dtype, device);
         let layers = (0..cfg.num_hidden_layers)
@@ -463,7 +467,7 @@ impl Module for Model {
 
 trainable_module!(Model);
 
-fn load_model(dtype: impl DType, device: impl AsDevice) -> (Tokenizer, Model) {
+fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     let start = Instant::now();
     let model_id = "microsoft/phi-2".to_string();
     let revision = "main".to_string();
@@ -498,7 +502,7 @@ pub fn apply_repeat_penalty(logits: &mut [f32], penalty: f32, context: &[u32]) {
     let context: std::collections::HashSet<_> = context.iter().collect();
     for (token_id, logit) in logits.iter_mut().enumerate() {
         if context.contains(&(token_id as u32)) {
-            if *logit >= 0. {
+            if *logit >= 0.0 {
                 *logit /= penalty
             } else {
                 *logit *= penalty
@@ -508,7 +512,7 @@ pub fn apply_repeat_penalty(logits: &mut [f32], penalty: f32, context: &[u32]) {
 }
 
 fn main() {
-    let device = &Cpu;
+    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
     let dtype = F32;
     let (tokenizer, model) = load_model(dtype, device);
 
@@ -534,8 +538,8 @@ fn main() {
         let ctxt = &tokens[tokens.len().saturating_sub(context_size)..];
         let input = Tensor::from_array(ctxt, [ctxt.len()], device).unsqueeze(0);
         let logits = model.forward(&input);
-        let logits = logits.squeeze(0).as_type(F32);
-        let mut logits = logits.as_vec::<f32>();
+        let logits = logits.squeeze(0);
+        let mut logits = logits.as_vec(dtype);
         if repeat_penalty >= 1. {
             let start_at = tokens.len().saturating_sub(repeat_last_n);
             apply_repeat_penalty(&mut logits, repeat_penalty, &tokens[start_at..])

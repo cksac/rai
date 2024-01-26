@@ -1,5 +1,5 @@
 use crate::{gather_params, update_params, NamedParameter};
-use rai_core::{nn::Module, trainable_module, AsDevice, DType, Shape, Tensor};
+use rai_core::{nn::Module, trainable_module, AsDevice, Shape, Tensor, Type};
 use std::collections::HashMap;
 
 pub struct Embedding {
@@ -7,14 +7,14 @@ pub struct Embedding {
 }
 
 impl Embedding {
-    pub fn new(
+    pub fn new<T: Type>(
         num_embeddings: usize,
         features: usize,
-        dtype: impl DType,
+        dtype: T,
         device: impl AsDevice,
     ) -> Self {
         // TODO: init strategy
-        let weight = Tensor::normal([num_embeddings, features], dtype, device);
+        let weight = Tensor::rand([num_embeddings, features], dtype, device);
         Self { weight }
     }
 

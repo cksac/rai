@@ -41,7 +41,7 @@ pub trait Module {
             let data = std::fs::read(filename).unwrap();
             let st = safetensors::SafeTensors::deserialize(&data).unwrap();
             for (name, view) in st.tensors() {
-                let t = Tensor::from_safetensor(&view, &Cpu);
+                let t = Tensor::from_safetensor(&view, Cpu);
                 st_tensors.insert(name, t);
             }
         }

@@ -1,10 +1,8 @@
 use crate::{
     eval,
-    ops::{
-        self, ArangeArgs, ArgReduceArgs, AsTypeArgs, FlattenArgs, ReduceArgs, ToDeviceArgs, VarArgs,
-    },
+    ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
     utils::{self, dot_graph},
-    AsDevice, DType, Device, Dim, Dims, DynDType, ElemType, Primitive, Shape,
+    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, Primitive, Shape, Type,
 };
 use safetensors::tensor::TensorView;
 use std::{
@@ -23,7 +21,7 @@ use std::{
 pub trait TensorLike: Debug + Display {
     fn as_any(&self) -> &dyn Any;
     fn shape(&self) -> &[usize];
-    fn dtype(&self) -> &dyn DynDType;
+    fn dtype(&self) -> &dyn DType;
     fn as_scalar(&self) -> Box<dyn Any>;
     fn as_vec(&self) -> Box<dyn Any>;
     fn as_bytes(&self) -> Vec<u8>;
@@ -32,7 +30,7 @@ pub trait TensorLike: Debug + Display {
 struct TensorImpl {
     id: usize,
     device: Box<dyn Device>,
-    dtype: Box<dyn DynDType>,
+    dtype: Box<dyn DType>,
     shape: Vec<usize>,
     primitive: Box<dyn Primitive>,
     inputs: RefCell<Vec<Tensor>>,
@@ -42,7 +40,7 @@ struct TensorImpl {
 impl Tensor {
     pub fn new(
         device: impl AsDevice,
-        dtype: impl Into<Box<dyn DynDType>>,
+        dtype: impl AsDType,
         shape: impl Shape,
         primitive: impl Into<Box<dyn Primitive>>,
         inputs: impl Into<Vec<Tensor>>,
@@ -51,8 +49,8 @@ impl Tensor {
         let id = COUNTER.fetch_add(1, atomic::Ordering::Relaxed);
         let inner = TensorImpl {
             id,
-            device: device.boxed_device(),
-            dtype: dtype.into(),
+            device: device.into_boxed_device(),
+            dtype: dtype.into_boxed_dtype(),
             shape: shape.shape().to_vec(),
             primitive: primitive.into(),
             inputs: RefCell::new(inputs.into()),
@@ -72,7 +70,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn dtype(&self) -> &dyn DynDType {
+    pub fn dtype(&self) -> &dyn DType {
         self.0.dtype.as_ref()
     }
 
@@ -93,14 +91,14 @@ impl Tensor {
 
     #[inline]
     #[allow(unused_variables)]
-    pub fn ones<D: DType>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
-        ops::full::<D::Repr>(D::one(), shape, device)
+    pub fn ones<D: Type>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
+        ops::full::<D::Repr>(D::Repr::one(), shape, device)
     }
 
     #[inline]
     #[allow(unused_variables)]
-    pub fn zeros<D: DType>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
-        ops::full::<D::Repr>(D::zero(), shape, device)
+    pub fn zeros<D: Type>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
+        ops::full::<D::Repr>(D::Repr::zero(), shape, device)
     }
 
     #[inline]
@@ -119,12 +117,17 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn normal(shape: impl Shape, dtype: impl DType, device: impl AsDevice) -> Tensor {
-        ops::normal(shape, dtype, device)
+    pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+        ops::rand(shape, dtype, device)
     }
 
     #[inline]
-    pub fn arange<D: DType, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor
+    pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+        ops::randn(shape, dtype, device)
+    }
+
+    #[inline]
+    pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor
     where
         D::Repr:
             std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
@@ -349,12 +352,12 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn as_type(&self, args: impl AsTypeArgs) -> Tensor {
-        ops::as_type(self, args)
+    pub fn as_type(&self, dtype: impl AsDType) -> Tensor {
+        ops::as_type(self, dtype)
     }
 
     #[inline]
-    pub fn to_device(&self, device: impl ToDeviceArgs) -> Tensor {
+    pub fn to_device(&self, device: impl AsDevice) -> Tensor {
         ops::to_device(self, device)
     }
 
@@ -524,22 +527,25 @@ impl Tensor {
         }
     }
 
-    pub fn as_scalar<T: ElemType>(&self) -> T {
+    pub fn as_scalar<T: Type>(&self, dtype: T) -> T::Repr {
         if !self.is_evaluated() {
             eval(self);
         }
         let data = self.0.data.borrow();
         let data = data.as_deref().unwrap();
-        data.as_scalar().downcast_ref::<T>().unwrap().clone()
+        *data.as_scalar().downcast_ref::<T::Repr>().unwrap()
     }
 
-    pub fn as_vec<T: ElemType>(&self) -> Vec<T> {
+    pub fn as_vec<T: Type>(&self, dtype: T) -> Vec<T::Repr> {
         if !self.is_evaluated() {
             eval(self);
         }
         let data = self.0.data.borrow();
         let data = data.as_deref().unwrap();
-        data.as_vec().downcast_ref::<Vec<T>>().unwrap().clone()
+        data.as_vec()
+            .downcast_ref::<Vec<T::Repr>>()
+            .unwrap()
+            .clone()
     }
 
     #[inline]
@@ -550,7 +556,7 @@ impl Tensor {
     #[inline]
     pub fn to_safetensors(&self, name: impl Into<String>, filename: &Path) {
         let data = HashMap::from([(name.into(), self.clone())]);
-        safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
+        safetensors::serialize_to_file(&data, &None, filename).unwrap()
     }
 }
 

@@ -47,3 +47,19 @@ fn depth_first_traversal(tape: &mut Vec<Tensor>, tensor: &Tensor) {
     }
     tape.push(tensor.clone());
 }
+
+pub fn accelerate_enabled() -> bool {
+    cfg!(feature = "accelerate")
+}
+
+pub fn mkl_enabled() -> bool {
+    cfg!(feature = "mkl")
+}
+
+pub fn cuda_enabled() -> bool {
+    cfg!(feature = "cuda")
+}
+
+pub fn metal_enabled() -> bool {
+    cfg!(feature = "metal")
+}

@@ -1,8 +1,6 @@
+use crate::{Device, Primitive, Shape, Tensor};
 use std::any::Any;
-
 use tracing::Level;
-
-use crate::{device::IDevice, Primitive, Shape, Tensor};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Broadcast {
@@ -168,11 +166,11 @@ impl Primitive for ToContiguous {
 }
 
 #[derive(Clone, Debug)]
-pub struct ToDevice<D: IDevice> {
+pub struct ToDevice<D: Device + Clone> {
     pub device: D,
 }
 
-impl<D: IDevice> ToDevice<D> {
+impl<D: Device + Clone> ToDevice<D> {
     pub fn new(device: D) -> Self {
         Self { device }
     }
@@ -182,7 +180,7 @@ impl<D: IDevice> ToDevice<D> {
     }
 }
 
-impl<D: IDevice + 'static> Primitive for ToDevice<D> {
+impl<D: Device + Clone + 'static> Primitive for ToDevice<D> {
     fn clone_boxed(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
     }

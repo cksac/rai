@@ -5,7 +5,9 @@ use rai::{
         losses::softmax_cross_entropy,
         optimizers::{Optimizer, SDG},
     },
-    trainable_module, value_and_grad, AsDevice, Aux, Cpu, DType, Func, Tensor, F32,
+    trainable_module,
+    utils::cuda_enabled,
+    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Tensor, Type, F32,
 };
 use std::{collections::HashMap, fmt::Debug, time::Instant};
 
@@ -20,7 +22,7 @@ impl Mlp {
         input_dim: usize,
         hidden_dim: usize,
         output_dim: usize,
-        dtype: impl DType,
+        dtype: impl Type,
         device: impl AsDevice,
     ) -> Self {
         let device = device.device();
@@ -122,7 +124,7 @@ fn main() {
     let num_epochs = 10;
     let learning_rate = 1e-1;
 
-    let device = &Cpu;
+    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
     let dtype = F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
@@ -132,7 +134,7 @@ fn main() {
     for i in 0..num_epochs {
         let start = Instant::now();
         // todo: get image input and label
-        let input = Tensor::normal([batch_size, 784], dtype, device);
+        let input = Tensor::rand([batch_size, 784], dtype, device);
         let labels = Tensor::full(0.123f32, [batch_size, 10], device);
         train_step(&mut optimizer, &model, &input, &labels);
         let elapsed = start.elapsed();
@@ -152,7 +154,7 @@ fn main() {
     let loaded_model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
     loaded_model.update_by_safetensors(&["mnist.safetensors"]);
 
-    let input = Tensor::normal([batch_size, 784], dtype, device);
+    let input = Tensor::rand([batch_size, 784], dtype, device);
     let labels = Tensor::full(0.123f32, [batch_size, 10], device);
     let (loss, ..) = loss_fn(&loaded_model, &input, &labels);
     println!("loss = {}", loss);

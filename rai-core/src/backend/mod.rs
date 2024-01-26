@@ -1,3 +1,4 @@
+use crate::Tensor;
 use dyn_clone::DynClone;
 use std::{
     any::{Any, TypeId},
@@ -55,5 +56,3 @@ dyn_clone::clone_trait_object!(<D, P> Eval<D, P> where D: ?Sized, P: ?Sized);
 
 mod candle;
 pub use candle::CandleBackend;
-
-use crate::Tensor;
