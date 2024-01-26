@@ -2,7 +2,7 @@ use crate::{
     primitives::{Full, ToDType},
     Primitive, Tensor,
 };
-use half::f16;
+use half::{bf16, f16};
 use num_traits::Float;
 use std::{any::Any, fmt::Debug};
 
@@ -242,6 +242,36 @@ impl Type for F16 {
     }
 }
 
+impl ElemType for bf16 {
+    type DType = BF16;
+
+    fn zero() -> Self {
+        bf16::from(0i8)
+    }
+
+    fn one() -> Self {
+        bf16::from(1i8)
+    }
+
+    fn elem_count(start: Self, stop: Self, step: Self) -> usize {
+        std::cmp::max(((stop - start) / step).ceil().to_f32() as usize, 0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BF16;
+impl Type for BF16 {
+    type Repr = bf16;
+
+    fn boxed_dtype() -> Box<dyn DType> {
+        Box::new(BF16)
+    }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::BF16
+    }
+}
+
 impl ElemType for f32 {
     type DType = F32;
 
@@ -302,6 +332,36 @@ impl Type for F64 {
     }
 }
 
+impl ElemType for i64 {
+    type DType = I64;
+
+    fn zero() -> Self {
+        0
+    }
+
+    fn one() -> Self {
+        1
+    }
+
+    fn elem_count(start: Self, stop: Self, step: Self) -> usize {
+        std::cmp::max(((stop - start) as f64 / step as f64).ceil() as usize, 0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct I64;
+impl Type for I64 {
+    type Repr = i64;
+
+    fn boxed_dtype() -> Box<dyn DType> {
+        Box::new(I64)
+    }
+
+    fn safetensor_dtype(&self) -> safetensors::Dtype {
+        safetensors::Dtype::I64
+    }
+}
+
 impl From<safetensors::Dtype> for Box<dyn DType> {
     fn from(value: safetensors::Dtype) -> Self {
         match value {
@@ -311,12 +371,12 @@ impl From<safetensors::Dtype> for Box<dyn DType> {
             safetensors::Dtype::I16 => todo!(),
             safetensors::Dtype::U16 => todo!(),
             safetensors::Dtype::F16 => F16.into_boxed_dtype(),
-            safetensors::Dtype::BF16 => todo!(),
+            safetensors::Dtype::BF16 => BF16.into_boxed_dtype(),
             safetensors::Dtype::I32 => todo!(),
-            safetensors::Dtype::U32 => todo!(),
+            safetensors::Dtype::U32 => U32.into_boxed_dtype(),
             safetensors::Dtype::F32 => F32.into_boxed_dtype(),
             safetensors::Dtype::F64 => F64.into_boxed_dtype(),
-            safetensors::Dtype::I64 => todo!(),
+            safetensors::Dtype::I64 => I64.into_boxed_dtype(),
             safetensors::Dtype::U64 => todo!(),
             _ => todo!(),
         }

@@ -1,5 +1,6 @@
 use crate::{
-    primitives, CandleBackend, Cpu, Device, Eval, Primitive, Tensor, F16, F32, F64, U32, U8,
+    primitives, CandleBackend, Cpu, Device, Eval, Primitive, Tensor, BF16, F16, F32, F64, I64, U32,
+    U8,
 };
 use once_cell::sync::Lazy;
 use std::{any::TypeId, collections::HashMap, sync::Mutex};
@@ -57,9 +58,12 @@ macro_rules! register_backend {
         // creation
         _register::<$backend, $device, primitives::Full<U8>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Full<BF16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<F16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<F32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Full<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Full<I64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Random<BF16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Random<F16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Random<F32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Random<F64>>($backend, &mut $rules);
@@ -68,14 +72,18 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::Normal<F64>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<U8>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<BF16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<F16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<F32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Arange<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Arange<I64>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::FromArray<U8>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::FromArray<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<BF16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::FromArray<F16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::FromArray<F32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::FromArray<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::FromArray<I64>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Concatenate>($backend, &mut $rules);
 
         // binary
@@ -109,9 +117,11 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::Log10>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ToDType<U8>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ToDType<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<BF16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ToDType<F16>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ToDType<F32>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ToDType<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<I64>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Softmax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::LogSoftmax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Erf>($backend, &mut $rules);

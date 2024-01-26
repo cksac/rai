@@ -1,6 +1,6 @@
 use crate::{
     primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, Cuda, DType, Device, Eval,
-    Shape, Tensor, Type, F16, F32, F64, U32, U8,
+    Shape, Tensor, Type, BF16, F16, F32, F64, I64, U32, U8,
 };
 use candle_core::{backend::BackendDevice, CudaDevice};
 use half::{bf16, f16};
@@ -30,8 +30,8 @@ impl TensorLike for candle_core::Tensor {
             candle_core::DType::F64 => &F64,
             candle_core::DType::U8 => &U8,
             candle_core::DType::U32 => &U32,
-            candle_core::DType::I64 => todo!(),
-            candle_core::DType::BF16 => todo!(),
+            candle_core::DType::I64 => &I64,
+            candle_core::DType::BF16 => &BF16,
             candle_core::DType::F16 => &F16,
         }
     }
@@ -104,6 +104,12 @@ impl From<F16> for candle_core::DType {
     }
 }
 
+impl From<BF16> for candle_core::DType {
+    fn from(_: BF16) -> Self {
+        candle_core::DType::BF16
+    }
+}
+
 impl From<F32> for candle_core::DType {
     fn from(_: F32) -> Self {
         candle_core::DType::F32
@@ -113,6 +119,12 @@ impl From<F32> for candle_core::DType {
 impl From<F64> for candle_core::DType {
     fn from(_: F64) -> Self {
         candle_core::DType::F64
+    }
+}
+
+impl From<I64> for candle_core::DType {
+    fn from(_: I64) -> Self {
+        candle_core::DType::I64
     }
 }
 
