@@ -1,6 +1,5 @@
-use std::{collections::HashMap, path::Path};
-
 use crate::{Cpu, GenericValue, ModuleValue, Tensor, ValueSpec};
+use std::{collections::HashMap, path::Path};
 
 pub trait Module {
     type Input;

@@ -204,7 +204,6 @@ impl<D: Device + Clone + 'static> Primitive for ToDevice<D> {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ToDType<D: Type> {
     pub dtype: D,

@@ -1,6 +1,5 @@
-use std::collections::{hash_map::RandomState, HashSet};
-
 use crate::{Shape, Tensor, TensorIter};
+use std::collections::{hash_map::RandomState, HashSet};
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
     let mut tape = Vec::new();

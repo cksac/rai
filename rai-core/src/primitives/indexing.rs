@@ -1,8 +1,6 @@
-use std::any::Any;
-
-use tracing::Level;
-
 use crate::{Primitive, Tensor};
+use std::any::Any;
+use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Gather {

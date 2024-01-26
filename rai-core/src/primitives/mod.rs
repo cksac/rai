@@ -1,6 +1,5 @@
-use std::{any::Any, fmt::Debug};
-
 use crate::Tensor;
+use std::{any::Any, fmt::Debug};
 
 pub trait Primitive: Debug {
     fn clone_boxed(&self) -> Box<dyn Primitive>;

@@ -1,14 +1,3 @@
-use std::{
-    f32::consts::PI,
-    fmt::Debug,
-    ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
-    slice::from_raw_parts,
-};
-
-use half::f16;
-use safetensors::tensor::TensorView;
-use tracing::Level;
-
 use crate::{
     primitives::{
         Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp,
@@ -20,6 +9,15 @@ use crate::{
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
 };
+use half::f16;
+use safetensors::tensor::TensorView;
+use std::{
+    f32::consts::PI,
+    fmt::Debug,
+    ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
+    slice::from_raw_parts,
+};
+use tracing::Level;
 
 macro_rules! impl_std_ops_for_scalar {
     ($T:ty, $op:ident, $func:ident) => {

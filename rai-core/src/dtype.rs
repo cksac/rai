@@ -1,5 +1,5 @@
 use crate::{
-    primitives::{ToDType, Full},
+    primitives::{Full, ToDType},
     Primitive, Tensor,
 };
 use half::f16;

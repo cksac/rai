@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-use rai_core::{Tensor, TensorIter};
-
 use crate::optimizers::Optimizer;
+use rai_core::{Tensor, TensorIter};
+use std::collections::HashMap;
 
 pub struct SDG {
     params: Vec<Tensor>,

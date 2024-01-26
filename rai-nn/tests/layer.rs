@@ -1,5 +1,4 @@
 use rai_core::{nn::Module, utils::dot_graph, value_and_grad, Aux, Cpu, Func, Tensor, F32};
-
 use rai_nn::{Embedding, Linear};
 
 fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {

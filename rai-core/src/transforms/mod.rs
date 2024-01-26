@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use crate::{Shape, Value};
+use std::collections::HashMap;
 
 pub trait Func<IN, OUT> {
     fn apply(&self, input: IN) -> OUT;

@@ -1,6 +1,5 @@
-use std::{collections::HashMap, iter, ops::Deref};
-
 use crate::Tensor;
+use std::{collections::HashMap, iter, ops::Deref};
 
 pub trait TensorIter {
     fn tensor_iter(&self) -> impl Iterator<Item = &Tensor>;

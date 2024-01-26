@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use crate::{non_differentiable, Tensor, TensorIter};
+use std::collections::HashMap;
 
 pub struct BasicValue;
 pub struct ModuleValue;

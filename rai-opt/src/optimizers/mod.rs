@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use rai_core::Tensor;
+use std::collections::HashMap;
 
 pub trait Optimizer {
     /// return new value for the parameters
