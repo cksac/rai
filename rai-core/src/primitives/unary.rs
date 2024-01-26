@@ -323,43 +323,6 @@ impl Primitive for Log10 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AsType<D: Type> {
-    pub dtype: D,
-}
-impl<D: Type> AsType<D> {
-    pub fn new(dtype: D) -> Self {
-        Self { dtype }
-    }
-}
-
-impl<D: Type> Primitive for AsType<D> {
-    fn clone_boxed(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn dot_label(&self) -> String {
-        format!("AsType({:?})", &self.dtype)
-    }
-
-    #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        let tangent_x = &tangents[0];
-        tangent_x.as_type(self.dtype)
-    }
-
-    #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        let x = &primals[0];
-        let cotangent_x = cotangent.as_type(x);
-        vec![cotangent_x]
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Softmax {
     pub dim: usize,
 }

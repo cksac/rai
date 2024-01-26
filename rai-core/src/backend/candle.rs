@@ -637,12 +637,12 @@ impl<D: Device> Eval<D, primitives::Maximum> for CandleBackend {
     }
 }
 
-impl<D, T> Eval<D, primitives::AsType<T>> for CandleBackend
+impl<D, T> Eval<D, primitives::ToDType<T>> for CandleBackend
 where
     D: Device,
     T: Type + Into<candle_core::DType>,
 {
-    fn eval(&self, _: &D, primitive: &primitives::AsType<T>, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, primitive: &primitives::ToDType<T>, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();

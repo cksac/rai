@@ -2,6 +2,7 @@
     "cSpell.words": [
         "Arange",
         "argmax",
+        "argmin",
         "consts",
         "Cuda",
         "ddof",
@@ -20,6 +21,7 @@
         "powf",
         "primals",
         "raiexpr",
+        "randn",
         "recip",
         "relu",
         "rsqrt",

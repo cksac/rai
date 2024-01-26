@@ -342,18 +342,18 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn gather(&self, dim: impl Dim, index: &Tensor) -> Tensor {
-        ops::gather(self, dim, index)
+    pub fn gather(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
+        ops::gather(self, dim, index.as_ref())
     }
 
     #[inline]
-    pub fn index_select(&self, dim: impl Dim, index: &Tensor) -> Tensor {
-        ops::index_select(self, dim, index)
+    pub fn index_select(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
+        ops::index_select(self, dim, index.as_ref())
     }
 
     #[inline]
-    pub fn as_type(&self, dtype: impl AsDType) -> Tensor {
-        ops::as_type(self, dtype)
+    pub fn to_dtype(&self, dtype: impl AsDType) -> Tensor {
+        ops::to_dtype(self, dtype)
     }
 
     #[inline]
@@ -422,8 +422,8 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn where_cond(&self, input: &Tensor, other: &Tensor) -> Tensor {
-        ops::where_cond(self, input, other)
+    pub fn where_cond(&self, input: impl AsRef<Tensor>, other: impl AsRef<Tensor>) -> Tensor {
+        ops::where_cond(self, input.as_ref(), other.as_ref())
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
@@ -527,6 +527,7 @@ impl Tensor {
         }
     }
 
+    #[allow(unused_variables)]
     pub fn as_scalar<T: Type>(&self, dtype: T) -> T::Repr {
         if !self.is_evaluated() {
             eval(self);
@@ -536,6 +537,7 @@ impl Tensor {
         *data.as_scalar().downcast_ref::<T::Repr>().unwrap()
     }
 
+    #[allow(unused_variables)]
     pub fn as_vec<T: Type>(&self, dtype: T) -> Vec<T::Repr> {
         if !self.is_evaluated() {
             eval(self);
@@ -554,9 +556,9 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn to_safetensors(&self, name: impl Into<String>, filename: &Path) {
+    pub fn to_safetensors(&self, name: impl Into<String>, filename: impl AsRef<Path>) {
         let data = HashMap::from([(name.into(), self.clone())]);
-        safetensors::serialize_to_file(&data, &None, filename).unwrap()
+        safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
     }
 }
 

@@ -55,9 +55,9 @@ impl RotaryEmbedding {
             .map(|i| 1f32 / cfg.rope_theta.powf(i as f32 / dim as f32))
             .collect();
         let inv_freq_len = inv_freq.len();
-        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], device).as_type(dtype);
+        let inv_freq = Tensor::from_array(inv_freq, [1, inv_freq_len], device).to_dtype(dtype);
         let t = Tensor::arange((0u32, cfg.max_position_embeddings as u32), device)
-            .as_type(dtype)
+            .to_dtype(dtype)
             .reshape([cfg.max_position_embeddings, 1]);
         let freqs = t.matmul(&inv_freq);
         let emb = Tensor::cat(&[&freqs, &freqs], -1);
@@ -83,8 +83,8 @@ impl Module for RotaryEmbedding {
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
         let (xs1, xs2) = (&xs12[0], &xs12[1]);
-        let c = &self.cos.narrow(0, seqlen_offset, seq_len).as_type(xs);
-        let s = &self.sin.narrow(0, seqlen_offset, seq_len).as_type(xs);
+        let c = &self.cos.narrow(0, seqlen_offset, seq_len).to_dtype(xs);
+        let s = &self.sin.narrow(0, seqlen_offset, seq_len).to_dtype(xs);
         let rotate_half = Tensor::cat(&[&xs2.neg(), xs1], -1);
         let xs_rot = xs_rot * c + rotate_half * s;
         Tensor::cat(&[xs_rot, xs_pass], -1)
@@ -168,7 +168,7 @@ fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
     let shape = mask.shape();
     let on_true = &Tensor::full(on_true, shape, on_false.device())
         .broadcast_to(shape)
-        .as_type(on_false);
+        .to_dtype(on_false);
     mask.where_cond(on_true, on_false)
 }
 
@@ -289,9 +289,9 @@ impl Module for Attention {
 
         // Queries and keys upcast to fp32 is required by Phi-2 to avoid overflow
         let attn_weights = query_states
-            .as_type(F32)
+            .to_dtype(F32)
             .to_contiguous()
-            .matmul(key_states.as_type(F32).t() * self.softmax_scale);
+            .matmul(key_states.to_dtype(F32).t() * self.softmax_scale);
         let attn_weights = match mask {
             None => attn_weights,
             Some(mask) => masked_fill(
@@ -300,7 +300,7 @@ impl Module for Attention {
                 f32::NEG_INFINITY,
             ),
         };
-        let attn_weights = attn_weights.softmax(-1).as_type(&value_states);
+        let attn_weights = attn_weights.softmax(-1).to_dtype(&value_states);
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
         self.dense.forward(&attn_output)

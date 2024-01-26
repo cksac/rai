@@ -121,7 +121,7 @@ pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
         full::<T>(val, x.shape(), x.device())
     } else {
         // TODO: check is type can be convert/promoted to x dtype?
-        full::<T>(val, x.shape(), x.device()).as_type(x)
+        full::<T>(val, x.shape(), x.device()).to_dtype(x)
     }
 }
 
@@ -685,7 +685,7 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn as_type(x: &Tensor, dtype: impl AsDType) -> Tensor {
+pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     let dtype = dtype.dtype();
     if x.dtype() == dtype {
         return x.clone();

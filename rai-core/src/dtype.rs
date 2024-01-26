@@ -1,5 +1,5 @@
 use crate::{
-    primitives::{AsType, Full},
+    primitives::{ToDType, Full},
     Primitive, Tensor,
 };
 use half::f16;
@@ -33,8 +33,8 @@ pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
         Full::new(Self::Repr::one())
     }
 
-    fn primitive_as_type(&self) -> AsType<Self> {
-        AsType::new(*self)
+    fn primitive_as_type(&self) -> ToDType<Self> {
+        ToDType::new(*self)
     }
 
     fn size_of_elem() -> usize {

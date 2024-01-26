@@ -107,11 +107,11 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::Log>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Log2>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Log10>($backend, &mut $rules);
-        _register::<$backend, $device, primitives::AsType<U8>>($backend, &mut $rules);
-        _register::<$backend, $device, primitives::AsType<U32>>($backend, &mut $rules);
-        _register::<$backend, $device, primitives::AsType<F16>>($backend, &mut $rules);
-        _register::<$backend, $device, primitives::AsType<F32>>($backend, &mut $rules);
-        _register::<$backend, $device, primitives::AsType<F64>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<U8>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<U32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ToDType<F64>>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Softmax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::LogSoftmax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Erf>($backend, &mut $rules);
