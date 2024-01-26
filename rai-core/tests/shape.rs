@@ -13,6 +13,7 @@ fn test_dim() {
 }
 
 #[test]
+#[allow(clippy::reversed_empty_ranges)]
 fn test_dims() {
     let s = [0, 1, 2, 3, 4, 5];
 
