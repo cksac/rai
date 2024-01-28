@@ -33,6 +33,7 @@ impl Module for Linear {
     type Output = Tensor;
 
     fn forward(&self, x: &Self::Input) -> Self::Output {
+        // todo: move the broadcast checking to matmul?
         let w = &match x.shape() {
             [b1, b2, _, _] => self.weight.broadcast_left([*b1, *b2]).t(),
             [b, _, _] => self.weight.broadcast_left([*b]).t(),

@@ -32,6 +32,12 @@ macro_rules! gather_params {
         $L.gather_params($M);
     };
 
+    ($M:ident, ?@$L:expr) => {
+        if let Some(l) = &$L {
+            l.gather_params($M);
+        }
+    };
+
     ($M:ident, []$L:expr) => {
         for l in &$L {
             l.gather_params($M);
@@ -57,6 +63,12 @@ macro_rules! update_params {
 
     ($M:ident, @$L:expr) => {
         $L.update_params($M);
+    };
+
+    ($M:ident, ?@$L:expr) => {
+        if let Some(l) = &$L {
+            l.update_params($M);
+        }
     };
 
     ($M:ident, []$L:expr) => {
@@ -143,4 +155,60 @@ impl<'a> NamePath for Cow<'a, str> {
             format!("{}.{}", self, path).into()
         }
     }
+}
+
+#[macro_export]
+macro_rules! gather_named_params {
+    ($M:ident, $P:expr, $PRE:expr, $N:expr) => {
+        $P.gather_to($M, $PRE, $N)
+    };
+
+    ($M:ident, ?$P:expr, $PRE:expr, $N:expr) => {
+        $P.gather_to($M, $PRE, $N)
+    };
+
+    ($M:ident, @$L:expr, $PRE:expr, $N:expr) => {
+        $L.gather_named_params(&$PRE.push($N), $M);
+    };
+
+    ($M:ident, ?@$L:expr, $PRE:expr, $N:expr) => {
+        if let Some(l) = &$L {
+            l.gather_named_params(&$PRE.push($N), $M);
+        }
+    };
+
+    ($M:ident, []$L:expr, $PRE:expr, $N:expr) => {
+        for (i, l) in $L.iter().enumerate() {
+            let lp = format!("{}.{}", $PRE.push($N), i);
+            l.gather_named_params(&lp, $M);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! update_named_params {
+    ($M:ident, $P:expr, $PRE:expr, $N:expr) => {
+        $P.update_by($M, $PRE, $N)
+    };
+
+    ($M:ident, ?$P:expr, $PRE:expr, $N:expr) => {
+        $P.update_by($M, $PRE, $N)
+    };
+
+    ($M:ident, @$L:expr, $PRE:expr, $N:expr) => {
+        $L.update_named_params(&$PRE.push($N), $M);
+    };
+
+    ($M:ident, ?@$L:expr, $PRE:expr, $N:expr) => {
+        if let Some(l) = &$L {
+            l.update_named_params(&$PRE.push($N), $M);
+        }
+    };
+
+    ($M:ident, []$L:expr, $PRE:expr, $N:expr) => {
+        for (i, l) in $L.iter().enumerate() {
+            let lp = format!("{}.{}", $PRE.push($N), i);
+            l.update_named_params(&lp, $M);
+        }
+    };
 }

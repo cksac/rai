@@ -2,9 +2,10 @@ use hf_hub::{api::sync::Api, Repo, RepoType};
 use rai::{
     ext,
     nn::{
-        self, gather_params, update_params, Embedding, LayerNorm, Linear, Module, NamePath, NewGelu,
+        self, gather_named_params, gather_params, update_named_params, update_params, Embedding,
+        LayerNorm, Linear, Module, NamePath, NewGelu,
     },
-    trainable_module,
+    non_trainable_module, trainable_module,
     utils::cuda_enabled,
     AsDevice, Cpu, Cuda, Device, Shape, Tensor, Type, F32,
 };
@@ -90,14 +91,13 @@ impl Module for RotaryEmbedding {
         Tensor::cat(&[xs_rot, xs_pass], -1)
     }
 
-    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
-
-    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
-
-    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {}
-
-    fn update_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {}
+    fn gather_params(&self, _: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, _: &mut HashMap<usize, Tensor>) {}
+    fn gather_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
+    fn update_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
 }
+
+non_trainable_module!(RotaryEmbedding);
 
 pub struct MLP {
     fc1: Linear,
@@ -126,17 +126,24 @@ impl Module for MLP {
         (&self.fc1).chain(&self.act).chain(&self.fc2).forward(x)
     }
 
-    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        gather_params!(params, @self.fc1);
+        gather_params!(params, @self.fc2);
+    }
 
-    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        update_params!(params, @self.fc1);
+        update_params!(params, @self.fc2);
+    }
 
-    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
-        todo!()
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, @self.fc1, prefix, "fc1");
+        gather_named_params!(params, @self.fc2, prefix, "fc2");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.fc1.update_named_params(&prefix.push("fc1"), params);
-        self.fc2.update_named_params(&prefix.push("fc2"), params);
+        update_named_params!(params, @self.fc1, prefix, "fc1");
+        update_named_params!(params, @self.fc2, prefix, "fc2");
     }
 }
 
@@ -306,29 +313,40 @@ impl Module for Attention {
         self.dense.forward(&attn_output)
     }
 
-    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        gather_params!(params, @self.q_proj);
+        gather_params!(params, @self.k_proj);
+        gather_params!(params, @self.v_proj);
+        gather_params!(params, @self.dense);
+        gather_params!(params, ?@self.q_layernorm);
+        gather_params!(params, ?@self.k_layernorm);
+    }
 
-    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        update_params!(params, @self.q_proj);
+        update_params!(params, @self.k_proj);
+        update_params!(params, @self.v_proj);
+        update_params!(params, @self.dense);
+        update_params!(params, ?@self.q_layernorm);
+        update_params!(params, ?@self.k_layernorm);
+    }
 
-    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
-        todo!()
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, @self.q_proj, prefix, "q_proj");
+        gather_named_params!(params, @self.k_proj, prefix, "k_proj");
+        gather_named_params!(params, @self.v_proj, prefix, "v_proj");
+        gather_named_params!(params, @self.dense, prefix, "dense");
+        gather_named_params!(params, ?@self.q_layernorm, prefix, "q_layernorm");
+        gather_named_params!(params, ?@self.k_layernorm, prefix, "k_layernorm");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.q_proj
-            .update_named_params(&prefix.push("q_proj"), params);
-        self.k_proj
-            .update_named_params(&prefix.push("k_proj"), params);
-        self.v_proj
-            .update_named_params(&prefix.push("v_proj"), params);
-        self.dense
-            .update_named_params(&prefix.push("dense"), params);
-        if let Some(q_layernorm) = &self.q_layernorm {
-            q_layernorm.update_named_params(&prefix.push("q_layernorm"), params);
-        }
-        if let Some(k_layernorm) = &self.k_layernorm {
-            k_layernorm.update_named_params(&prefix.push("k_layernorm"), params);
-        }
+        update_named_params!(params, @self.q_proj, prefix, "q_proj");
+        update_named_params!(params, @self.k_proj, prefix, "k_proj");
+        update_named_params!(params, @self.v_proj, prefix, "v_proj");
+        update_named_params!(params, @self.dense, prefix, "dense");
+        update_named_params!(params, ?@self.q_layernorm, prefix, "q_layernorm");
+        update_named_params!(params, ?@self.k_layernorm, prefix, "k_layernorm");
     }
 }
 
@@ -369,20 +387,28 @@ impl Module for DecoderLayer {
         attn_outputs + feed_forward_hidden_states + residual
     }
 
-    fn gather_params(&self, _params: &mut HashMap<usize, Tensor>) {}
+    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        gather_params!(params, @self.self_attn);
+        gather_params!(params, @self.mlp);
+        gather_params!(params, @self.input_layernorm);
+    }
 
-    fn update_params(&self, _params: &mut HashMap<usize, Tensor>) {}
+    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        update_params!(params, @self.self_attn);
+        update_params!(params, @self.mlp);
+        update_params!(params, @self.input_layernorm);
+    }
 
-    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
-        todo!()
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, @self.self_attn, prefix, "self_attn");
+        gather_named_params!(params, @self.mlp, prefix, "mlp");
+        gather_named_params!(params, @self.input_layernorm, prefix, "input_layernorm");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.self_attn
-            .update_named_params(&prefix.push("self_attn"), params);
-        self.mlp.update_named_params(&prefix.push("mlp"), params);
-        self.input_layernorm
-            .update_named_params(&prefix.push("input_layernorm"), params);
+        update_named_params!(params, @self.self_attn, prefix, "self_attn");
+        update_named_params!(params, @self.mlp, prefix, "mlp");
+        update_named_params!(params, @self.input_layernorm, prefix, "input_layernorm");
     }
 }
 
@@ -434,34 +460,31 @@ impl Module for Model {
     }
 
     fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+        gather_params!(params, @self.lm_head);
         gather_params!(params, @self.embed_tokens);
-        gather_params!(params, []self.layers);
         gather_params!(params, @self.final_layernorm);
+        gather_params!(params, []self.layers);
     }
 
     fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+        update_params!(params, @self.lm_head);
         update_params!(params, @self.embed_tokens);
-        update_params!(params, []self.layers);
         update_params!(params, @self.final_layernorm);
+        update_params!(params, []self.layers);
     }
 
-    fn gather_named_params(&self, _prefix: &str, _params: &mut HashMap<String, Tensor>) {
-        todo!()
+    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+        gather_named_params!(params, @self.lm_head, prefix, "lm_head");
+        gather_named_params!(params, @self.embed_tokens, prefix, "model.embed_tokens");
+        gather_named_params!(params, @self.final_layernorm, prefix, "model.final_layernorm");
+        gather_named_params!(params, []self.layers, prefix, "model.layers");
     }
 
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.lm_head
-            .update_named_params(&prefix.push("lm_head"), params);
-        // split model and lm_head?
-        let p = prefix.push("model");
-        self.embed_tokens
-            .update_named_params(&p.push("embed_tokens"), params);
-        self.final_layernorm
-            .update_named_params(&p.push("final_layernorm"), params);
-        for (i, l) in self.layers.iter().enumerate() {
-            let lp = format!("layers.{}", i);
-            l.update_named_params(&p.push(&lp), params);
-        }
+        update_named_params!(params, @self.lm_head, prefix, "lm_head");
+        update_named_params!(params, @self.embed_tokens, prefix, "model.embed_tokens");
+        update_named_params!(params, @self.final_layernorm, prefix, "model.final_layernorm");
+        update_named_params!(params, []self.layers, prefix, "model.layers");
     }
 }
 
@@ -535,8 +558,8 @@ fn main() {
 
     for index in 0..sample_len {
         let context_size = if index > 0 { 1 } else { tokens.len() };
-        let ctxt = &tokens[tokens.len().saturating_sub(context_size)..];
-        let input = Tensor::from_array(ctxt, [ctxt.len()], device).unsqueeze(0);
+        let ctx = &tokens[tokens.len().saturating_sub(context_size)..];
+        let input = Tensor::from_array(ctx, [ctx.len()], device).unsqueeze(0);
         let logits = model.forward(&input);
         let logits = logits.squeeze(0);
         let mut logits = logits.as_vec(dtype);
