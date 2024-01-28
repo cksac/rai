@@ -8,6 +8,7 @@
         "Cuda",
         "ddof",
         "dtype",
+        "embd",
         "endoftext",
         "freqs",
         "Gelu",

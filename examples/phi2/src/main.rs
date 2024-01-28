@@ -76,8 +76,7 @@ impl Module for RotaryEmbedding {
 
     /// input = (x, seqlen_offset)
     fn forward(&self, input: &Self::Input) -> Self::Output {
-        let xs = &input.0;
-        let seqlen_offset = input.1;
+        let (xs, seqlen_offset) = input;
         let [_b_size, _num_heads, seq_len, headdim]: [usize; 4] =
             xs.shape_of([0, 1, 2, 3]).try_into().unwrap();
         let xs_rot = xs.narrow(3, 0, self.dim);
@@ -246,9 +245,7 @@ impl Module for Attention {
     type Output = Tensor; // output
 
     fn forward(&self, input: &Self::Input) -> Self::Output {
-        let xs = &input.0;
-        let mask = input.1.as_ref();
-
+        let (xs, mask) = input;
         let [b_size, seq_len, _n_embd]: [usize; 3] = xs.shape_of([0, 1, 2]).try_into().unwrap();
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);

@@ -95,3 +95,45 @@ macro_rules! trainable_module {
         impl $crate::nn::TrainableModule for $M {}
     };
 }
+
+// module marco
+// #[module(input=(Tensor, Option<Tensor>), output=Tensor), apply_fn="apply"]
+// pub struct Attention {
+//     #[param]
+//     q_proj: Linear,
+//     #[param]
+//     k_proj: Linear,
+//     #[param]
+//     v_proj: Linear,
+//     #[param]
+//     dense: Linear,
+//     #[param]
+//     q_layernorm: Option<LayerNorm>,
+//     #[param]
+//     k_layernorm: Option<LayerNorm>,
+//     rotary_emb: RotaryEmbedding,
+//     softmax_scale: f64,
+//     num_heads: usize,
+//     num_kv_heads: usize,
+//     head_dim: usize,
+//     kv_cache: RefCell<Option<(Tensor, Tensor)>>,
+// }
+
+// impl Attention {
+//     fn apply(&self, x: &Tensor, mask: &Option<Tensor>) -> Tensor {
+//         todo!()
+//     }
+// }
+
+// // macro generated impl module
+// impl Module for Attention {
+//     type Input = (Tensor, Option<Tensor>);
+//     type Output = Tensor;
+
+//     fn forward(&self, input: &Self::Input) -> Self::Output {
+//         let (a1, a2) = &input;
+//         self.apply(arg1, arg2)
+//     }
+
+
+// }
