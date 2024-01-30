@@ -752,7 +752,6 @@ impl<D: Device> Eval<D, primitives::IndexSelect> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        // TODO: slice_sizes not used
         let t = t1.index_select(t2, primitive.dim).unwrap();
         output.set_data(t);
     }

@@ -9,6 +9,8 @@ pub mod opt {
     pub use rai_opt::*;
 }
 
+pub use rai_derive::Module;
+
 pub mod ext {
     pub mod hf {
         // todo: return result

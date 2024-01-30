@@ -1,8 +1,8 @@
-use crate::{gather_params, update_params, NamedParameter};
-use rai_core::{nn::Module, trainable_module, AsDevice, Shape, Tensor, Type};
-use std::collections::HashMap;
+use rai_core::{AsDevice, Shape, Tensor, Type};
+use rai_derive::Module;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Module)]
+#[module(crate = rai_core)]
 pub struct Linear {
     weight: Tensor,
     bias: Option<Tensor>,
@@ -26,13 +26,8 @@ impl Linear {
         };
         Self { weight, bias }
     }
-}
 
-impl Module for Linear {
-    type Input = Tensor;
-    type Output = Tensor;
-
-    fn forward(&self, x: &Self::Input) -> Self::Output {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
         // todo: move the broadcast checking to matmul?
         let w = &match x.shape() {
             [b1, b2, _, _] => self.weight.broadcast_left([*b1, *b2]).t(),
@@ -44,27 +39,4 @@ impl Module for Linear {
             None => x.matmul(w),
         }
     }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(params, self.weight);
-        gather_params!(params, ?self.bias);
-    }
-
-    #[track_caller]
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(params, self.weight);
-        update_params!(params, ?self.bias);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.gather_to(params, prefix, "weight");
-        self.bias.gather_to(params, prefix, "bias");
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.update_by(params, prefix, "weight");
-        self.bias.update_by(params, prefix, "bias");
-    }
 }
-
-trainable_module!(Linear);

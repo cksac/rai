@@ -9,7 +9,7 @@ use crate::{
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
 };
-use half::f16;
+use half::{bf16, f16};
 use safetensors::tensor::TensorView;
 use std::{
     f32::consts::PI,
@@ -302,7 +302,10 @@ pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
             let data = convert_slice::<f16>(data);
             from_array(data, shape, device)
         }
-        safetensors::Dtype::BF16 => todo!(),
+        safetensors::Dtype::BF16 => {
+            let data = convert_slice::<bf16>(data);
+            from_array(data, shape, device)
+        }
         safetensors::Dtype::I32 => todo!(),
         safetensors::Dtype::U32 => {
             let data = convert_slice::<u32>(data);
@@ -316,7 +319,10 @@ pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
             let data = convert_slice::<f64>(data);
             from_array(data, shape, device)
         }
-        safetensors::Dtype::I64 => todo!(),
+        safetensors::Dtype::I64 => {
+            let data = convert_slice::<i64>(data);
+            from_array(data, shape, device)
+        }
         safetensors::Dtype::U64 => todo!(),
         _ => todo!(),
     }

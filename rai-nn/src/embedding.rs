@@ -1,7 +1,8 @@
-use crate::{gather_params, update_params, NamedParameter};
-use rai_core::{nn::Module, trainable_module, AsDevice, Shape, Tensor, Type};
-use std::collections::HashMap;
+use rai_core::{AsDevice, Shape, Tensor, Type};
+use rai_derive::Module;
 
+#[derive(Clone, Debug, Module)]
+#[module(crate = rai_core)]
 pub struct Embedding {
     weight: Tensor,
 }
@@ -18,37 +19,10 @@ impl Embedding {
         Self { weight }
     }
 
-    pub fn weight(&self) -> &Tensor {
-        &self.weight
-    }
-}
-
-impl Module for Embedding {
-    type Input = Tensor;
-    type Output = Tensor;
-
-    fn forward(&self, x: &Self::Input) -> Self::Output {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
         let mut out_dims = x.shape().to_vec();
         out_dims.push(self.weight.shape_at(-1));
         let index = &x.flatten(..);
         self.weight.index_select(0, index).reshape(out_dims)
     }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(params, self.weight);
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(params, self.weight);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.gather_to(params, prefix, "weight");
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.weight.update_by(params, prefix, "weight");
-    }
 }
-
-trainable_module!(Embedding);

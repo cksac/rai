@@ -1,16 +1,12 @@
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use rai::{
     ext,
-    nn::{
-        self, gather_named_params, gather_params, update_named_params, update_params, Embedding,
-        LayerNorm, Linear, Module, NamePath, NewGelu,
-    },
-    non_trainable_module, trainable_module,
+    nn::{self, Embedding, LayerNorm, Linear, Module, NewGelu},
     utils::cuda_enabled,
-    AsDevice, Cpu, Cuda, Device, Shape, Tensor, Type, F32,
+    AsDevice, Cpu, Cuda, Device, Module, Shape, Tensor, Type, F32,
 };
 use serde::Deserialize;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, io::Write, time::Instant};
+use std::{cell::RefCell, fmt::Debug, io::Write, time::Instant};
 use tokenizers::Tokenizer;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -40,7 +36,8 @@ impl Config {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Module)]
+#[module(input = (Tensor, usize), trainable = false)]
 struct RotaryEmbedding {
     dim: usize,
     sin: Tensor,
@@ -68,36 +65,23 @@ impl RotaryEmbedding {
             cos: emb.cos(),
         }
     }
-}
 
-impl Module for RotaryEmbedding {
-    type Input = (Tensor, usize);
-    type Output = Tensor;
-
-    /// input = (x, seqlen_offset)
-    fn forward(&self, input: &Self::Input) -> Self::Output {
-        let (xs, seqlen_offset) = input;
+    pub fn apply(&self, xs: &Tensor, seqlen_offset: &usize) -> Tensor {
         let [_b_size, _num_heads, seq_len, headdim]: [usize; 4] =
             xs.shape_of([0, 1, 2, 3]).try_into().unwrap();
         let xs_rot = xs.narrow(3, 0, self.dim);
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
         let (xs1, xs2) = (&xs12[0], &xs12[1]);
-        let c = &self.cos.narrow(0, seqlen_offset, seq_len).to_dtype(xs);
-        let s = &self.sin.narrow(0, seqlen_offset, seq_len).to_dtype(xs);
+        let c = &self.cos.narrow(0, *seqlen_offset, seq_len).to_dtype(xs);
+        let s = &self.sin.narrow(0, *seqlen_offset, seq_len).to_dtype(xs);
         let rotate_half = Tensor::cat(&[&xs2.neg(), xs1], -1);
         let xs_rot = xs_rot * c + rotate_half * s;
         Tensor::cat(&[xs_rot, xs_pass], -1)
     }
-
-    fn gather_params(&self, _: &mut HashMap<usize, Tensor>) {}
-    fn update_params(&self, _: &mut HashMap<usize, Tensor>) {}
-    fn gather_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
-    fn update_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
 }
 
-non_trainable_module!(RotaryEmbedding);
-
+#[derive(Debug, Clone, Module)]
 pub struct MLP {
     fc1: Linear,
     fc2: Linear,
@@ -115,52 +99,10 @@ impl MLP {
             act: NewGelu,
         }
     }
-}
 
-impl Module for MLP {
-    type Input = Tensor;
-    type Output = Tensor;
-
-    fn forward(&self, x: &Self::Input) -> Self::Output {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
         (&self.fc1).chain(&self.act).chain(&self.fc2).forward(x)
     }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(params, @self.fc1);
-        gather_params!(params, @self.fc2);
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(params, @self.fc1);
-        update_params!(params, @self.fc2);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, @self.fc1, prefix, "fc1");
-        gather_named_params!(params, @self.fc2, prefix, "fc2");
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        update_named_params!(params, @self.fc1, prefix, "fc1");
-        update_named_params!(params, @self.fc2, prefix, "fc2");
-    }
-}
-
-trainable_module!(MLP);
-
-pub struct Attention {
-    q_proj: Linear,
-    k_proj: Linear,
-    v_proj: Linear,
-    dense: Linear,
-    q_layernorm: Option<LayerNorm>,
-    k_layernorm: Option<LayerNorm>,
-    rotary_emb: RotaryEmbedding,
-    softmax_scale: f64,
-    num_heads: usize,
-    num_kv_heads: usize,
-    head_dim: usize,
-    kv_cache: RefCell<Option<(Tensor, Tensor)>>,
 }
 
 fn get_mask(size: usize, device: impl AsDevice) -> Tensor {
@@ -176,6 +118,29 @@ fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Tensor {
         .broadcast_to(shape)
         .to_dtype(on_false);
     mask.where_cond(on_true, on_false)
+}
+
+#[derive(Debug, Clone, Module)]
+#[module(input = (Tensor, Option<Tensor>))]
+pub struct Attention {
+    q_proj: Linear,
+    k_proj: Linear,
+    v_proj: Linear,
+    dense: Linear,
+    q_layernorm: Option<LayerNorm>,
+    k_layernorm: Option<LayerNorm>,
+    #[param(skip)]
+    rotary_emb: RotaryEmbedding,
+    #[param(skip)]
+    softmax_scale: f64,
+    #[param(skip)]
+    num_heads: usize,
+    #[param(skip)]
+    num_kv_heads: usize,
+    #[param(skip)]
+    head_dim: usize,
+    #[param(skip)]
+    kv_cache: RefCell<Option<(Tensor, Tensor)>>,
 }
 
 impl Attention {
@@ -238,14 +203,8 @@ impl Attention {
                 .reshape([b_sz, num_kv_heads * n_rep, seq_len, head_dim])
         }
     }
-}
 
-impl Module for Attention {
-    type Input = (Tensor, Option<Tensor>); // (x, mask)
-    type Output = Tensor; // output
-
-    fn forward(&self, input: &Self::Input) -> Self::Output {
-        let (xs, mask) = input;
+    pub fn apply(&self, xs: &Tensor, mask: &Option<Tensor>) -> Tensor {
         let [b_size, seq_len, _n_embd]: [usize; 3] = xs.shape_of([0, 1, 2]).try_into().unwrap();
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);
@@ -309,46 +268,10 @@ impl Module for Attention {
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
         self.dense.forward(&attn_output)
     }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(params, @self.q_proj);
-        gather_params!(params, @self.k_proj);
-        gather_params!(params, @self.v_proj);
-        gather_params!(params, @self.dense);
-        gather_params!(params, ?@self.q_layernorm);
-        gather_params!(params, ?@self.k_layernorm);
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(params, @self.q_proj);
-        update_params!(params, @self.k_proj);
-        update_params!(params, @self.v_proj);
-        update_params!(params, @self.dense);
-        update_params!(params, ?@self.q_layernorm);
-        update_params!(params, ?@self.k_layernorm);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, @self.q_proj, prefix, "q_proj");
-        gather_named_params!(params, @self.k_proj, prefix, "k_proj");
-        gather_named_params!(params, @self.v_proj, prefix, "v_proj");
-        gather_named_params!(params, @self.dense, prefix, "dense");
-        gather_named_params!(params, ?@self.q_layernorm, prefix, "q_layernorm");
-        gather_named_params!(params, ?@self.k_layernorm, prefix, "k_layernorm");
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        update_named_params!(params, @self.q_proj, prefix, "q_proj");
-        update_named_params!(params, @self.k_proj, prefix, "k_proj");
-        update_named_params!(params, @self.v_proj, prefix, "v_proj");
-        update_named_params!(params, @self.dense, prefix, "dense");
-        update_named_params!(params, ?@self.q_layernorm, prefix, "q_layernorm");
-        update_named_params!(params, ?@self.k_layernorm, prefix, "k_layernorm");
-    }
 }
 
-trainable_module!(Attention);
-
+#[derive(Debug, Clone, Module)]
+#[module(input = (Tensor, Option<Tensor>))]
 pub struct DecoderLayer {
     self_attn: Attention,
     mlp: MLP,
@@ -368,52 +291,22 @@ impl DecoderLayer {
             input_layernorm,
         }
     }
-}
 
-impl Module for DecoderLayer {
-    type Input = (Tensor, Option<Tensor>); // (x, mask)
-    type Output = Tensor; // output
-
-    fn forward(&self, input: &Self::Input) -> Self::Output {
-        let xs = &input.0;
-        let mask = input.1.clone();
+    pub fn apply(&self, xs: &Tensor, mask: &Option<Tensor>) -> Tensor {
         let residual = xs;
         let xs = self.input_layernorm.forward(xs);
-        let attn_outputs = self.self_attn.forward(&(xs.clone(), mask));
+        let attn_outputs = self.self_attn.forward(&(xs.clone(), mask.clone()));
         let feed_forward_hidden_states = self.mlp.forward(&xs);
         attn_outputs + feed_forward_hidden_states + residual
     }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(params, @self.self_attn);
-        gather_params!(params, @self.mlp);
-        gather_params!(params, @self.input_layernorm);
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(params, @self.self_attn);
-        update_params!(params, @self.mlp);
-        update_params!(params, @self.input_layernorm);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, @self.self_attn, prefix, "self_attn");
-        gather_named_params!(params, @self.mlp, prefix, "mlp");
-        gather_named_params!(params, @self.input_layernorm, prefix, "input_layernorm");
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        update_named_params!(params, @self.self_attn, prefix, "self_attn");
-        update_named_params!(params, @self.mlp, prefix, "mlp");
-        update_named_params!(params, @self.input_layernorm, prefix, "input_layernorm");
-    }
 }
-
-trainable_module!(DecoderLayer);
-
+#[derive(Debug, Clone, Module)]
 pub struct Model {
+    #[param(rename = "model.embed_tokens")]
     embed_tokens: Embedding,
+    #[param(rename = "model.layers")]
     layers: Vec<DecoderLayer>,
+    #[param(rename = "model.final_layernorm")]
     final_layernorm: LayerNorm,
     lm_head: Linear,
 }
@@ -435,13 +328,8 @@ impl Model {
             lm_head,
         }
     }
-}
 
-impl Module for Model {
-    type Input = Tensor; // x
-    type Output = Tensor; // logits
-
-    fn forward(&self, xs: &Self::Input) -> Self::Output {
+    pub fn apply(&self, xs: &Tensor) -> Tensor {
         let [_b_size, seq_len]: [usize; 2] = xs.shape_of([0, 1]).try_into().unwrap();
         let mut xs = self.embed_tokens.forward(xs);
         let mask = if seq_len <= 1 {
@@ -455,37 +343,7 @@ impl Module for Model {
         let xs = self.final_layernorm.forward(&xs).narrow(1, seq_len - 1, 1);
         self.lm_head.forward(&xs).squeeze(1)
     }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        gather_params!(params, @self.lm_head);
-        gather_params!(params, @self.embed_tokens);
-        gather_params!(params, @self.final_layernorm);
-        gather_params!(params, []self.layers);
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        update_params!(params, @self.lm_head);
-        update_params!(params, @self.embed_tokens);
-        update_params!(params, @self.final_layernorm);
-        update_params!(params, []self.layers);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        gather_named_params!(params, @self.lm_head, prefix, "lm_head");
-        gather_named_params!(params, @self.embed_tokens, prefix, "model.embed_tokens");
-        gather_named_params!(params, @self.final_layernorm, prefix, "model.final_layernorm");
-        gather_named_params!(params, []self.layers, prefix, "model.layers");
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        update_named_params!(params, @self.lm_head, prefix, "lm_head");
-        update_named_params!(params, @self.embed_tokens, prefix, "model.embed_tokens");
-        update_named_params!(params, @self.final_layernorm, prefix, "model.final_layernorm");
-        update_named_params!(params, []self.layers, prefix, "model.layers");
-    }
 }
-
-trainable_module!(Model);
 
 fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     let start = Instant::now();

@@ -5,13 +5,12 @@ use rai::{
         losses::softmax_cross_entropy,
         optimizers::{Optimizer, SDG},
     },
-    trainable_module,
     utils::cuda_enabled,
-    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Tensor, Type, F32,
 };
 use std::{collections::HashMap, fmt::Debug, time::Instant};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Module)]
 struct Mlp {
     layers: Vec<Linear>,
 }
@@ -34,56 +33,15 @@ impl Mlp {
         layers.push(Linear::new(hidden_dim, output_dim, true, dtype, device));
         Self { layers }
     }
-}
 
-impl Module for Mlp {
-    type Input = Tensor;
-    type Output = Tensor;
-
-    fn forward(&self, x: &Self::Input) -> Self::Output {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
         let mut x = x.clone();
         for l in self.layers[0..self.layers.len() - 1].iter() {
             x = l.forward(&x).relu();
         }
         self.layers[self.layers.len() - 1].forward(&x)
     }
-
-    fn gather_params(&self, out: &mut HashMap<usize, Tensor>) {
-        for l in &self.layers {
-            l.gather_params(out)
-        }
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        for layer in self.layers.iter() {
-            layer.update_params(params);
-        }
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        for (i, l) in self.layers.iter().enumerate() {
-            let p = if prefix.is_empty() {
-                format!("l.{}", i)
-            } else {
-                format!("{}.l.{}", prefix, i)
-            };
-            l.gather_named_params(&p, params);
-        }
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        for (i, l) in self.layers.iter().enumerate() {
-            let p = if prefix.is_empty() {
-                format!("l.{}", i)
-            } else {
-                format!("{}.l.{}", prefix, i)
-            };
-            l.update_named_params(&p, params);
-        }
-    }
 }
-
-trainable_module!(Mlp);
 
 fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     model: &M,

@@ -1,33 +1,29 @@
-use rai_core::{non_trainable_module, Tensor};
-use std::collections::HashMap;
+use rai_core::Tensor;
+use rai_derive::Module;
 
-macro_rules! impl_activation {
-    ($M:ty, $OP:tt) => {
-        impl rai_core::nn::Module for $M {
-            type Input = Tensor;
-            type Output = Tensor;
-
-            fn forward(&self, x: &Self::Input) -> Self::Output {
-                rai_core::ops::$OP(x)
-            }
-            fn gather_params(&self, _: &mut HashMap<usize, Tensor>) {}
-            fn update_params(&self, _: &mut HashMap<usize, Tensor>) {}
-            fn gather_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
-            fn update_named_params(&self, _: &str, _: &mut HashMap<String, Tensor>) {}
-        }
-
-        non_trainable_module!($M);
-    };
+#[derive(Clone, Debug, Copy, Module)]
+#[module(crate = rai_core)]
+pub struct Relu;
+impl Relu {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
+        x.relu()
+    }
 }
 
-#[derive(Clone, Debug, Copy)]
-pub struct Relu;
-impl_activation!(Relu, relu);
-
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Module)]
+#[module(crate = rai_core)]
 pub struct Gelu;
-impl_activation!(Gelu, gelu);
+impl Gelu {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
+        x.gelu()
+    }
+}
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Module)]
+#[module(crate = rai_core)]
 pub struct NewGelu;
-impl_activation!(NewGelu, new_gelu);
+impl NewGelu {
+    pub fn apply(&self, x: &Tensor) -> Tensor {
+        x.new_gelu()
+    }
+}

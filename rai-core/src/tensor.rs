@@ -475,7 +475,6 @@ impl Tensor {
     }
 
     #[inline]
-    #[track_caller]
     pub fn replace_data(&self, rhs: Tensor) {
         assert!(
             self.shape_eq(&rhs),
@@ -491,7 +490,9 @@ impl Tensor {
             self.device(),
             rhs.device()
         );
-        assert!(rhs.is_evaluated(), "rhs must be evaluated");
+        if !rhs.is_evaluated() {
+            eval(&rhs);
+        }
         self.0.data.replace(rhs.0.data.take());
         self.detach();
     }

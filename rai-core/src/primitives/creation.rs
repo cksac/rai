@@ -1,4 +1,4 @@
-use crate::{Primitive, Tensor, Type};
+use crate::{Primitive, Shape, Tensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -237,12 +237,20 @@ impl Primitive for Concatenate {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        Tensor::cat(tangents, self.dim)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let mut start_idx = 0;
+        let mut cotangent_primals = Vec::with_capacity(primals.len());
+        for t in primals {
+            let len = t.shape_at(self.dim);
+            let cotangent_t = cotangent.narrow(self.dim, start_idx, len);
+            cotangent_primals.push(cotangent_t);
+            start_idx += len;
+        }
+        cotangent_primals
     }
 }

@@ -1,5 +1,5 @@
-use crate::{Cpu, GenericValue, ModuleValue, Tensor, ValueSpec};
-use std::{collections::HashMap, path::Path};
+use crate::{BasicValue, Cpu, GenericValue, ModuleValue, Tensor, ValueSpec};
+use std::{borrow::Cow, collections::HashMap, path::Path};
 
 pub trait Module {
     type Input;
@@ -186,5 +186,180 @@ where
     fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
         self.a.update_named_params(prefix, params);
         self.b.update_named_params(prefix, params);
+    }
+}
+
+pub trait WithParams<K1, K2> {
+    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>);
+    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>);
+
+    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
+    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
+}
+
+impl WithParams<BasicValue, BasicValue> for Tensor {
+    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        params.insert(self.id(), self.clone());
+    }
+
+    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        if let Some(t) = params.remove(&self.id()) {
+            if t.dtype() != self.dtype() {
+                self.replace_data(t.to_dtype(self))
+            } else {
+                self.replace_data(t);
+            }
+        }
+    }
+
+    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let name = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name)
+        };
+        params.insert(name, self.clone());
+    }
+
+    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let name: Cow<'_, str> = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name).into()
+        };
+        if let Some(t) = params.remove(name.as_ref()) {
+            if t.dtype() != self.dtype() {
+                self.replace_data(t.to_dtype(self))
+            } else {
+                self.replace_data(t);
+            }
+        } else {
+            panic!("parameter {} not found", name);
+        }
+    }
+}
+
+impl<'a> WithParams<BasicValue, BasicValue> for &'a Tensor {
+    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        params.insert(self.id(), (*self).clone());
+    }
+
+    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        if let Some(t) = params.remove(&self.id()) {
+            self.replace_data(t);
+        }
+    }
+
+    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let name = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name)
+        };
+        params.insert(name, (*self).clone());
+    }
+
+    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let name: Cow<'_, str> = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name).into()
+        };
+        if let Some(t) = params.remove(name.as_ref()) {
+            self.replace_data(t);
+        } else {
+            panic!("parameter {} not found", name);
+        }
+    }
+}
+
+impl<T, K> WithParams<BasicValue, K> for Option<T>
+where
+    T: WithParams<BasicValue, K>,
+{
+    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        if let Some(t) = self {
+            t.gather_by_id(params);
+        }
+    }
+
+    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        if let Some(t) = self {
+            t.update_by_id(params);
+        }
+    }
+
+    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        if let Some(t) = self {
+            t.gather_by_name(params, prefix, name);
+        }
+    }
+
+    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        if let Some(t) = self {
+            t.update_by_name(params, prefix, name);
+        }
+    }
+}
+
+impl<T, K> WithParams<BasicValue, K> for Vec<T>
+where
+    T: WithParams<BasicValue, K>,
+{
+    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        for t in self {
+            t.gather_by_id(params);
+        }
+    }
+
+    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        for t in self {
+            t.update_by_id(params);
+        }
+    }
+
+    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        for (i, t) in self.iter().enumerate() {
+            let name = &format!("{}.{}", name, i);
+            t.gather_by_name(params, prefix, name);
+        }
+    }
+
+    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        for (i, t) in self.iter().enumerate() {
+            let name = &format!("{}.{}", name, i);
+            t.update_by_name(params, prefix, name);
+        }
+    }
+}
+
+impl<T> WithParams<BasicValue, ModuleValue> for T
+where
+    T: Module,
+{
+    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        self.gather_params(params);
+    }
+
+    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+        self.update_params(params);
+    }
+
+    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let p: Cow<'_, str> = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name).into()
+        };
+        self.gather_named_params(&p, params)
+    }
+
+    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+        let p: Cow<'_, str> = if prefix.is_empty() {
+            name.into()
+        } else {
+            format!("{}.{}", prefix, name).into()
+        };
+        self.update_named_params(&p, params)
     }
 }

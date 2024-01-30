@@ -38,6 +38,5 @@ fn test_embedding() {
     let input = Tensor::from_array([0u32, 1, 2, 3, 4], [5], device);
 
     let output = embedding.forward(&input);
-    println!("embeddings = {}", embedding.weight());
     println!("output = {}", &output);
 }

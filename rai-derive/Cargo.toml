@@ -1,5 +1,5 @@
 [package]
-name = "rai-nn"
+name = "rai-derive"
 authors = ["cksac <cs.cksac@gmail.com>"]
 description = "ML framework with Ergonomic APIs in Rust"
 keywords = ["deep-learning", "machine-learning", "tensor"]
@@ -11,16 +11,11 @@ categories.workspace = true
 repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
-[dependencies]
-rai-core = { workspace = true }
-rai-derive = { workspace = true }
-safetensors = { workspace = true }
+[lib]
+proc-macro = true
 
-[features]
-default = ["candle-backend"]
-candle-backend = ["rai-core/candle-backend"]
-cuda = ["rai-core/cuda"]
-cudnn = ["rai-core/cudnn"]
-mkl = ["rai-core/mkl"]
-accelerate = ["rai-core/accelerate"]
-metal = ["rai-core/metal"]
+[dependencies]
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = "2.0.48"
+deluxe = "0.5.0"
