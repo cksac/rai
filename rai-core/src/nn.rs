@@ -1,4 +1,4 @@
-use crate::{BasicValue, Cpu, GenericValue, ModuleValue, Tensor, ValueSpec};
+use crate::{AsDevice, GenericValue, ModuleValue, Tensor, ValueSpec};
 use std::{borrow::Cow, collections::HashMap, path::Path};
 
 pub trait Module {
@@ -34,24 +34,22 @@ pub trait Module {
         safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
     }
 
-    fn update_by_safetensors<P: AsRef<std::path::Path>>(&self, filenames: &[P]) {
+    fn update_by_safetensors<P: AsRef<std::path::Path>>(
+        &self,
+        filenames: &[P],
+        device: impl AsDevice,
+    ) {
         let mut st_tensors: HashMap<String, Tensor> = HashMap::new();
+        let device = device.device();
         for filename in filenames {
             let data = std::fs::read(filename).unwrap();
             let st = safetensors::SafeTensors::deserialize(&data).unwrap();
             for (name, view) in st.tensors() {
-                let t = Tensor::from_safetensor(&view, Cpu);
+                let t = Tensor::from_safetensor(&view, device);
                 st_tensors.insert(name, t);
             }
         }
         self.update_named_params("", &mut st_tensors);
-    }
-
-    fn chain<B>(self, b: B) -> Chain<Self, B>
-    where
-        Self: Sized,
-    {
-        Chain::new(self, b)
     }
 }
 
@@ -145,51 +143,18 @@ where
     fn gv_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
 }
 
-pub struct Chain<A, B> {
-    a: A,
-    b: B,
-}
-
-impl<A, B> Chain<A, B> {
-    pub fn new(a: A, b: B) -> Self {
-        Self { a, b }
-    }
-}
-
-impl<A, B, T> Module for Chain<A, B>
+pub trait ApplyModule<M>
 where
-    A: Module<Input = T>,
-    B: Module<Input = A::Output>,
+    M: Module<Input = Self>,
 {
-    type Input = T;
-    type Output = B::Output;
-
-    fn forward(&self, x: &Self::Input) -> Self::Output {
-        self.b.forward(&self.a.forward(x))
-    }
-
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
-        self.a.gather_params(params);
-        self.b.gather_params(params);
-    }
-
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
-        self.a.update_params(params);
-        self.b.update_params(params);
-    }
-
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.a.gather_named_params(prefix, params);
-        self.b.gather_named_params(prefix, params);
-    }
-
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
-        self.a.update_named_params(prefix, params);
-        self.b.update_named_params(prefix, params);
+    #[inline]
+    fn apply(&self, module: M) -> M::Output {
+        module.forward(self)
     }
 }
+impl<T, M> ApplyModule<M> for T where M: Module<Input = T> {}
 
-pub trait WithParams<K1, K2> {
+pub trait WithParams {
     fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>);
     fn update_by_id(&self, params: &mut HashMap<usize, Tensor>);
 
@@ -197,18 +162,16 @@ pub trait WithParams<K1, K2> {
     fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
 }
 
-impl WithParams<BasicValue, BasicValue> for Tensor {
+impl WithParams for Tensor {
     fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
         params.insert(self.id(), self.clone());
     }
 
     fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
         if let Some(t) = params.remove(&self.id()) {
-            if t.dtype() != self.dtype() {
-                self.replace_data(t.to_dtype(self))
-            } else {
-                self.replace_data(t);
-            }
+            // todo: check if can promote type
+            let t = t.to_dtype(self).to_device(self);
+            self.replace_data(t);
         }
     }
 
@@ -228,44 +191,8 @@ impl WithParams<BasicValue, BasicValue> for Tensor {
             format!("{}.{}", prefix, name).into()
         };
         if let Some(t) = params.remove(name.as_ref()) {
-            if t.dtype() != self.dtype() {
-                self.replace_data(t.to_dtype(self))
-            } else {
-                self.replace_data(t);
-            }
-        } else {
-            panic!("parameter {} not found", name);
-        }
-    }
-}
-
-impl<'a> WithParams<BasicValue, BasicValue> for &'a Tensor {
-    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
-        params.insert(self.id(), (*self).clone());
-    }
-
-    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
-        if let Some(t) = params.remove(&self.id()) {
-            self.replace_data(t);
-        }
-    }
-
-    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
-        let name = if prefix.is_empty() {
-            name.into()
-        } else {
-            format!("{}.{}", prefix, name)
-        };
-        params.insert(name, (*self).clone());
-    }
-
-    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
-        let name: Cow<'_, str> = if prefix.is_empty() {
-            name.into()
-        } else {
-            format!("{}.{}", prefix, name).into()
-        };
-        if let Some(t) = params.remove(name.as_ref()) {
+            // todo: check if can promote type
+            let t = t.to_dtype(self).to_device(self);
             self.replace_data(t);
         } else {
             panic!("parameter {} not found", name);
@@ -273,9 +200,9 @@ impl<'a> WithParams<BasicValue, BasicValue> for &'a Tensor {
     }
 }
 
-impl<T, K> WithParams<BasicValue, K> for Option<T>
+impl<T> WithParams for Option<T>
 where
-    T: WithParams<BasicValue, K>,
+    T: WithParams,
 {
     fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
         if let Some(t) = self {
@@ -302,9 +229,9 @@ where
     }
 }
 
-impl<T, K> WithParams<BasicValue, K> for Vec<T>
+impl<T> WithParams for Vec<T>
 where
-    T: WithParams<BasicValue, K>,
+    T: WithParams,
 {
     fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
         for t in self {
@@ -333,7 +260,7 @@ where
     }
 }
 
-impl<T> WithParams<BasicValue, ModuleValue> for T
+impl<T> WithParams for T
 where
     T: Module,
 {
@@ -361,5 +288,27 @@ where
             format!("{}.{}", prefix, name).into()
         };
         self.update_named_params(&p, params)
+    }
+}
+
+pub trait ToApplyArg<O> {
+    fn to_arg(self) -> O;
+}
+
+impl<'a, T> ToApplyArg<&'a T> for &'a T {
+    fn to_arg(self) -> &'a T {
+        self
+    }
+}
+
+impl<'a, T> ToApplyArg<Option<&'a T>> for &'a Option<T> {
+    fn to_arg(self) -> Option<&'a T> {
+        self.as_ref()
+    }
+}
+
+impl<'a, T: Copy> ToApplyArg<T> for &'a T {
+    fn to_arg(self) -> T {
+        *self
     }
 }

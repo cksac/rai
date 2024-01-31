@@ -66,15 +66,15 @@ impl RotaryEmbedding {
         }
     }
 
-    pub fn apply(&self, xs: &Tensor, seqlen_offset: &usize) -> Tensor {
+    pub fn fwd(&self, xs: &Tensor, seqlen_offset: usize) -> Tensor {
         let [_b_size, _num_heads, seq_len, headdim]: [usize; 4] =
             xs.shape_of([0, 1, 2, 3]).try_into().unwrap();
         let xs_rot = xs.narrow(3, 0, self.dim);
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
         let (xs1, xs2) = (&xs12[0], &xs12[1]);
-        let c = &self.cos.narrow(0, *seqlen_offset, seq_len).to_dtype(xs);
-        let s = &self.sin.narrow(0, *seqlen_offset, seq_len).to_dtype(xs);
+        let c = &self.cos.narrow(0, seqlen_offset, seq_len).to_dtype(xs);
+        let s = &self.sin.narrow(0, seqlen_offset, seq_len).to_dtype(xs);
         let rotate_half = Tensor::cat(&[&xs2.neg(), xs1], -1);
         let xs_rot = xs_rot * c + rotate_half * s;
         Tensor::cat(&[xs_rot, xs_pass], -1)
@@ -100,8 +100,8 @@ impl MLP {
         }
     }
 
-    pub fn apply(&self, x: &Tensor) -> Tensor {
-        (&self.fc1).chain(&self.act).chain(&self.fc2).forward(x)
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
+        x.apply(&self.fc1).apply(&self.act).apply(&self.fc2)
     }
 }
 
@@ -204,7 +204,7 @@ impl Attention {
         }
     }
 
-    pub fn apply(&self, xs: &Tensor, mask: &Option<Tensor>) -> Tensor {
+    pub fn fwd(&self, xs: &Tensor, mask: Option<&Tensor>) -> Tensor {
         let [b_size, seq_len, _n_embd]: [usize; 3] = xs.shape_of([0, 1, 2]).try_into().unwrap();
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);
@@ -292,10 +292,10 @@ impl DecoderLayer {
         }
     }
 
-    pub fn apply(&self, xs: &Tensor, mask: &Option<Tensor>) -> Tensor {
+    pub fn fwd(&self, xs: &Tensor, mask: Option<&Tensor>) -> Tensor {
         let residual = xs;
         let xs = self.input_layernorm.forward(xs);
-        let attn_outputs = self.self_attn.forward(&(xs.clone(), mask.clone()));
+        let attn_outputs = self.self_attn.forward(&(xs.clone(), mask.cloned()));
         let feed_forward_hidden_states = self.mlp.forward(&xs);
         attn_outputs + feed_forward_hidden_states + residual
     }
@@ -329,7 +329,7 @@ impl Model {
         }
     }
 
-    pub fn apply(&self, xs: &Tensor) -> Tensor {
+    pub fn fwd(&self, xs: &Tensor) -> Tensor {
         let [_b_size, seq_len]: [usize; 2] = xs.shape_of([0, 1]).try_into().unwrap();
         let mut xs = self.embed_tokens.forward(xs);
         let mask = if seq_len <= 1 {
@@ -347,6 +347,7 @@ impl Model {
 
 fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     let start = Instant::now();
+    let device = device.device();
     let model_id = "microsoft/phi-2".to_string();
     let revision = "main".to_string();
     let api = Api::new().unwrap();
@@ -360,7 +361,7 @@ fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     let cfg: Config = serde_json::from_str(&config).unwrap();
     let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json");
     let phi = Model::new(&cfg, dtype, device);
-    phi.update_by_safetensors(&model_filenames);
+    phi.update_by_safetensors(&model_filenames, device);
     let elapsed = start.elapsed();
     println!("model loaded in : {:?}", elapsed);
     (tokenizer, phi)

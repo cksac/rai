@@ -27,7 +27,7 @@ impl Linear {
         Self { weight, bias }
     }
 
-    pub fn apply(&self, x: &Tensor) -> Tensor {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
         // todo: move the broadcast checking to matmul?
         let w = &match x.shape() {
             [b1, b2, _, _] => self.weight.broadcast_left([*b1, *b2]).t(),

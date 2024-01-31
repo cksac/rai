@@ -1,5 +1,6 @@
 use crate::{
     eval,
+    nn::{ApplyModule, Module},
     ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
     utils::{self, dot_graph},
     AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, Primitive, Shape, Type,
@@ -549,6 +550,15 @@ impl Tensor {
             .downcast_ref::<Vec<T::Repr>>()
             .unwrap()
             .clone()
+    }
+
+    #[inline]
+    pub fn apply<M>(&self, module: M) -> M::Output
+    where
+        M: Module<Input = Self>,
+        Self: ApplyModule<M>,
+    {
+        ApplyModule::apply(self, module)
     }
 
     #[inline]

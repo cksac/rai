@@ -2,7 +2,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::ToTokens;
-use syn::{DeriveInput, Ident, Path, Type};
+use syn::{spanned::Spanned, DeriveInput, Ident, Path, Type};
 
 #[derive(Debug, deluxe::ExtractAttributes)]
 #[deluxe(attributes(module))]
@@ -87,10 +87,10 @@ pub fn module(item: TokenStream) -> TokenStream {
         }
     });
 
-    let call_apply = match &input_ty {
+    let call_fwd = match &input_ty {
         Type::Path(_) | Type::Array(_) => {
             quote::quote! {
-                self.apply(input)
+                self.fwd(input)
             }
         }
         Type::Tuple(tuple) => {
@@ -98,8 +98,8 @@ pub fn module(item: TokenStream) -> TokenStream {
                 .elems
                 .iter()
                 .enumerate()
-                .map(|(i, _)| {
-                    let arg = Ident::new(&format!("a{i}"), Span::call_site());
+                .map(|(i, t)| {
+                    let arg = Ident::new(&format!("a{i}"), t.span());
                     quote::quote! {
                         #arg
                     }
@@ -108,7 +108,7 @@ pub fn module(item: TokenStream) -> TokenStream {
 
             quote::quote! {
                 let (#(#args,)*) = input;
-                self.apply(#(#args,)*)
+                self.fwd(#(::#crate_root::nn::ToApplyArg::to_arg(#args),)*)
             }
         }
         _ => panic!("unsupported module input type"),
@@ -120,8 +120,9 @@ pub fn module(item: TokenStream) -> TokenStream {
                 type Input = #input_ty;
                 type Output = #output_ty;
 
+                #[inline]
                 fn forward(&self, input: &Self::Input) -> Self::Output {
-                    #call_apply
+                    #call_fwd
                 }
                 fn gather_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {}
                 fn update_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {}
@@ -144,7 +145,7 @@ pub fn module(item: TokenStream) -> TokenStream {
             .map(|f| {
                 let field_name = f.field.ident.as_ref().unwrap();
                 quote::quote! {
-                    ::#crate_root::nn::WithParams::<_, _>::update_by_id(&self.#field_name, params);
+                    ::#crate_root::nn::WithParams::update_by_id(&self.#field_name, params);
                 }
             })
             .collect();
@@ -155,7 +156,7 @@ pub fn module(item: TokenStream) -> TokenStream {
             .map(|f| {
                 let field_name = f.field.ident.as_ref().unwrap();
                 quote::quote! {
-                    ::#crate_root::nn::WithParams::<_, _>::gather_by_id(&self.#field_name, params);
+                    ::#crate_root::nn::WithParams::gather_by_id(&self.#field_name, params);
                 }
             })
             .collect();
@@ -168,7 +169,7 @@ pub fn module(item: TokenStream) -> TokenStream {
                 let f_name = field_name.to_string();
                 let param_name = f.rename.as_ref().unwrap_or(&f_name);
                 quote::quote! {
-                    ::#crate_root::nn::WithParams::<_, _>::update_by_name(&self.#field_name, params, prefix, #param_name);
+                    ::#crate_root::nn::WithParams::update_by_name(&self.#field_name, params, prefix, #param_name);
                 }
             })
             .collect();
@@ -181,7 +182,7 @@ pub fn module(item: TokenStream) -> TokenStream {
                 let f_name = field_name.to_string();
                 let param_name = f.rename.as_ref().unwrap_or(&f_name);
                 quote::quote! {
-                    ::#crate_root::nn::WithParams::<_, _>::gather_by_name(&self.#field_name, params, prefix, #param_name);
+                    ::#crate_root::nn::WithParams::gather_by_name(&self.#field_name, params, prefix, #param_name);
                 }
             })
             .collect();
@@ -191,8 +192,9 @@ pub fn module(item: TokenStream) -> TokenStream {
                 type Input = #input_ty;
                 type Output = #output_ty;
 
+                #[inline]
                 fn forward(&self, input: &Self::Input) -> Self::Output {
-                    #call_apply
+                    #call_fwd
                 }
 
                 fn gather_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {

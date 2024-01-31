@@ -15,7 +15,7 @@ impl RMSNorm {
         Self { weight, eps }
     }
 
-    pub fn apply(&self, x: &Tensor) -> Tensor {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
         let s = 1.0 / (x.shape_at(-1) as f32).sqrt();
         let n = ((x * s).square().sum((-1, true)) + self.eps).rsqrt();
         &self.weight * x * n

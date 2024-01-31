@@ -29,7 +29,7 @@ impl LayerNorm {
         Self { weight, bias, eps }
     }
 
-    pub fn apply(&self, x: &Tensor) -> Tensor {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
         let mean = x.mean((-1, true));
         let var = x.var((-1, true));
         let x = (x - mean) * (var + self.eps).rsqrt();

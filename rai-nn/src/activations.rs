@@ -5,7 +5,7 @@ use rai_derive::Module;
 #[module(crate = rai_core)]
 pub struct Relu;
 impl Relu {
-    pub fn apply(&self, x: &Tensor) -> Tensor {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
         x.relu()
     }
 }
@@ -14,7 +14,7 @@ impl Relu {
 #[module(crate = rai_core)]
 pub struct Gelu;
 impl Gelu {
-    pub fn apply(&self, x: &Tensor) -> Tensor {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
         x.gelu()
     }
 }
@@ -23,7 +23,7 @@ impl Gelu {
 #[module(crate = rai_core)]
 pub struct NewGelu;
 impl NewGelu {
-    pub fn apply(&self, x: &Tensor) -> Tensor {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
         x.new_gelu()
     }
 }
