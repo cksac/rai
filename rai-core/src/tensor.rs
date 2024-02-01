@@ -15,6 +15,7 @@ use std::{
     hash::{Hash, Hasher},
     ops::Deref,
     path::Path,
+    primitive,
     rc::Rc,
     sync::atomic,
 };
@@ -91,15 +92,13 @@ impl Tensor {
     }
 
     #[inline]
-    #[allow(unused_variables)]
-    pub fn ones<D: Type>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
-        ops::full::<D::Repr>(D::Repr::one(), shape, device)
+    pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+        ops::ones(shape, dtype, device)
     }
 
     #[inline]
-    #[allow(unused_variables)]
-    pub fn zeros<D: Type>(shape: impl Shape, dtype: D, device: impl AsDevice) -> Tensor {
-        ops::full::<D::Repr>(D::Repr::zero(), shape, device)
+    pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+        ops::zeros(shape, dtype, device)
     }
 
     #[inline]
@@ -348,6 +347,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn index_add(&self, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+        ops::index_add(self, dim, index, source)
+    }
+
+    #[inline]
     pub fn index_select(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
         ops::index_select(self, dim, index.as_ref())
     }
@@ -425,6 +429,16 @@ impl Tensor {
     #[inline]
     pub fn where_cond(&self, input: impl AsRef<Tensor>, other: impl AsRef<Tensor>) -> Tensor {
         ops::where_cond(self, input.as_ref(), other.as_ref())
+    }
+
+    #[inline]
+    pub fn scatter_add(
+        &self,
+        dim: impl Dim,
+        index: impl AsRef<Tensor>,
+        source: impl AsRef<Tensor>,
+    ) -> Tensor {
+        ops::scatter_add(self, dim, index.as_ref(), source.as_ref())
     }
 
     pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {

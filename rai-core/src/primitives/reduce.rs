@@ -199,12 +199,12 @@ impl Primitive for ArgMax {
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+        output.zeros_like()
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+        vec![]
     }
 }
 
@@ -239,11 +239,11 @@ impl Primitive for ArgMin {
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+        output.zeros_like()
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+        vec![]
     }
 }

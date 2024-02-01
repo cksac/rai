@@ -1,10 +1,10 @@
 use crate::{
     primitives::{
         Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp,
-        FromArray, Full, Gather, Greater, GreaterEqual, IndexSelect, Less, LessEqual, Log, Log10,
-        Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual, PowerFloat,
-        Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, Sign, Sin, Softmax, Sqrt, Square,
-        Sub, Tanh, ToContiguous, Transpose, Where,
+        FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd, IndexSelect, Less, LessEqual,
+        Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual,
+        PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, ScatterAdd, Sign, Sin,
+        Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -111,6 +111,20 @@ pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Te
         Full::<T::DType>::new(val),
         inputs,
     )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+    let dtype = dtype.dtype();
+    let primitive = dtype.primitive_full_one();
+    Tensor::new(device, dtype, shape, primitive, vec![])
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+    let dtype = dtype.dtype();
+    let primitive = dtype.primitive_full_zero();
+    Tensor::new(device, dtype, shape, primitive, vec![])
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -916,6 +930,19 @@ pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    // due to vjp only return by position
+    // x and source will have grads, therefore it comes first
+    let inputs = vec![x.clone(), source.clone(), index.clone()];
+    // TODO: asserts
+    Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let dim = x.dim(dim);
     let device = x.device();
@@ -1143,8 +1170,9 @@ pub fn where_cond(x: &Tensor, input: &Tensor, other: &Tensor) -> Tensor {
     assert_eq!(input.dtype(), other.dtype());
     let device = x.device();
     let dtype = input.dtype();
-    let shape = x.shape().to_vec();
-    let inputs = vec![x.clone(), input.clone(), other.clone()];
+    let shape = x.shape();
+    // no grad for x, therefore, it goes last in input list
+    let inputs = vec![input.clone(), other.clone(), x.clone()];
     Tensor::new(device, dtype, shape, Where, inputs)
 }
 
@@ -1206,7 +1234,17 @@ pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
 pub fn to_contiguous(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
-    let shape = x.shape().to_vec();
+    let shape = x.shape();
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, ToContiguous, inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn scatter_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let inputs = vec![x.clone(), source.clone(), index.clone()];
+    Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs)
 }

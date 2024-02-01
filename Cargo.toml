@@ -4,29 +4,29 @@ members = [
     "rai-core",
     "rai-nn",
     "rai-opt",
-    "examples/*"
-,
     "rai-models",
     "rai-datasets",
-    "rai-derive"]
+    "rai-derive",
+    "examples/*",
+]
 
 resolver = "2"
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 categories = ["science"]
 
 [workspace.dependencies]
-rai = { path = "rai", version = "0.7.0" }
-rai-core = { path = "rai-core", version = "0.7.0" }
-rai-nn = { path = "rai-nn", version = "0.7.0" }
-rai-opt = { path = "rai-opt", version = "0.7.0" }
-rai-models = { path = "rai-models", version = "0.7.0" }
-rai-datasets = { path = "rai-datasets", version = "0.7.0" }
-rai-derive = { path = "rai-derive", version = "0.7.0" }
+rai = { path = "rai", version = "0.8.0" }
+rai-core = { path = "rai-core", version = "0.8.0" }
+rai-nn = { path = "rai-nn", version = "0.8.0" }
+rai-opt = { path = "rai-opt", version = "0.8.0" }
+rai-models = { path = "rai-models", version = "0.8.0" }
+rai-datasets = { path = "rai-datasets", version = "0.8.0" }
+rai-derive = { path = "rai-derive", version = "0.8.0" }
 safetensors = "0.3.1"
 candle-core = { version = "0.3.2" }
 paste = "1.0"

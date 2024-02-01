@@ -8,6 +8,27 @@ pub trait Device: Debug {
     fn primitive_to_device(&self) -> Box<dyn Primitive>;
 }
 
+impl<'a, T> Device for &'a T
+where
+    T: Device,
+{
+    fn as_any(&self) -> &dyn Any {
+        Device::as_any(*self)
+    }
+
+    fn clone_boxed(&self) -> Box<dyn Device> {
+        Device::clone_boxed(*self)
+    }
+
+    fn eq(&self, rhs: &dyn Device) -> bool {
+        Device::eq(*self, rhs)
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        Device::primitive_to_device(*self)
+    }
+}
+
 impl<'a> Device for &'a dyn Device {
     fn as_any(&self) -> &dyn Any {
         Device::as_any(*self)

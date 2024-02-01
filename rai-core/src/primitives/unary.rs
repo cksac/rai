@@ -1,5 +1,5 @@
 use crate::{Primitive, Tensor};
-use std::any::Any;
+use std::{any::Any, f64::consts::PI};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -409,13 +409,17 @@ impl Primitive for Erf {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let x = &primals[0];
+        let tangent_x = &tangents[0];
+        (2. / PI.sqrt()) * (x.square().neg()).exp() * tangent_x
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let x = &primals[0];
+        let cotangent_x = (2. / PI.sqrt()) * (x.square().neg()).exp() * cotangent;
+        vec![cotangent_x]
     }
 }
 
@@ -432,13 +436,17 @@ impl Primitive for Tanh {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let x = &primals[0];
+        let tangent_x = &tangents[0];
+        (tangent_x + tangent_x * output) * (x.ones_like() - output)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let x = &primals[0];
+        let cotangent_x = (cotangent + cotangent * output) * (x.ones_like() - output);
+        vec![cotangent_x]
     }
 }
 
@@ -471,12 +479,16 @@ impl Primitive for PowerFloat {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let x = &primals[0];
+        let tangent_x = &tangents[0];
+        tangent_x * x.powf(self.exponent - 1.0) * self.exponent
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let x = &primals[0];
+        let cotangent_x = cotangent * x.powf(self.exponent - 1.0) * self.exponent;
+        vec![cotangent_x]
     }
 }

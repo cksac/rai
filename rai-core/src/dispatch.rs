@@ -134,6 +134,8 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::IndexSelect>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Narrow>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Where>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ScatterAdd>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::IndexAdd>($backend, &mut $rules);
 
         // transform
         _register::<$backend, $device, primitives::Transpose>($backend, &mut $rules);
