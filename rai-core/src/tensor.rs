@@ -15,7 +15,6 @@ use std::{
     hash::{Hash, Hasher},
     ops::Deref,
     path::Path,
-    primitive,
     rc::Rc,
     sync::atomic,
 };
