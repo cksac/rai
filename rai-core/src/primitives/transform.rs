@@ -156,12 +156,14 @@ impl Primitive for ToContiguous {
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!()
+        let tangent_x = &tangents[0];
+        tangent_x.clone()
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!()
+        let cotangent_x = cotangent.clone();
+        vec![cotangent_x]
     }
 }
 

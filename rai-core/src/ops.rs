@@ -45,6 +45,7 @@ macro_rules! impl_std_ops {
     ($op:ident, $func:ident) => {
         impl std::ops::$op<Tensor> for Tensor {
             type Output = Tensor;
+
             fn $func(self, rhs: Tensor) -> Tensor {
                 $func(&self, &rhs)
             }
@@ -52,6 +53,7 @@ macro_rules! impl_std_ops {
 
         impl<'a> std::ops::$op<&'a Tensor> for Tensor {
             type Output = Tensor;
+
             fn $func(self, rhs: &'a Tensor) -> Tensor {
                 $func(&self, rhs)
             }
@@ -59,6 +61,7 @@ macro_rules! impl_std_ops {
 
         impl<'a> std::ops::$op<Tensor> for &'a Tensor {
             type Output = Tensor;
+
             fn $func(self, rhs: Tensor) -> Tensor {
                 $func(self, &rhs)
             }
@@ -66,6 +69,7 @@ macro_rules! impl_std_ops {
 
         impl<'a, 'b> std::ops::$op<&'b Tensor> for &'a Tensor {
             type Output = Tensor;
+
             fn $func(self, rhs: &'b Tensor) -> Tensor {
                 $func(self, rhs)
             }
@@ -101,6 +105,17 @@ macro_rules! impl_std_ops {
     };
 }
 
+/// Creates a `Tensor` filled with a specified value.
+///
+/// # Arguments
+///
+/// * `val` - The value to fill the `Tensor` with.
+/// * `shape` - The shape of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with the specified value.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
     let inputs = vec![];
@@ -113,6 +128,17 @@ pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Te
     )
 }
 
+/// Creates a `Tensor` filled with ones.
+///
+/// # Arguments
+///
+/// * `shape` - The shape of the `Tensor`.
+/// * `dtype` - The data type of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with ones.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
@@ -120,6 +146,17 @@ pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Te
     Tensor::new(device, dtype, shape, primitive, vec![])
 }
 
+/// Creates a `Tensor` filled with zeros.
+///
+/// # Arguments
+///
+/// * `shape` - The shape of the `Tensor`.
+/// * `dtype` - The data type of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with zeros.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
@@ -127,16 +164,35 @@ pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> T
     Tensor::new(device, dtype, shape, primitive, vec![])
 }
 
+/// Creates a `Tensor` filled with a specified value, with the same shape, data type and device as another `Tensor`.
+///
+/// # Arguments
+///
+/// * `x` - The reference to the `Tensor` to mimic the shape, data type and device.
+/// * `val` - The value to fill the `Tensor` with.
+///
+/// # Returns
+///
+/// A `Tensor` filled with the specified value, with the same shape, data type and device as `x`.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
     if x.dtype() == T::DType::boxed_dtype().as_ref() {
         full::<T>(val, x.shape(), x.device())
     } else {
-        // TODO: check is type can be convert/promoted to x dtype?
+        // TODO: check if type can be converted/promoted to x dtype?
         full::<T>(val, x.shape(), x.device()).to_dtype(x)
     }
 }
 
+/// Creates a `Tensor` filled with zeros, with the same shape, data type and device as another `Tensor`.
+///
+/// # Arguments
+///
+/// * `x` - The reference to the `Tensor` to mimic the shape, data type and device.
+///
+/// # Returns
+///
+/// A `Tensor` filled with zeros, with the same shape, data type and device as `x`.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn zeros_like(x: &Tensor) -> Tensor {
     let device = x.device();
@@ -147,6 +203,15 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
+/// Creates a `Tensor` filled with ones, with the same shape, data type and device as another `Tensor`.
+///
+/// # Arguments
+///
+/// * `x` - The reference to the `Tensor` to mimic the shape, data type and device.
+///
+/// # Returns
+///
+/// A `Tensor` filled with ones, with the same shape, data type and device as `x`.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn ones_like(x: &Tensor) -> Tensor {
     let device = x.device();
@@ -157,6 +222,17 @@ pub fn ones_like(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
+/// Creates a `Tensor` filled with random values from a normal distribution with mean 0 and variance 1.
+///
+/// # Arguments
+///
+/// * `shape` - The shape of the `Tensor`.
+/// * `dtype` - The data type of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with random values from a normal distribution.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
     let dtype = T::boxed_dtype();
@@ -171,6 +247,27 @@ pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Ten
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn randn_like(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let primitive = dtype.primitive_randn();
+    let inputs = vec![];
+    Tensor::new(device, dtype, shape, primitive, inputs)
+}
+
+/// Creates a `Tensor` filled with random values from a uniform distribution on the interval [0, 1).
+///
+/// # Arguments
+///
+/// * `shape` - The shape of the `Tensor`.
+/// * `dtype` - The data type of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with random values from a uniform distribution.
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
     let dtype = T::boxed_dtype();
     let inputs = vec![];
@@ -183,17 +280,32 @@ pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tens
     )
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn rand_like(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let primitive = dtype.primitive_rand();
+    let inputs = vec![];
+    Tensor::new(device, dtype, shape, primitive, inputs)
+}
+
+/// Represents the arguments for the `arange` function.
 pub trait ArangeArgs<D: Type>: Debug {
+    /// Returns the start value for the `arange` function.
     fn start(&self) -> D::Repr {
         D::Repr::zero()
     }
 
+    /// Returns the stop value for the `arange` function.
     fn stop(&self) -> D::Repr;
 
+    /// Returns the step value for the `arange` function.
     fn step(&self) -> D::Repr {
         D::Repr::one()
     }
 
+    /// Returns the size of the resulting `Tensor` for the `arange` function.
     fn size(&self) -> usize {
         D::Repr::elem_count(self.start(), self.stop(), self.step())
     }
@@ -239,6 +351,16 @@ impl_arange_args!(f16, F16);
 impl_arange_args!(u8, U8);
 impl_arange_args!(u32, U32);
 
+/// Creates a 1-D `Tensor` with values from a range.
+///
+/// # Arguments
+///
+/// * `args` - The arguments for the `arange` function.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A 1-D `Tensor` with values from the specified range.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor {
     let start = args.start();
@@ -256,6 +378,17 @@ pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tens
     )
 }
 
+/// Creates a `Tensor` from an array of values.
+///
+/// # Arguments
+///
+/// * `data` - The array of values.
+/// * `shape` - The shape of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` created from the array of values.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn from_array<T: ElemType>(
     data: impl Into<Vec<T>> + Debug,
@@ -275,11 +408,20 @@ pub fn from_array<T: ElemType>(
 }
 
 // Note: modified from candle candle_core::safetensors::convert_slice
+/// Converts a byte slice to a typed slice.
+///
+/// # Arguments
+///
+/// * `data` - The byte slice to convert.
+///
+/// # Returns
+///
+/// A typed slice converted from the byte slice.
 fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
     let size_in_bytes = std::mem::size_of::<T>();
     let elem_count = data.len() / size_in_bytes;
     if (data.as_ptr() as usize) % size_in_bytes == 0 {
-        // SAFETY This is safe because we just checked that this
+        // SAFETY: This is safe because we just checked that this
         // was correctly aligned.
         let data: &[T] = unsafe { from_raw_parts(data.as_ptr() as *const T, elem_count) };
         data.to_vec()
@@ -288,7 +430,7 @@ fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
         // Making this vector too small to fit a full f16/f32/f64 weights, resulting in out-of-bounds access
         let mut c: Vec<T> = Vec::with_capacity(elem_count);
         // SAFETY: We just created c, so the allocated memory is necessarily
-        // contiguous and non overlapping with the view's data.
+        // contiguous and non-overlapping with the view's data.
         // We're downgrading the `c` pointer from T to u8, which removes alignment
         // constraints.
         unsafe {
@@ -299,6 +441,16 @@ fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
     }
 }
 
+/// Creates a `Tensor` from a `safetensors::TensorView`.
+///
+/// # Arguments
+///
+/// * `view` - The `safetensors::TensorView` to create the `Tensor` from.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` created from the `safetensors::TensorView`.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
     let shape = view.shape();
@@ -342,6 +494,16 @@ pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
     }
 }
 
+/// Adds two `Tensor` objects.
+///
+/// # Arguments
+///
+/// * `lhs` - The first `Tensor`.
+/// * `rhs` - The second `Tensor`.
+///
+/// # Returns
+///
+/// The resulting `Tensor` after the addition.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn add(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let device = lhs.device();
@@ -355,6 +517,16 @@ pub fn add(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 
 impl_std_ops!(Add, add);
 
+/// Subtracts two `Tensor` objects.
+///
+/// # Arguments
+///
+/// * `lhs` - The first `Tensor`.
+/// * `rhs` - The second `Tensor`.
+///
+/// # Returns
+///
+/// The resulting `Tensor` after the subtraction.
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn sub(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let device = lhs.device();

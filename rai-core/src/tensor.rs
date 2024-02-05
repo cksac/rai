@@ -91,23 +91,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
-        ops::ones(shape, dtype, device)
-    }
-
-    #[inline]
-    pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
-        ops::zeros(shape, dtype, device)
-    }
-
-    #[inline]
     pub fn full_like<T: ElemType>(&self, val: T) -> Tensor {
         ops::full_like::<T>(self, val)
     }
 
     #[inline]
-    pub fn zeros_like(&self) -> Tensor {
-        ops::zeros_like(self)
+    pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+        ops::ones(shape, dtype, device)
     }
 
     #[inline]
@@ -116,13 +106,33 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+        ops::zeros(shape, dtype, device)
+    }
+
+    #[inline]
+    pub fn zeros_like(&self) -> Tensor {
+        ops::zeros_like(self)
+    }
+
+    #[inline]
     pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
         ops::rand(shape, dtype, device)
     }
 
     #[inline]
+    pub fn rand_like(&self) -> Tensor {
+        ops::rand_like(self)
+    }
+
+    #[inline]
     pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
         ops::randn(shape, dtype, device)
+    }
+
+    #[inline]
+    pub fn randn_like(&self) -> Tensor {
+        ops::randn_like(self)
     }
 
     #[inline]
@@ -144,6 +154,7 @@ impl Tensor {
         ops::from_array(data, shape, device)
     }
 
+    /// see [`ops::from_safetensor`](ops::from_safetensor)
     #[inline]
     pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
         ops::from_safetensor(view, device)
