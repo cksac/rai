@@ -1,5 +1,5 @@
 use crate::{
-    primitives::{Full, Random, ToDType},
+    primitives::{Full, Normal, Random, ToDType},
     Primitive, Tensor,
 };
 use half::{bf16, f16};
@@ -33,11 +33,11 @@ pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
         Full::new(Self::Repr::one())
     }
 
-    fn primitive_rand() -> Full<Self> {
+    fn primitive_rand() -> Random<Self> {
         Random::new(Self::Repr::zero(), Self::Repr::one())
     }
 
-    fn primitive_randn() -> Full<Self> {
+    fn primitive_randn() -> Normal<Self> {
         Normal::new(Self::Repr::zero(), Self::Repr::one())
     }
 
