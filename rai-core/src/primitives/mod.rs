@@ -49,3 +49,6 @@ pub use reduce::*;
 
 mod indexing;
 pub use indexing::*;
+
+mod others;
+pub use others::*;

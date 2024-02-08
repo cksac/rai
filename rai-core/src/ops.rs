@@ -1,10 +1,10 @@
 use crate::{
     primitives::{
         Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp,
-        FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd, IndexSelect, Less, LessEqual,
-        Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative, Normal, NotEqual,
-        PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, ScatterAdd, Sign, Sin,
-        Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
+        FlashAttention, FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd, IndexSelect,
+        Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative,
+        Normal, NotEqual, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt,
+        ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -1419,4 +1419,103 @@ pub fn scatter_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -
     let shape = x.shape();
     let inputs = vec![x.clone(), source.clone(), index.clone()];
     Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs)
+}
+
+pub trait FlashAttentionOpts: Debug {
+    fn softmax_scale(&self) -> f32;
+    fn window_size_left(&self) -> Option<usize> {
+        None
+    }
+    fn window_size_right(&self) -> Option<usize> {
+        None
+    }
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        None
+    }
+}
+
+impl FlashAttentionOpts for f32 {
+    fn softmax_scale(&self) -> f32 {
+        *self
+    }
+}
+
+impl<'a> FlashAttentionOpts for (f32, &'a Tensor) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        Some(self.1)
+    }
+}
+
+impl<'a> FlashAttentionOpts for (f32, usize, &'a Tensor) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn window_size_right(&self) -> Option<usize> {
+        Some(self.1)
+    }
+
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        Some(self.2)
+    }
+}
+
+impl FlashAttentionOpts for (f32, usize, usize) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn window_size_right(&self) -> Option<usize> {
+        Some(self.1)
+    }
+
+    fn window_size_left(&self) -> Option<usize> {
+        Some(self.2)
+    }
+}
+
+impl<'a> FlashAttentionOpts for (f32, usize, usize, &'a Tensor) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn window_size_right(&self) -> Option<usize> {
+        Some(self.1)
+    }
+
+    fn window_size_left(&self) -> Option<usize> {
+        Some(self.2)
+    }
+
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        Some(self.3)
+    }
+}
+
+pub fn flash_attention(
+    q: &Tensor,
+    k: &Tensor,
+    v: &Tensor,
+    opts: impl FlashAttentionOpts,
+) -> Tensor {
+    let device = q.device();
+    let dtype = q.dtype();
+    let shape = q.shape();
+    let inputs = vec![q.clone(), k.clone(), v.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        FlashAttention::new(
+            opts.softmax_scale(),
+            opts.window_size_left(),
+            opts.window_size_right(),
+            opts.alibi_slopes().cloned(),
+        ),
+        inputs,
+    )
 }

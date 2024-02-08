@@ -897,3 +897,54 @@ impl<D: Device> Eval<D, primitives::ScatterAdd> for CandleBackend {
         output.set_data(t);
     }
 }
+
+#[cfg(all(
+    feature = "candle-backend",
+    feature = "cuda",
+    feature = "candle-flash-attn"
+))]
+impl Eval<Cuda, primitives::FlashAttention> for CandleBackend {
+    fn eval(
+        &self,
+        _: &Cuda,
+        primitive: &primitives::FlashAttention,
+        inputs: &[Tensor],
+        output: &Tensor,
+    ) {
+        let q = &inputs[0];
+        let k = &inputs[1];
+        let v = &inputs[2];
+        let t1 = q.get_data::<Data>().unwrap();
+        let t2 = k.get_data::<Data>().unwrap();
+        let t3 = v.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t3 = t3.deref();
+        let t = match &primitive.alibi_slopes {
+            Some(alibi_slopes) => {
+                let t4 = alibi_slopes.get_data::<Data>().unwrap();
+                let t4 = t4.deref();
+                candle_flash_attn::flash_attn_alibi_windowed(
+                    t1,
+                    t2,
+                    t3,
+                    t4,
+                    primitive.softmax_scale,
+                    primitive.window_size_left,
+                    primitive.window_size_right,
+                )
+                .unwrap()
+            }
+            None => candle_flash_attn::flash_attn_windowed(
+                t1,
+                t2,
+                t3,
+                primitive.softmax_scale,
+                primitive.window_size_left,
+                primitive.window_size_right,
+            )
+            .unwrap(),
+        };
+        output.set_data(t);
+    }
+}

@@ -161,6 +161,13 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Laz
     #[cfg(all(feature = "candle-backend", feature = "cuda"))]
     register_backend!(CandleBackend, crate::Cuda, rules);
 
+    #[cfg(all(
+        feature = "candle-backend",
+        feature = "cuda",
+        feature = "candle-flash-attn"
+    ))]
+    _register::<CandleBackend, crate::Cuda, primitives::FlashAttention>(CandleBackend, rules);
+
     Mutex::new(rules)
 });
 

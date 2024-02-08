@@ -16,6 +16,7 @@ half = { workspace = true }
 num-traits = { workspace = true }
 safetensors = { workspace = true }
 candle-core = { workspace = true, optional = true }
+candle-flash-attn = { workspace = true, optional = true }
 dyn-clone = { workspace = true }
 once_cell = { workspace = true }
 thiserror = { workspace = true }
@@ -26,6 +27,7 @@ colored = { workspace = true }
 [features]
 default = ["candle-backend"]
 candle-backend = ["candle-core"]
+candle-backend-fa = ["candle-core", "cuda", "candle-flash-attn"]
 cuda = ["candle-core?/cuda"]
 cudnn = ["candle-core?/cudnn"]
 mkl = ["candle-core?/mkl"]
