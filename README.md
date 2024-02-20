@@ -3,7 +3,7 @@
 ![Rust](https://github.com/cksac/rai/workflows/Rust/badge.svg)
 [![Docs Status](https://docs.rs/rai/badge.svg)](https://docs.rs/rai)
 [![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
-[![discord server](https://dcbadge.vercel.app/api/server/RFSGc8HA)](https://discord.gg/RFSGc8HA)
+[![Discord](https://img.shields.io/discord/1038839012602941528.svg?color=7289da&&logo=discord)](https://discord.gg/uPEBbYYDB6)
 
 ML framework with ergonomic APIs in Rust. Lazy computation and composable transformations.
 ---
@@ -72,6 +72,8 @@ fn train_step<
     - `cargo run --bin mnist --release`
 - [phi2](https://github.com/cksac/rai/blob/main/examples/phi2/src/main.rs)
     - `cargo run --bin phi2 --release`
+- [qwen2](https://github.com/cksac/rai/blob/main/examples/qwen2/src/main.rs)
+    - `cargo run --bin qwen2 --release`
 
 ## LICENSE
 This project is licensed under either of
