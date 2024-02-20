@@ -27,6 +27,10 @@ impl Linear {
         Self { weight, bias }
     }
 
+    pub fn weight(&self) -> &Tensor {
+        &self.weight
+    }
+
     pub fn fwd(&self, x: &Tensor) -> Tensor {
         // todo: move the broadcast checking to matmul?
         let w = &match x.shape() {

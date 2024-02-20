@@ -12,3 +12,5 @@ repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
 [dependencies]
+rai = { workspace = true }
+serde = { workspace = true }

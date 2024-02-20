@@ -27,3 +27,12 @@ impl NewGelu {
         x.new_gelu()
     }
 }
+
+#[derive(Clone, Debug, Copy, Module)]
+#[module(crate = rai_core)]
+pub struct Silu;
+impl Silu {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
+        x.silu()
+    }
+}

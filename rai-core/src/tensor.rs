@@ -402,6 +402,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn silu(&self) -> Tensor {
+        ops::silu(self)
+    }
+
+    #[inline]
     pub fn new_gelu(&self) -> Tensor {
         ops::new_gelu(self)
     }

@@ -1090,6 +1090,11 @@ pub fn new_gelu(x: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn silu(x: &Tensor) -> Tensor {
+    x / (x.neg().exp() + 1.0f32)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     assert!(x.shape_eq(index));
     let dim = x.dim(dim);

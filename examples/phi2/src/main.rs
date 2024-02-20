@@ -360,11 +360,11 @@ fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     let config = std::fs::read_to_string(config_filename).unwrap();
     let cfg: Config = serde_json::from_str(&config).unwrap();
     let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json");
-    let phi = Model::new(&cfg, dtype, device);
-    phi.update_by_safetensors(&model_filenames, device);
+    let model = Model::new(&cfg, dtype, device);
+    model.update_by_safetensors(&model_filenames, device);
     let elapsed = start.elapsed();
     println!("model loaded in : {:?}", elapsed);
-    (tokenizer, phi)
+    (tokenizer, model)
 }
 
 fn sample_argmax(logits: &[f32]) -> u32 {
