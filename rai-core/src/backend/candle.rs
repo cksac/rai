@@ -798,9 +798,9 @@ impl<D: Device> Eval<D, primitives::Narrow> for CandleBackend {
 
 impl<D: Device> Eval<D, primitives::Where> for CandleBackend {
     fn eval(&self, _: &D, _: &primitives::Where, inputs: &[Tensor], output: &Tensor) {
-        let cond = &inputs[0];
-        let on_true = &inputs[1];
-        let on_false = &inputs[2];
+        let on_true = &inputs[0];
+        let on_false = &inputs[1];
+        let cond = &inputs[2];
         let t1 = cond.get_data::<Data>().unwrap();
         let t2 = on_true.get_data::<Data>().unwrap();
         let t3 = on_false.get_data::<Data>().unwrap();
