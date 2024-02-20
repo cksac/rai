@@ -3,7 +3,7 @@
 ![Rust](https://github.com/cksac/rai/workflows/Rust/badge.svg)
 [![Docs Status](https://docs.rs/rai/badge.svg)](https://docs.rs/rai)
 [![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
-[![Discord](https://img.shields.io/discord/1038839012602941528.svg?color=7289da&&logo=discord)](https://discord.gg/uPEBbYYDB6)
+[![Discord](https://img.shields.io/discord/1202429682474287144.svg?color=7289da&&logo=discord)](https://discord.gg/RFSGc8HA)
 
 ML framework with ergonomic APIs in Rust. Lazy computation and composable transformations.
 ---
