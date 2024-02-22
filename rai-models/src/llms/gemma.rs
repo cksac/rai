@@ -1,25 +1,56 @@
 use rai::{
-    nn::{Activation, Embedding, Linear, Module, RmsNorm},
-    AsDType, AsDevice, Module, Shape, Tensor, Type, F32,
+    nn::{Activation, Embedding, Linear, Module},
+    AsDType, AsDevice, Module, Shape, Tensor, Type, BF16, F16, F32,
 };
 use std::cell::RefCell;
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+fn default_max_position_embeddings() -> usize {
+    4096
+}
+
+#[derive(serde::Deserialize, Debug, Clone)]
 pub struct Config {
-    pub vocab_size: usize,
+    pub attention_bias: bool,
+    pub head_dim: usize,
+    pub hidden_act: Activation,
     pub hidden_size: usize,
     pub intermediate_size: usize,
-    pub num_hidden_layers: usize,
     pub num_attention_heads: usize,
+    pub num_hidden_layers: usize,
     pub num_key_value_heads: usize,
-    pub max_position_embeddings: usize,
-    pub sliding_window: usize,
-    pub max_window_layers: usize,
-    pub tie_word_embeddings: bool,
-    pub rope_theta: f64,
     pub rms_norm_eps: f64,
-    pub use_sliding_window: bool,
-    pub hidden_act: Activation,
+    pub rope_theta: f64,
+    pub vocab_size: usize,
+    #[serde(default = "default_max_position_embeddings")]
+    pub max_position_embeddings: usize,
+}
+
+#[derive(Debug, Clone, Module)]
+struct RmsNorm {
+    weight: Tensor,
+    #[param(skip)]
+    eps: f64,
+}
+
+impl RmsNorm {
+    pub fn new(dims: usize, eps: f64, dtype: impl Type, device: impl AsDevice) -> Self {
+        let weight = Tensor::ones([dims], dtype, device);
+        Self { weight, eps }
+    }
+
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
+        let x_dtype = x.dtype();
+        let internal_dtype = if x_dtype == &F16 || x_dtype == &BF16 {
+            &F32
+        } else {
+            x_dtype
+        };
+        let hidden_size = x.shape_at(-1);
+        let x = x.to_dtype(internal_dtype);
+        let norm_x = x.square().sum((-1, true)) / hidden_size as f64;
+        let x_normed = x / ((norm_x + self.eps).sqrt());
+        x_normed.to_dtype(x_dtype) * (&self.weight + 1.0)
+    }
 }
 
 #[derive(Debug, Clone, Module)]
@@ -133,11 +164,12 @@ impl Attention {
         let hidden_size = cfg.hidden_size;
         let num_heads = cfg.num_attention_heads;
         let num_kv_heads = cfg.num_key_value_heads;
+        let num_kv_groups = num_heads / num_kv_heads;
         let head_dim = hidden_size / num_heads;
-        let q_proj = Linear::new(hidden_size, hidden_size, true, dtype, device);
-        let k_proj = Linear::new(hidden_size, hidden_size, true, dtype, device);
-        let v_proj = Linear::new(hidden_size, hidden_size, true, dtype, device);
-        let o_proj = Linear::new(hidden_size, hidden_size, false, dtype, device);
+        let q_proj = Linear::new(hidden_size, num_heads * head_dim, false, dtype, device);
+        let k_proj = Linear::new(hidden_size, num_kv_heads * head_dim, false, dtype, device);
+        let v_proj = Linear::new(hidden_size, num_kv_heads * head_dim, false, dtype, device);
+        let o_proj = Linear::new(num_heads * head_dim, hidden_size, false, dtype, device);
         let rotary_emb = RotaryEmbedding::new(cfg, dtype, device);
         let kv_cache = RefCell::new(None);
         Self {
@@ -147,7 +179,7 @@ impl Attention {
             o_proj,
             num_heads,
             num_kv_heads,
-            num_kv_groups: 1,
+            num_kv_groups,
             head_dim,
             hidden_size,
             rotary_emb,
@@ -280,9 +312,11 @@ pub struct Model {
     layers: Vec<DecoderLayer>,
     #[param(rename = "model.norm")]
     norm: RmsNorm,
+    // share weight with embed_tokens's weight
+    #[param(skip)]
     lm_head: Linear,
     #[param(skip)]
-    sliding_window: usize,
+    hidden_size: usize,
 }
 
 impl Model {
@@ -293,14 +327,14 @@ impl Model {
             .map(|_| DecoderLayer::new(cfg, dtype, device))
             .collect();
         let norm = RmsNorm::new(cfg.hidden_size, cfg.rms_norm_eps, dtype, device);
-        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, false, dtype, device);
-        let sliding_window = cfg.sliding_window;
+        let lm_head = Linear::new_with(embed_tokens.weight().clone(), None);
+        let hidden_size = cfg.hidden_size;
         Self {
             embed_tokens,
             layers,
             norm,
             lm_head,
-            sliding_window,
+            hidden_size,
         }
     }
 
@@ -313,17 +347,8 @@ impl Model {
         device: impl AsDevice,
     ) -> Tensor {
         let device = device.device();
-        // Sliding window mask?
         let mask: Vec<_> = (0..tgt_len)
-            .flat_map(|i| {
-                (0..tgt_len).map(move |j| {
-                    if i < j || j + self.sliding_window < i {
-                        f32::NEG_INFINITY
-                    } else {
-                        0.
-                    }
-                })
-            })
+            .flat_map(|i| (0..tgt_len).map(move |j| if i < j { f32::NEG_INFINITY } else { 0. }))
             .collect();
         let mask = Tensor::from_array(mask, [tgt_len, tgt_len], device);
         let mask = if seqlen_offset > 0 {
@@ -345,12 +370,13 @@ impl Model {
                 b_size,
                 seq_len,
                 seqlen_offset,
-                self.lm_head.weight().dtype(),
-                self.lm_head.weight().device(),
+                self.embed_tokens.weight().dtype(),
+                self.embed_tokens.weight().device(),
             );
             Some(mask)
         };
         let mut xs = self.embed_tokens.forward(input);
+        xs = xs * (self.hidden_size as f64).sqrt();
         for layer in &self.layers {
             xs = layer.fwd(&xs, attention_mask.as_ref(), seqlen_offset);
         }

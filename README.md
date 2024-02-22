@@ -74,6 +74,11 @@ fn train_step<
     - `cargo run --bin phi2 --release`
 - [qwen2](https://github.com/cksac/rai/blob/main/examples/qwen2/src/main.rs)
     - `cargo run --bin qwen2 --release`
+- [gemma]
+    - accept licience agreement in https://huggingface.co/google/gemma-2b
+    - `pip install huggingface_hub`
+    - login to hf `huggingface-cli login`
+    - `cargo run --bin gemma --release`
 
 ## LICENSE
 This project is licensed under either of

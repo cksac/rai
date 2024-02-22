@@ -19,6 +19,10 @@ impl Embedding {
         Self { weight }
     }
 
+    pub fn weight(&self) -> &Tensor {
+        &self.weight
+    }
+
     pub fn fwd(&self, x: &Tensor) -> Tensor {
         let mut out_dims = x.shape().to_vec();
         out_dims.push(self.weight.shape_at(-1));

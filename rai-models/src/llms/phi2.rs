@@ -1,5 +1,5 @@
 use rai::{
-    nn::{self, Embedding, LayerNorm, Linear, Module, NewGelu},
+    nn::{self, Activation, Embedding, LayerNorm, Linear, Module},
     AsDevice, Module, Shape, Tensor, Type, F32,
 };
 use serde::Deserialize;
@@ -13,7 +13,7 @@ pub struct Config {
     pub num_hidden_layers: usize,
     pub num_attention_heads: usize,
     pub num_key_value_heads: Option<usize>,
-    pub hidden_act: String,
+    pub hidden_act: Activation,
     pub max_position_embeddings: usize,
     pub layer_norm_eps: f64,
     pub tie_word_embeddings: bool,
@@ -81,7 +81,7 @@ impl RotaryEmbedding {
 pub struct MLP {
     fc1: Linear,
     fc2: Linear,
-    act: NewGelu,
+    act: Activation,
 }
 
 impl MLP {
@@ -92,7 +92,7 @@ impl MLP {
         Self {
             fc1,
             fc2,
-            act: NewGelu,
+            act: cfg.hidden_act,
         }
     }
 
@@ -264,6 +264,10 @@ impl Attention {
         let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
         self.dense.forward(&attn_output)
     }
+
+    pub fn clear_kv_cache(&self) {
+        self.kv_cache.replace(None);
+    }
 }
 
 #[derive(Debug, Clone, Module)]
@@ -294,6 +298,10 @@ impl DecoderLayer {
         let attn_outputs = self.self_attn.forward(&(xs.clone(), mask.cloned()));
         let feed_forward_hidden_states = self.mlp.forward(&xs);
         attn_outputs + feed_forward_hidden_states + residual
+    }
+
+    pub fn clear_kv_cache(&self) {
+        self.self_attn.clear_kv_cache()
     }
 }
 #[derive(Debug, Clone, Module)]
@@ -338,5 +346,11 @@ impl Model {
         }
         let xs = self.final_layernorm.forward(&xs).narrow(1, seq_len - 1, 1);
         self.lm_head.forward(&xs).squeeze(1)
+    }
+
+    pub fn clear_kv_cache(&self) {
+        for layer in self.layers.iter() {
+            layer.clear_kv_cache()
+        }
     }
 }
