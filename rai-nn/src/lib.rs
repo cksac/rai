@@ -12,3 +12,6 @@ pub use layer_norm::*;
 
 mod rms_norm;
 pub use rms_norm::*;
+
+mod conv;
+pub use conv::*;

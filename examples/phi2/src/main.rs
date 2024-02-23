@@ -1,6 +1,6 @@
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use rai::{ext, nn::Module, utils::cuda_enabled, AsDevice, Cpu, Cuda, Device, Tensor, Type, F32};
-use rai_models::llms::phi2::{Config, Model};
+use rai_models::llm::phi2::{Config, Model};
 use std::{io::Write, time::Instant};
 use tokenizers::Tokenizer;
 

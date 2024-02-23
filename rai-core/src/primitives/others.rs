@@ -73,3 +73,54 @@ impl Primitive for FlashAttention {
         todo!("vjp for FlashAttention")
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Convolution {
+    pub padding: Vec<usize>,
+    pub stride: Vec<usize>,
+    pub dilation: Vec<usize>,
+    pub groups: usize,
+}
+
+impl Convolution {
+    pub fn new(
+        padding: Vec<usize>,
+        stride: Vec<usize>,
+        dilation: Vec<usize>,
+        groups: usize,
+    ) -> Self {
+        Self {
+            padding,
+            stride,
+            dilation,
+            groups,
+        }
+    }
+}
+
+impl Primitive for Convolution {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!(
+            "Convolution({:?}, {:?}, {:?}, {:?})",
+            self.padding, self.stride, self.dilation, self.groups,
+        )
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!("jvp for FlashAttention")
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!("vjp for FlashAttention")
+    }
+}

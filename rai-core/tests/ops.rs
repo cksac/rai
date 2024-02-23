@@ -3,13 +3,11 @@ use rai_core::{utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
 #[test]
 fn test_dot_graph() {
     let device = Cpu;
-
     let a = &Tensor::ones([2, 3], F32, device);
     let b = &Tensor::full(1.4f32, [2, 3], device);
     let c = &Tensor::full(1.4f32, [2, 3], device);
     let d = &Tensor::full(1.4f32, [2, 3], device);
     let e = &Tensor::full(1.4f32, [2, 3], device);
-
     let z = a + (a * b - 2.5f32) - c / d + e;
     println!("{}", z.dot_graph());
     println!("{}", z);
@@ -133,7 +131,6 @@ fn test_softmax() {
     let device = Cpu;
     let func = |x: &Tensor| x.softmax(1);
     let vg_func = value_and_grad(func);
-
     let a = Tensor::rand([2, 3], F32, device);
     let (out, grad) = vg_func.apply((&a,));
     println!("{}", dot_graph([&out, &grad]));
@@ -144,11 +141,9 @@ fn test_softmax() {
 #[test]
 fn test_gather() {
     let device = Cpu;
-
     let a = Tensor::from_array([1u32, 2, 3, 4, 5, 6], [2, 3], device);
     let index = Tensor::from_array([0u32, 0, 0, 1, 1, 1], [2, 3], device);
     let out = a.gather(0, &index);
-
     println!("{}", a);
     println!("{}", index);
     println!("{}", out);
@@ -157,11 +152,9 @@ fn test_gather() {
 #[test]
 fn test_index_select() {
     let device = Cpu;
-
     let a = Tensor::from_array([1u32, 2, 3, 4, 5, 6], [2, 3], device);
     let index = Tensor::from_array([1u32, 1, 0, 0], [4], device);
     let out = a.index_select(0, &index);
-
     println!("{}", a);
     println!("{}", index);
     println!("{}", out);
@@ -170,9 +163,26 @@ fn test_index_select() {
 #[test]
 fn test_flatten() {
     let device = Cpu;
-
     let a = Tensor::rand([2, 3, 4], F32, device);
     let out = a.flatten(..);
     println!("{}", a);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv1d() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 4, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3], F32, device);
+    let out = t.conv1d(w, 0, 1, 1, 1);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv2d() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 2, 3, 3], F32, device);
+    let w = Tensor::rand([1, 2, 1, 1], F32, device);
+    let out = t.conv2d(w, [0, 0], [1, 1], [1, 1], 1);
     println!("{}", out);
 }

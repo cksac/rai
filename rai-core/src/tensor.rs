@@ -1,7 +1,7 @@
 use crate::{
     eval,
     nn::{ApplyModule, Module},
-    ops::{self, ArangeArgs, ArgReduceArgs, FlattenArgs, ReduceArgs, VarArgs},
+    ops::{self, ArangeArgs, ArgReduceArgs, ClampBound, FlattenArgs, ReduceArgs, VarArgs},
     utils::{self, dot_graph},
     AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, Primitive, Shape, Type,
 };
@@ -211,6 +211,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn minimum<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ops::minimum(self, rhs.as_ref())
+    }
+
+    #[inline]
     pub fn t(&self) -> Tensor {
         ops::transpose(self, -2, -1)
     }
@@ -392,8 +397,23 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn clamp(&self, min: impl ClampBound, max: impl ClampBound) -> Tensor {
+        ops::clamp(self, min, max)
+    }
+
+    #[inline]
     pub fn relu(&self) -> Tensor {
         ops::relu(self)
+    }
+
+    #[inline]
+    pub fn relu2(&self) -> Tensor {
+        ops::relu2(self)
+    }
+
+    #[inline]
+    pub fn relu6(&self) -> Tensor {
+        ops::relu6(self)
     }
 
     #[inline]
@@ -444,6 +464,30 @@ impl Tensor {
     #[inline]
     pub fn where_cond(&self, input: impl AsRef<Tensor>, other: impl AsRef<Tensor>) -> Tensor {
         ops::where_cond(self, input.as_ref(), other.as_ref())
+    }
+
+    #[inline]
+    pub fn conv1d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: usize,
+        stride: usize,
+        dilation: usize,
+        groups: usize,
+    ) -> Tensor {
+        ops::conv1d(self, kernel.as_ref(), padding, stride, dilation, groups)
+    }
+
+    #[inline]
+    pub fn conv2d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: [usize; 2],
+        stride: [usize; 2],
+        dilation: [usize; 2],
+        groups: usize,
+    ) -> Tensor {
+        ops::conv2d(self, kernel.as_ref(), padding, stride, dilation, groups)
     }
 
     #[inline]

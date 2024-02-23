@@ -99,6 +99,7 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::Less>($backend, &mut $rules);
         _register::<$backend, $device, primitives::LessEqual>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Maximum>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Minimum>($backend, &mut $rules);
 
         // unary
         _register::<$backend, $device, primitives::Sin>($backend, &mut $rules);
@@ -149,6 +150,9 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::ReduceMin>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ArgMax>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ArgMin>($backend, &mut $rules);
+
+        // others
+        _register::<$backend, $device, primitives::Convolution>($backend, &mut $rules);
     };
 }
 

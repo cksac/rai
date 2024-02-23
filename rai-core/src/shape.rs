@@ -462,6 +462,28 @@ pub trait Shape: Debug {
         }
         out_shape
     }
+
+    fn shape_conv<S: Shape + ?Sized>(
+        &self,
+        kernel: &S,
+        padding: &[usize],
+        stride: &[usize],
+        dilation: &[usize],
+        groups: usize,
+    ) -> Result<Vec<usize>> {
+        let mut out_shape = Vec::with_capacity(self.ndim());
+        out_shape.push(self.shape_at(0));
+        out_shape.push(kernel.shape_at(0) / groups);
+        for i in 2..self.ndim() {
+            let s = (self.shape_at(i) + 2 * padding[i - 2]
+                - dilation[i - 2] * (kernel.shape_at(i) - 1)
+                - 1)
+                / stride[i - 2]
+                + 1;
+            out_shape.push(s);
+        }
+        Ok(out_shape)
+    }
 }
 
 impl<'a, T> Shape for &'a T

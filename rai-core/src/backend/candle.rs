@@ -649,6 +649,23 @@ impl<D: Device> Eval<D, primitives::Maximum> for CandleBackend {
     }
 }
 
+impl<D: Device> Eval<D, primitives::Minimum> for CandleBackend {
+    fn eval(&self, _: &D, _: &primitives::Minimum, inputs: &[Tensor], output: &Tensor) {
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
+        let t1 = lhs.get_data::<Data>().unwrap();
+        let t2 = rhs.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = if lhs.shape_eq(rhs) {
+            t1.minimum(t2).unwrap()
+        } else {
+            t1.broadcast_minimum(t2).unwrap()
+        };
+        output.set_data(t);
+    }
+}
+
 impl<D, T> Eval<D, primitives::ToDType<T>> for CandleBackend
 where
     D: Device,
@@ -895,6 +912,39 @@ impl<D: Device> Eval<D, primitives::ScatterAdd> for CandleBackend {
         let t3 = t3.deref();
         let t = t1.scatter_add(t2, t3, primitive.dim).unwrap();
         output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::Convolution> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &primitives::Convolution, inputs: &[Tensor], output: &Tensor) {
+        let x: &Tensor = &inputs[0];
+        let kernel = &inputs[1];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t2 = kernel.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let padding = primitive.padding.as_slice();
+        let stride = primitive.stride.as_slice();
+        let dilation = primitive.dilation.as_slice();
+        if x.ndim() == (1 + 2) {
+            let t = t1
+                .conv1d(t2, padding[0], stride[0], dilation[0], primitive.groups)
+                .unwrap();
+            output.set_data(t);
+        } else if x.ndim() == (2 + 2) {
+            assert_eq!(padding[0], padding[1], "Candle only support square padding");
+            assert_eq!(stride[0], stride[1], "Candle only support square stride");
+            assert_eq!(
+                dilation[0], dilation[1],
+                "Candle only support square dilation"
+            );
+            let t = t1
+                .conv2d(t2, padding[0], stride[0], dilation[0], primitive.groups)
+                .unwrap();
+            output.set_data(t);
+        } else {
+            panic!("Candle backend currently only support 1D and 2D convolutions")
+        };
     }
 }
 

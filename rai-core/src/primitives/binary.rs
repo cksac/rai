@@ -335,3 +335,34 @@ impl Primitive for Maximum {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Minimum;
+
+impl Primitive for Minimum {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(*self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let tangent_lhs = &tangents[0];
+        let tangent_rhs = &tangents[1];
+        tangent_lhs * lhs.lt(rhs).to_dtype(lhs) + tangent_rhs * lhs.ge(rhs).to_dtype(rhs)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        let lhs = &primals[0];
+        let rhs = &primals[1];
+        let cotangent_lhs = cotangent * lhs.lt(rhs).to_dtype(cotangent);
+        let cotangent_rhs = cotangent * lhs.ge(rhs).to_dtype(cotangent);
+        vec![cotangent_lhs, cotangent_rhs]
+    }
+}

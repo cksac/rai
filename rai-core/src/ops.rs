@@ -1,10 +1,11 @@
 use crate::{
     primitives::{
-        Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Cos, Div, Equal, Erf, Exp,
-        FlashAttention, FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd, IndexSelect,
-        Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Mul, Narrow, Negative,
-        Normal, NotEqual, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt,
-        ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
+        Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Convolution, Cos, Div, Equal,
+        Erf, Exp, FlashAttention, FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd,
+        IndexSelect, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Minimum, Mul,
+        Narrow, Negative, Normal, NotEqual, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum,
+        Reshape, Rsqrt, ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous,
+        Transpose, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -875,6 +876,46 @@ pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn minimum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let device = lhs.device();
+    let dtype = lhs.dtype();
+    let shape = lhs
+        .shape_broadcast(rhs)
+        .unwrap_or_else(|e| panic!("minimum({:?}, {:?}) with error {:?}", lhs, rhs, e));
+    let inputs = vec![lhs.clone(), rhs.clone()];
+    Tensor::new(device, dtype, shape, Minimum, inputs)
+}
+
+pub trait ClampBound: Debug {
+    fn bound(&self, input: &Tensor) -> Tensor;
+}
+
+impl<T: ElemType> ClampBound for T {
+    fn bound(&self, input: &Tensor) -> Tensor {
+        input.full_like(*self).to_dtype(input)
+    }
+}
+
+impl ClampBound for Tensor {
+    fn bound(&self, input: &Tensor) -> Tensor {
+        self.to_dtype(input)
+    }
+}
+
+impl ClampBound for &Tensor {
+    fn bound(&self, input: &Tensor) -> Tensor {
+        (*self).to_dtype(input)
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn clamp(x: &Tensor, min: impl ClampBound, max: impl ClampBound) -> Tensor {
+    let min = min.bound(x);
+    let max = max.bound(x);
+    x.maximum(min).minimum(max)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     let dtype = dtype.dtype();
     if x.dtype() == dtype {
@@ -1077,6 +1118,16 @@ pub fn erf(x: &Tensor) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn relu(x: &Tensor) -> Tensor {
     x.maximum(x.zeros_like())
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn relu2(x: &Tensor) -> Tensor {
+    x.maximum(x.zeros_like()).sqrt()
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn relu6(x: &Tensor) -> Tensor {
+    x.clamp(0.0f32, 6.0f32)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -1501,6 +1552,7 @@ impl<'a> FlashAttentionOpts for (f32, usize, usize, &'a Tensor) {
     }
 }
 
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn flash_attention(
     q: &Tensor,
     k: &Tensor,
@@ -1521,6 +1573,71 @@ pub fn flash_attention(
             opts.window_size_right(),
             opts.alibi_slopes().cloned(),
         ),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn conv1d(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: usize,
+    stride: usize,
+    dilation: usize,
+    groups: usize,
+) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let padding_vec = vec![padding];
+    let stride_vec = vec![stride];
+    let dilation_vec = vec![dilation];
+    let shape = input
+        .shape_conv(kernel, &padding_vec, &stride_vec, &dilation_vec, groups)
+        .unwrap_or_else(|e| {
+            panic!(
+                "conv1d({:?}, {:?}, {:?}, {:?}, {:?}, {}) with error {:?}",
+                input, kernel, padding, stride, dilation, groups, e
+            )
+        });
+    let inputs = vec![input.clone(), kernel.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Convolution::new(padding_vec, stride_vec, dilation_vec, groups),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn conv2d(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: [usize; 2],
+    stride: [usize; 2],
+    dilation: [usize; 2],
+    groups: usize,
+) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let padding_vec: Vec<usize> = padding.into();
+    let stride_vec: Vec<usize> = stride.into();
+    let dilation_vec: Vec<usize> = dilation.into();
+    let shape = input
+        .shape_conv(kernel, &padding_vec, &stride_vec, &dilation_vec, groups)
+        .unwrap_or_else(|e| {
+            panic!(
+                "conv1d({:?}, {:?}, {:?}, {:?}, {:?}, {}) with error {:?}",
+                input, kernel, padding, stride, dilation, groups, e
+            )
+        });
+
+    let inputs = vec![input.clone(), kernel.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Convolution::new(padding_vec, stride_vec, dilation_vec, groups),
         inputs,
     )
 }

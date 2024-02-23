@@ -11,15 +11,19 @@ pub enum Activation {
     #[serde(alias = "gelu_new")]
     NewGelu,
     Relu,
+    Relu2,
+    Relu6,
     Silu,
 }
 
 impl Activation {
     pub fn fwd(&self, x: &Tensor) -> Tensor {
         match self {
-            Activation::Relu => x.relu(),
             Activation::Gelu => x.gelu(),
             Activation::NewGelu => x.new_gelu(),
+            Activation::Relu => x.relu(),
+            Activation::Relu2 => x.relu2(),
+            Activation::Relu6 => x.relu6(),
             Activation::Silu => x.silu(),
         }
     }
@@ -31,6 +35,24 @@ pub struct Relu;
 impl Relu {
     pub fn fwd(&self, x: &Tensor) -> Tensor {
         x.relu()
+    }
+}
+
+#[derive(Clone, Debug, Copy, Module)]
+#[module(crate = rai_core)]
+pub struct Relu2;
+impl Relu2 {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
+        x.relu2()
+    }
+}
+
+#[derive(Clone, Debug, Copy, Module)]
+#[module(crate = rai_core)]
+pub struct Relu6;
+impl Relu6 {
+    pub fn fwd(&self, x: &Tensor) -> Tensor {
+        x.relu6()
     }
 }
 
