@@ -166,10 +166,11 @@ impl Attention {
         let num_kv_heads = cfg.num_key_value_heads;
         let num_kv_groups = num_heads / num_kv_heads;
         let head_dim = hidden_size / num_heads;
-        let q_proj = Linear::new(hidden_size, num_heads * head_dim, false, dtype, device);
-        let k_proj = Linear::new(hidden_size, num_kv_heads * head_dim, false, dtype, device);
-        let v_proj = Linear::new(hidden_size, num_kv_heads * head_dim, false, dtype, device);
-        let o_proj = Linear::new(num_heads * head_dim, hidden_size, false, dtype, device);
+        let bias = cfg.attention_bias;
+        let q_proj = Linear::new(hidden_size, num_heads * head_dim, bias, dtype, device);
+        let k_proj = Linear::new(hidden_size, num_kv_heads * head_dim, bias, dtype, device);
+        let v_proj = Linear::new(hidden_size, num_kv_heads * head_dim, bias, dtype, device);
+        let o_proj = Linear::new(num_heads * head_dim, hidden_size, bias, dtype, device);
         let rotary_emb = RotaryEmbedding::new(cfg, dtype, device);
         let kv_cache = RefCell::new(None);
         Self {
