@@ -4,10 +4,10 @@ use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
 pub struct Conv1dConfig {
-    padding: usize,
-    stride: usize,
-    dilation: usize,
-    groups: usize,
+    pub padding: usize,
+    pub stride: usize,
+    pub dilation: usize,
+    pub groups: usize,
 }
 
 impl Default for Conv1dConfig {
@@ -32,6 +32,12 @@ pub struct Conv1d {
 
 pub trait IntoConv1dConfig: Debug {
     fn into_conv1d_config(self) -> Conv1dConfig;
+}
+
+impl IntoConv1dConfig for Conv1dConfig {
+    fn into_conv1d_config(self) -> Conv1dConfig {
+        self
+    }
 }
 
 impl Conv1d {
@@ -83,10 +89,10 @@ impl Conv1d {
 
 #[derive(Clone, Debug)]
 pub struct Conv2dConfig {
-    padding: [usize; 2],
-    stride: [usize; 2],
-    dilation: [usize; 2],
-    groups: usize,
+    pub padding: [usize; 2],
+    pub stride: [usize; 2],
+    pub dilation: [usize; 2],
+    pub groups: usize,
 }
 
 impl Default for Conv2dConfig {
@@ -111,6 +117,12 @@ pub struct Conv2d {
 
 pub trait IntoConv2dConfig: Debug {
     fn into_conv2d_config(self) -> Conv2dConfig;
+}
+
+impl IntoConv2dConfig for Conv2dConfig {
+    fn into_conv2d_config(self) -> Conv2dConfig {
+        self
+    }
 }
 
 impl Conv2d {

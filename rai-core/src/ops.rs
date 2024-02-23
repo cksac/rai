@@ -15,7 +15,7 @@ use safetensors::tensor::TensorView;
 use std::{
     f32::consts::PI,
     fmt::Debug,
-    ops::{Neg, Range, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
+    ops::{Neg, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
     slice::from_raw_parts,
 };
 use tracing::Level;
@@ -1068,7 +1068,7 @@ pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn mean<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let elem_count = x.size_of_dims(args.dims()) as f64;
+    let elem_count = x.size_of(args.dims()) as f64;
     x.sum(args) / elem_count
 }
 
@@ -1080,7 +1080,7 @@ pub trait VarArgs: ReduceArgs {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
-    let elem_count = x.size_of_dims(args.dims());
+    let elem_count = x.size_of(args.dims());
     let m = x.mean((args.dims(), args.keep_dim()));
     let s = (x - m).square().sum((args.dims(), args.keep_dim()));
     s / (elem_count - args.ddof()) as f32
@@ -1191,6 +1191,24 @@ pub trait FlattenArgs: Debug {
     }
 }
 
+impl FlattenArgs for usize {
+    fn start_dim(&self) -> impl Dim {
+        self
+    }
+}
+
+impl FlattenArgs for isize {
+    fn start_dim(&self) -> impl Dim {
+        self
+    }
+}
+
+impl FlattenArgs for i32 {
+    fn start_dim(&self) -> impl Dim {
+        self
+    }
+}
+
 impl<D: Dim> FlattenArgs for (D, D) {
     fn start_dim(&self) -> impl Dim {
         &self.0
@@ -1240,6 +1258,24 @@ impl FlattenArgs for RangeToInclusive<isize> {
 impl FlattenArgs for RangeToInclusive<i32> {
     fn end_dim(&self) -> impl Dim {
         self.end
+    }
+}
+
+impl FlattenArgs for RangeFrom<usize> {
+    fn start_dim(&self) -> impl Dim {
+        self.start
+    }
+}
+
+impl FlattenArgs for RangeFrom<isize> {
+    fn start_dim(&self) -> impl Dim {
+        self.start
+    }
+}
+
+impl FlattenArgs for RangeFrom<i32> {
+    fn start_dim(&self) -> impl Dim {
+        self.start
     }
 }
 
@@ -1311,7 +1347,7 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
         x.reshape([1])
     } else if start_dim < end_dim {
         let mut dst_dim = x.shape_of(..start_dim);
-        dst_dim.push(x.size_of_dims(start_dim..=end_dim));
+        dst_dim.push(x.size_of(start_dim..=end_dim));
         if end_dim + 1 < x.ndim() {
             dst_dim.extend(x.shape_of(end_dim + 1..));
         }

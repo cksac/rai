@@ -293,11 +293,6 @@ pub trait Shape: Debug {
     fn shape(&self) -> &[usize];
 
     #[inline]
-    fn ndim(&self) -> usize {
-        self.shape().len()
-    }
-
-    #[inline]
     fn size(&self) -> usize {
         self.shape().iter().product()
     }
@@ -308,14 +303,24 @@ pub trait Shape: Debug {
     }
 
     #[inline]
-    fn shape_until<I: Dim>(&self, i: I) -> &[usize] {
-        &self.shape()[..=i.dim_of(self)]
+    fn shape_before<const N: usize>(&self) -> [usize; N] {
+        self.shape()[..N].try_into().unwrap()
     }
 
     #[inline]
     fn shape_of<D: Dims>(&self, d: D) -> Vec<usize> {
         let dims = d.dims_of(self);
         dims.into_iter().map(|d| self.shape_at(d)).collect()
+    }
+
+    #[inline]
+    fn size_of<D: Dims>(&self, d: D) -> usize {
+        self.shape_of(d).iter().product()
+    }
+
+    #[inline]
+    fn ndim(&self) -> usize {
+        self.shape().len()
     }
 
     #[inline]
@@ -326,14 +331,6 @@ pub trait Shape: Debug {
     #[inline]
     fn dims<D: Dims>(&self, d: D) -> Vec<usize> {
         d.dims_of(self)
-    }
-
-    #[inline]
-    fn size_of_dims<D: Dims>(&self, d: D) -> usize {
-        d.dims_of(self)
-            .into_iter()
-            .map(|d| self.shape_at(d))
-            .product()
     }
 
     fn shape_transpose(&self, dim0: usize, dim1: usize) -> Vec<usize> {

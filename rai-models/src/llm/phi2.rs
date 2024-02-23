@@ -63,8 +63,7 @@ impl RotaryEmbedding {
     }
 
     pub fn fwd(&self, xs: &Tensor, seqlen_offset: usize) -> Tensor {
-        let [_b_size, _num_heads, seq_len, headdim]: [usize; 4] =
-            xs.shape_of([0, 1, 2, 3]).try_into().unwrap();
+        let [_b_size, _num_heads, seq_len, headdim] = xs.shape_before::<4>();
         let xs_rot = xs.narrow(3, 0, self.dim);
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
@@ -192,8 +191,7 @@ impl Attention {
         if n_rep == 1 {
             xs
         } else {
-            let [b_sz, num_kv_heads, seq_len, head_dim]: [usize; 4] =
-                xs.shape_of([0, 1, 2, 3]).try_into().unwrap();
+            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.shape_before::<4>();
             xs.unsqueeze(2)
                 .broadcast_to([b_sz, num_kv_heads, n_rep, seq_len, head_dim])
                 .reshape([b_sz, num_kv_heads * n_rep, seq_len, head_dim])
@@ -201,7 +199,7 @@ impl Attention {
     }
 
     pub fn fwd(&self, xs: &Tensor, mask: Option<&Tensor>) -> Tensor {
-        let [b_size, seq_len, _n_embd]: [usize; 3] = xs.shape_of([0, 1, 2]).try_into().unwrap();
+        let [b_size, seq_len, _n_embd] = xs.shape_before::<3>();
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);
         let value_states = self.v_proj.forward(xs);
@@ -261,7 +259,7 @@ impl Attention {
         };
         let attn_weights = attn_weights.softmax(-1).to_dtype(&value_states);
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
-        let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of_dims(2..)]);
+        let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of(2..)]);
         self.dense.forward(&attn_output)
     }
 
@@ -334,7 +332,7 @@ impl Model {
     }
 
     pub fn fwd(&self, xs: &Tensor) -> Tensor {
-        let [_b_size, seq_len]: [usize; 2] = xs.shape_of([0, 1]).try_into().unwrap();
+        let [_b_size, seq_len] = xs.shape_before::<2>();
         let mut xs = self.embed_tokens.forward(xs);
         let mask = if seq_len <= 1 {
             None
