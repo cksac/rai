@@ -453,8 +453,7 @@ impl Tensor {
 
     #[inline]
     pub fn permute(&self, d: impl Dims) -> Tensor {
-        todo!()
-        //ops::permute(self, d)
+        ops::permute(self, d)
     }
 
     #[inline]

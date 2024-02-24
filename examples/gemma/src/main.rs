@@ -1,8 +1,7 @@
-use std::{io::Write, time::Instant};
-
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use rai::{ext, nn::Module, utils::cuda_enabled, AsDevice, Cpu, Cuda, Device, Tensor, Type, F32};
 use rai_models::llm::gemma::{Config, Model};
+use std::{io::Write, time::Instant};
 use tokenizers::Tokenizer;
 
 fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {

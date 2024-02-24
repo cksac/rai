@@ -3,9 +3,9 @@ use crate::{
         Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Convolution, Cos, Div, Equal,
         Erf, Exp, FlashAttention, FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd,
         IndexSelect, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Minimum, Mul,
-        Narrow, Negative, Normal, NotEqual, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum,
-        Reshape, Rsqrt, ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous,
-        Transpose, Where,
+        Narrow, Negative, Normal, NotEqual, Permute, PowerFloat, Random, ReduceMax, ReduceMin,
+        ReduceSum, Reshape, Rsqrt, ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh,
+        ToContiguous, Transpose, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -814,7 +814,6 @@ pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("ne({:?}, {:?}) with error {:?}", lhs, rhs, e));
-
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(device, dtype, shape, NotEqual, inputs)
 }
@@ -826,7 +825,6 @@ pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let shape = lhs
         .shape_broadcast(rhs)
         .unwrap_or_else(|e| panic!("gt({:?}, {:?}) with error {:?}", lhs, rhs, e));
-
     let inputs = vec![lhs.clone(), rhs.clone()];
     Tensor::new(device, dtype, shape, Greater, inputs)
 }
@@ -1375,6 +1373,17 @@ pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
     let mut shape = x.shape().to_vec();
     shape.insert(dim, 1);
     x.reshape(shape)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn permute(x: &Tensor, d: impl Dims) -> Tensor {
+    let dims = x.dims(d);
+    assert_eq!(dims.len(), x.ndim());
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape_of(&dims);
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Permute::new(dims), inputs)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

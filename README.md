@@ -79,6 +79,8 @@ fn train_step<
     - `pip install huggingface_hub`
     - login to hf `huggingface-cli login`
     - `cargo run --bin gemma --release`
+- [vit](https://github.com/cksac/rai/blob/main/examples/gemma/src/main.rs)
+    - `cargo run --bin vit --release`
 
 ## LICENSE
 This project is licensed under either of

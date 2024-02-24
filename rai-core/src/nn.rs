@@ -195,7 +195,7 @@ impl WithParams for Tensor {
             let t = t.to_dtype(self).to_device(self);
             self.replace_data(t);
         } else {
-            panic!("parameter {} not found", name);
+            panic!("parameter {} not found in params {:?}", name, params.keys());
         }
     }
 }

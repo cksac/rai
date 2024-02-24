@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use rai::{
-    nn::{Activation, ApplyModule, Conv2d, Conv2dConfig, LayerNorm, Linear, Module},
+    nn::{Activation, Conv2d, Conv2dConfig, LayerNorm, Linear, Module},
     AsDevice, Module, Shape, Tensor, Type,
 };
 
@@ -296,6 +298,7 @@ impl Layer {
 
 #[derive(Debug, Clone, Module)]
 pub struct Encoder {
+    #[param(rename = "layer")]
     layers: Vec<Layer>,
 }
 
@@ -303,7 +306,7 @@ impl Encoder {
     pub fn new(cfg: &Config, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let mut layers = Vec::with_capacity(cfg.num_hidden_layers);
-        for i in 0..cfg.num_hidden_layers {
+        for _ in 0..cfg.num_hidden_layers {
             let layer = Layer::new(cfg, dtype, device);
             layers.push(layer)
         }
@@ -322,11 +325,8 @@ impl Encoder {
 #[derive(Debug, Clone, Module)]
 #[module(input = (Tensor, Option<Tensor>, bool))]
 pub struct Model {
-    #[param(rename = "vit.embeddings")]
     embeddings: Embeddings,
-    #[param(rename = "vit.encoder")]
     encoder: Encoder,
-    #[param(rename = "vit.layernorm")]
     layernorm: LayerNorm,
 }
 
@@ -353,13 +353,19 @@ impl Model {
             .embeddings
             .fwd(x, bool_masked_pos, interpolate_pos_encoding);
         let encoder_outputs = self.encoder.fwd(&embedding_output);
-        let [s1, _s2, s3] = embedding_output.shape_before::<3>();
-        embedding_output
-            .narrow(0, 0, s1)
-            .narrow(1, 0, 0)
-            .narrow(2, 0, s3)
+        encoder_outputs
+            .narrow(1, 0, 1)
+            .squeeze(1)
             .apply(&self.layernorm)
     }
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ImageClassificationConfig {
+    #[serde(flatten)]
+    vit_config: Config,
+    pub id2label: HashMap<usize, String>,
+    pub label2id: HashMap<String, usize>,
 }
 
 #[derive(Debug, Clone, Module)]
@@ -369,10 +375,16 @@ pub struct ImageClassificationModel {
 }
 
 impl ImageClassificationModel {
-    pub fn new(cfg: &Config, num_labels: usize, dtype: impl Type, device: impl AsDevice) -> Self {
+    pub fn new(cfg: &ImageClassificationConfig, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
-        let vit = Model::new(cfg, dtype, device);
-        let classifier = Linear::new(cfg.hidden_size, num_labels, true, dtype, device);
+        let vit = Model::new(&cfg.vit_config, dtype, device);
+        let classifier = Linear::new(
+            cfg.vit_config.hidden_size,
+            cfg.id2label.len(),
+            true,
+            dtype,
+            device,
+        );
         Self { vit, classifier }
     }
 

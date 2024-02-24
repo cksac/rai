@@ -469,6 +469,16 @@ impl<D: Device> Eval<D, primitives::Broadcast> for CandleBackend {
     }
 }
 
+impl<D: Device> Eval<D, primitives::Permute> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &primitives::Permute, inputs: &[Tensor], output: &Tensor) {
+        let x = &inputs[0];
+        let t = x.get_data::<Data>().unwrap();
+        let t = t.deref();
+        let t = t.permute(primitive.dims()).unwrap();
+        output.set_data(t)
+    }
+}
+
 impl<D: Device> Eval<D, primitives::Sign> for CandleBackend {
     fn eval(&self, _: &D, _: &primitives::Sign, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];

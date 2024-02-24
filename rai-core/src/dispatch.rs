@@ -141,6 +141,7 @@ macro_rules! register_backend {
         // transform
         _register::<$backend, $device, primitives::Transpose>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Reshape>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Permute>($backend, &mut $rules);
         _register::<$backend, $device, primitives::Broadcast>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ToContiguous>($backend, &mut $rules);
 
