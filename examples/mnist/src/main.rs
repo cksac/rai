@@ -8,6 +8,7 @@ use rai::{
     utils::cuda_enabled,
     value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Tensor, Type, F32,
 };
+use rai_datasets::image::mnist;
 use std::{collections::HashMap, fmt::Debug, time::Instant};
 
 #[derive(Debug, Clone, Module)]
@@ -64,11 +65,11 @@ fn train_step<
 >(
     optimizer: &mut O,
     model: &M,
-    input: &Tensor,
+    images: &Tensor,
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, input, labels));
+    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, images, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update_params(&mut params);
@@ -78,7 +79,7 @@ fn main() {
     let num_layers = 2;
     let hidden_dim = 32;
     let num_classes = 10;
-    let batch_size = 256;
+    let batch_size = 60000;
     let num_epochs = 10;
     let learning_rate = 1e-1;
 
@@ -88,13 +89,16 @@ fn main() {
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
     let mut optimizer = SDG::new(model.params(), learning_rate);
 
+    let dataset = mnist::load(device).expect("mnist dataset");
+    println!("{:?}", dataset);
+
     let start = Instant::now();
     for i in 0..num_epochs {
         let start = Instant::now();
-        // todo: get image input and label
-        let input = Tensor::rand([batch_size, 784], dtype, device);
-        let labels = Tensor::full(0.123f32, [batch_size, 10], device);
-        train_step(&mut optimizer, &model, &input, &labels);
+        // todo: sample batch size
+        let images = &dataset.train_images;
+        let labels = &dataset.train_labels;
+        train_step(&mut optimizer, &model, &images, &labels);
         let elapsed = start.elapsed();
         println!("Epoch {i}: Time: {:?}", elapsed);
     }

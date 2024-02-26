@@ -12,3 +12,8 @@ repository = "https://github.com/cksac/rai"
 homepage = "https://github.com/cksac/rai"
 
 [dependencies]
+rai = { workspace = true }
+thiserror = { workspace = true }
+hf-hub = { workspace = true }
+parquet = { workspace = true}
+image = { workspace = true }
