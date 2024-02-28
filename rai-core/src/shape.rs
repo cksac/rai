@@ -6,6 +6,7 @@ use std::{
 
 pub trait Dim: Debug {
     fn dim_of<T: Shape + ?Sized>(&self, shape: &T) -> usize;
+    fn is_negative(&self) -> bool;
 }
 
 impl<'a, T> Dim for &'a T
@@ -15,12 +16,20 @@ where
     fn dim_of<U: Shape + ?Sized>(&self, shape: &U) -> usize {
         (*self).dim_of(shape)
     }
+
+    fn is_negative(&self) -> bool {
+        (*self).is_negative()
+    }
 }
 
 impl Dim for usize {
     fn dim_of<T: Shape + ?Sized>(&self, shape: &T) -> usize {
         assert!(*self < shape.ndim(), "{} < {}", self, shape.ndim());
         *self
+    }
+
+    fn is_negative(&self) -> bool {
+        false
     }
 }
 
@@ -34,6 +43,10 @@ impl Dim for isize {
         assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
         dim
     }
+
+    fn is_negative(&self) -> bool {
+        *self < 0
+    }
 }
 
 impl Dim for i32 {
@@ -45,6 +58,10 @@ impl Dim for i32 {
         };
         assert!(dim < shape.ndim(), "{} < {}", dim, shape.ndim());
         dim
+    }
+
+    fn is_negative(&self) -> bool {
+        *self < 0
     }
 }
 
@@ -358,6 +375,12 @@ pub trait Shape: Debug {
     fn shape_expand_left<T: Shape + ?Sized>(&self, rhs: &T) -> Vec<usize> {
         let mut dims = rhs.shape().to_vec();
         dims.extend(self.shape());
+        dims
+    }
+
+    fn shape_expand_right<T: Shape + ?Sized>(&self, rhs: &T) -> Vec<usize> {
+        let mut dims = self.shape().to_vec();
+        dims.extend(rhs.shape());
         dims
     }
 

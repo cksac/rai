@@ -236,6 +236,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn broadcast_right(&self, shape: impl Shape) -> Tensor {
+        ops::broadcast_right(self, shape)
+    }
+
+    #[inline]
     pub fn reshape(&self, shape: impl Shape) -> Tensor {
         ops::reshape(self, shape)
     }

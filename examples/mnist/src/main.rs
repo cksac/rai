@@ -2,11 +2,11 @@ use rai::{
     eval,
     nn::{Linear, Module, TrainableModule},
     opt::{
-        losses::softmax_cross_entropy,
+        losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
     utils::cuda_enabled,
-    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use std::{collections::HashMap, fmt::Debug, time::Instant};
@@ -50,7 +50,7 @@ fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     labels: &Tensor,
 ) -> (Tensor, Aux<Tensor>) {
     let logits = model.forward(input);
-    let loss = softmax_cross_entropy(&logits, labels).mean(..);
+    let loss = softmax_cross_entropy_with_integer_labels(&logits, labels).mean(..);
     (loss, Aux(logits))
 }
 
@@ -67,21 +67,21 @@ fn train_step<
     model: &M,
     images: &Tensor,
     labels: &Tensor,
-) {
+) -> (Tensor, Tensor) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, images, labels));
+    let ((loss, Aux(logits)), (grads, ..)) = vg_fn.apply((model, images, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update_params(&mut params);
+    (loss, logits)
 }
 
 fn main() {
     let num_layers = 2;
-    let hidden_dim = 32;
+    let hidden_dim = 100;
     let num_classes = 10;
-    let batch_size = 60000;
-    let num_epochs = 10;
-    let learning_rate = 1e-1;
+    let num_epochs = 200;
+    let learning_rate = 0.05;
 
     let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
     let dtype = F32;
@@ -90,34 +90,38 @@ fn main() {
     let mut optimizer = SDG::new(model.params(), learning_rate);
 
     let dataset = mnist::load(device).expect("mnist dataset");
-    println!("{:?}", dataset);
+    let train_images = &dataset.train_images;
+    let train_labels = &dataset.train_labels;
+    let test_images = &dataset.test_images;
+    let test_labels = &dataset.test_labels;
 
     let start = Instant::now();
     for i in 0..num_epochs {
         let start = Instant::now();
-        // todo: sample batch size
-        let images = &dataset.train_images;
-        let labels = &dataset.train_labels;
-        train_step(&mut optimizer, &model, &images, &labels);
+        let (loss, _logits) = train_step(&mut optimizer, &model, train_images, train_labels);
+        let loss = loss.as_scalar(F32);
+        let test_logits = model.forward(test_images);
+        let sum_ok = test_logits
+            .argmax(-1)
+            .to_dtype(test_labels)
+            .eq(test_labels)
+            .to_dtype(F32)
+            .sum(..)
+            .as_scalar(F32);
+        let test_accuracy = sum_ok / test_labels.size() as f32;
         let elapsed = start.elapsed();
-        println!("Epoch {i}: Time: {:?}", elapsed);
+        println!(
+            "Epoch {i:04}: train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
+            loss,
+            test_accuracy * 100.0,
+            elapsed,
+        );
     }
-
     let elapsed = start.elapsed();
     let throughput = num_epochs as f64 / elapsed.as_secs_f64();
     println!(
         "elapsed: {:?}, throughput: {:.2} iters/sec",
         elapsed, throughput
     );
-
     model.to_safetensors("mnist.safetensors");
-
-    // load saved model and test
-    let loaded_model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
-    loaded_model.update_by_safetensors(&["mnist.safetensors"], device);
-
-    let input = Tensor::rand([batch_size, 784], dtype, device);
-    let labels = Tensor::full(0.123f32, [batch_size, 10], device);
-    let (loss, ..) = loss_fn(&loaded_model, &input, &labels);
-    println!("loss = {}", loss);
 }

@@ -765,7 +765,7 @@ impl<D: Device> Eval<D, primitives::Gather> for CandleBackend {
         let t1 = lhs.get_data::<Data>().unwrap();
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
-        let t2 = t2.deref();
+        let t2 = &t2.deref().contiguous().unwrap();
         let t = t1.gather(t2, primitive.dim).unwrap();
         output.set_data(t);
     }
@@ -912,15 +912,15 @@ impl<D: Device> Eval<D, primitives::ToContiguous> for CandleBackend {
 impl<D: Device> Eval<D, primitives::ScatterAdd> for CandleBackend {
     fn eval(&self, _: &D, primitive: &primitives::ScatterAdd, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
-        let indices = &inputs[1];
-        let updates = &inputs[2];
+        let updates = &inputs[1];
+        let indices = &inputs[2];
         let t1 = x.get_data::<Data>().unwrap();
         let t2 = indices.get_data::<Data>().unwrap();
         let t3 = updates.get_data::<Data>().unwrap();
         let t1 = t1.deref();
-        let t2 = t2.deref();
-        let t3 = t3.deref();
-        let t = t1.scatter_add(t2, t3, primitive.dim).unwrap();
+        let t2 = t2.deref().contiguous().unwrap();
+        let t3 = t3.deref().contiguous().unwrap();
+        let t = t1.scatter_add(&t2, &t3, primitive.dim).unwrap();
         output.set_data(t);
     }
 }

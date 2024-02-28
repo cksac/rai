@@ -702,6 +702,16 @@ pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
+    let out_shape = x.shape_expand_right(&shape);
+    let mut x = x.clone();
+    for _ in x.ndim()..out_shape.ndim() {
+        x = x.unsqueeze(-1);
+    }
+    x.broadcast_to(out_shape)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     if x.shape_eq(&shape) {
         return x.clone();
@@ -719,6 +729,7 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
             inputs,
         )
     } else {
+        println!("{}", x.dot_graph());
         panic!("reshape({:?}, {:?}) with error", x, shape.shape());
     }
 }
@@ -1369,9 +1380,14 @@ pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
+    let is_negative = d.is_negative();
     let dim = x.dim(d);
     let mut shape = x.shape().to_vec();
-    shape.insert(dim, 1);
+    if is_negative {
+        shape.insert(dim + 1, 1);
+    } else {
+        shape.insert(dim, 1);
+    }
     x.reshape(shape)
 }
 
