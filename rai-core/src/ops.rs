@@ -685,9 +685,9 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     let dtype = x.dtype();
     let out_shape = x.shape_broadcast(&shape).unwrap_or_else(|e| {
         panic!(
-            "{:?} broadcast_to shape {} with error {:?}",
+            "{:?} broadcast_to shape {:?} with error {:?}",
             x,
-            shape.ndim(),
+            shape.shape(),
             e
         )
     });
@@ -729,7 +729,6 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
             inputs,
         )
     } else {
-        println!("{}", x.dot_graph());
         panic!("reshape({:?}, {:?}) with error", x, shape.shape());
     }
 }
@@ -1156,13 +1155,17 @@ pub fn silu(x: &Tensor) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
-    assert!(x.shape_eq(index));
     let dim = x.dim(dim);
+    assert_eq!(x.ndim(), index.ndim());
+    let mut lhs_shape = x.shape().to_vec();
+    lhs_shape.remove(dim);
+    let mut idx_shape = index.shape().to_vec();
+    idx_shape.remove(dim);
+    assert_eq!(lhs_shape, idx_shape);
     let device = x.device();
     let dtype = x.dtype();
-    let shape = x.shape().to_vec();
+    let shape = index.shape();
     let inputs = vec![x.clone(), index.clone()];
-    // TODO: asserts
     Tensor::new(device, dtype, shape, Gather::new(dim), inputs)
 }
 
