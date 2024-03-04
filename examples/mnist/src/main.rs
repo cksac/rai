@@ -70,10 +70,9 @@ fn train_step<
 ) -> (Tensor, Tensor) {
     let vg_fn = value_and_grad(loss_fn);
     let ((loss, Aux(logits)), (grads, ..)) = vg_fn.apply((model, images, labels));
-    eval((&loss, &logits, &grads));
-    ///let mut params = optimizer.step(&grads);
-    //eval(&params);
-    //model.update_params(&mut params);
+    let mut params = optimizer.step(&grads);
+    eval(&params);
+    model.update_params(&mut params);
     (loss, logits)
 }
 
@@ -81,7 +80,7 @@ fn main() {
     let num_layers = 2;
     let hidden_dim = 100;
     let num_classes = 10;
-    let num_epochs = 2;
+    let num_epochs = 1;
     let learning_rate = 0.05;
 
     let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
@@ -95,8 +94,6 @@ fn main() {
     let train_labels = &dataset.train_labels;
     let test_images = &dataset.test_images;
     let test_labels = &dataset.test_labels;
-
-    model.update_by_safetensors(&["mnist.safetensors"], device);
 
     let start = Instant::now();
     for i in 0..num_epochs {
