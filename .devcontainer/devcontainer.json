@@ -4,7 +4,8 @@
     },
     "runArgs": [
         "--device=nvidia.com/gpu=all",
-        "--shm-size=2g"
+        "--shm-size=2g",
+        "--privileged"
     ],
     "mounts": [
         {

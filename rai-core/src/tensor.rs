@@ -231,6 +231,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn broadcast_to_unchecked(&self, shape: impl Shape) -> Tensor {
+        ops::broadcast_to_unchecked(self, shape)
+    }
+
+    #[inline]
     pub fn broadcast_left(&self, shape: impl Shape) -> Tensor {
         ops::broadcast_left(self, shape)
     }

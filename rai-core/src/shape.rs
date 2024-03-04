@@ -384,32 +384,35 @@ pub trait Shape: Debug {
         dims
     }
 
-    fn shape_broadcast<T: Shape + ?Sized>(&self, rhs: &T) -> Result<Vec<usize>> {
+    fn shape_broadcast_to<T: Shape + ?Sized>(&self, rhs: &T) -> Result<(Vec<usize>, bool, bool)> {
         let lhs = self;
-        let lhs_shape = lhs.shape();
-        let rhs_shape = rhs.shape();
-        let lhs_ndim = lhs_shape.ndim();
-        let rhs_ndim = rhs_shape.ndim();
-        let out_ndim = usize::max(lhs_ndim, rhs_ndim);
-        let mut out_shape = vec![0; out_ndim];
-        for (idx, out_value) in out_shape.iter_mut().enumerate() {
-            let rev_idx = out_ndim - idx;
-            let l_value = if lhs_ndim < rev_idx {
-                1
+        let mut lhs_b = false;
+        let mut rhs_b = false;
+        let (lhs_shape, rhs_shape) = {
+            if lhs.ndim() < rhs.ndim() {
+                let mut lhs_shape = vec![1; rhs.ndim() - lhs.ndim()];
+                lhs_shape.extend(lhs.shape());
+                lhs_b = true;
+                (lhs_shape, rhs.shape().to_vec())
+            } else if lhs.ndim() > rhs.ndim() {
+                let mut rhs_shape = vec![1; lhs.ndim() - rhs.ndim()];
+                rhs_shape.extend(rhs.shape());
+                rhs_b = true;
+                (lhs.shape().to_vec(), rhs_shape)
             } else {
-                lhs_shape[lhs_ndim - rev_idx]
-            };
-            let r_value = if rhs_ndim < rev_idx {
-                1
-            } else {
-                rhs_shape[rhs_ndim - rev_idx]
-            };
-            *out_value = if l_value == r_value {
-                l_value
-            } else if l_value == 1 {
-                r_value
-            } else if r_value == 1 {
-                l_value
+                (lhs.shape().to_vec(), rhs.shape().to_vec())
+            }
+        };
+        let mut out_shape = Vec::with_capacity(lhs_shape.len());
+        for (l, r) in lhs_shape.into_iter().zip(rhs_shape.into_iter()) {
+            if l == r {
+                out_shape.push(l);
+            } else if l == 1 {
+                out_shape.push(r);
+                lhs_b = true;
+            } else if r == 1 {
+                out_shape.push(l);
+                rhs_b = true;
             } else {
                 return Err(Error::IncompatibleShape {
                     lhs: lhs.shape().to_vec(),
@@ -417,57 +420,39 @@ pub trait Shape: Debug {
                 });
             }
         }
-        Ok(out_shape)
+        Ok((out_shape, lhs_b, rhs_b))
     }
 
-    fn shape_broadcast_matmul<S: Shape + ?Sized>(&self, rhs: &S) -> Result<Vec<usize>> {
-        let lhs_in = self;
-        let rhs_in = rhs;
-
-        if lhs_in.ndim() == 0 || rhs_in.ndim() == 0 {
+    fn shape_broadcast_matmul<S: Shape + ?Sized>(
+        &self,
+        rhs: &S,
+    ) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>, bool, bool)> {
+        let lhs = self.shape();
+        let rhs = rhs.shape();
+        if lhs.ndim() < 2 || rhs.ndim() < 2 {
             return Err(Error::IncompatibleShape {
-                lhs: lhs_in.shape().to_vec(),
-                rhs: rhs_in.shape().to_vec(),
+                lhs: lhs.to_vec(),
+                rhs: rhs.to_vec(),
             });
         }
-
-        let mut lhs = self.shape().to_vec();
-        let mut rhs = rhs.shape().to_vec();
-
-        if lhs.len() == 1 {
-            lhs.insert(0, 1);
-        }
-        if rhs.len() == 1 {
-            rhs.push(1);
-        }
-
         let (m, lhs_k) = (lhs[lhs.len() - 2], lhs[lhs.len() - 1]);
         let (rhs_k, n) = (rhs[rhs.len() - 2], rhs[rhs.len() - 1]);
-
         if lhs_k != rhs_k {
             return Err(Error::IncompatibleShape {
                 lhs: lhs.to_vec(),
                 rhs: rhs.to_vec(),
             });
         }
-
         if lhs.len() == 2 && rhs.len() == 2 {
-            return Ok(vec![m, n]);
+            return Ok((vec![m, n], lhs.to_vec(), rhs.to_vec(), false, false));
         }
-
-        let lhs_b = &lhs[..lhs.len() - 2];
-        let rhs_b = &rhs[..rhs.len() - 2];
-
-        let batching = lhs_b.shape_broadcast(rhs_b)?;
-        let mut out_shape = [batching.shape(), &[m, n]].concat();
-
-        if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
-            let erase_start = out_shape.len() - if lhs_in.ndim() == 1 { 2 } else { 1 };
-            let erase_end = out_shape.len() - if rhs_in.ndim() == 1 { 0 } else { 1 };
-            out_shape.drain(erase_start..erase_end);
-        }
-
-        Ok(out_shape)
+        let lhs_bs = &lhs[..lhs.len() - 2];
+        let rhs_bs = &rhs[..rhs.len() - 2];
+        let (batching, lhs_b, rhs_b) = lhs_bs.shape_broadcast_to(rhs_bs)?;
+        let out_shape = [batching.shape(), &[m, n]].concat();
+        let lhs = [batching.shape(), &[m, lhs_k]].concat();
+        let rhs = [batching.shape(), &[rhs_k, n]].concat();
+        Ok((out_shape, lhs, rhs, lhs_b, rhs_b))
     }
 
     fn shape_reduce<T: AsRef<[usize]>>(&self, dims: T, keep_dim: bool) -> Vec<usize> {

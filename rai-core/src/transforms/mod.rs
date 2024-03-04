@@ -1,4 +1,4 @@
-use crate::{Shape, Value};
+use crate::Value;
 use std::collections::HashMap;
 
 pub trait Func<IN, OUT> {
@@ -77,13 +77,7 @@ where
         for t in input_tensors.tensor_iter() {
             let id = t.id();
             let c = grads.get(&id).unwrap().clone();
-            if c.shape_eq(&t) {
-                vjps.insert(id, c);
-            } else {
-                // reduce sum cotangent to its input shape
-                // TODO: will cotangent ndim always > input ndim?
-                vjps.insert(id, c.sum(..t.ndim()));
-            }
+            vjps.insert(id, c);
         }
         IN::grad(&input_tensors, &vjps)
     };

@@ -1,6 +1,6 @@
 use crate::{
-    primitives, tensor::TensorLike, utils::dot_graph, Backend, Cpu, Cuda, DType, Device, Eval,
-    Shape, Tensor, Type, BF16, F16, F32, F64, I64, U32, U8,
+    primitives, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Shape, Tensor, Type,
+    BF16, F16, F32, F64, I64, U32, U8,
 };
 use candle_core::{backend::BackendDevice, CudaDevice};
 use half::{bf16, f16};
@@ -244,11 +244,7 @@ impl<D: Device> Eval<D, primitives::Add> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            (t1 + t2).unwrap()
-        } else {
-            t1.broadcast_add(t2).unwrap()
-        };
+        let t = (t1 + t2).unwrap();
         output.set_data(t);
     }
 }
@@ -261,11 +257,7 @@ impl<D: Device> Eval<D, primitives::Sub> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            (t1 - t2).unwrap()
-        } else {
-            t1.broadcast_sub(t2).unwrap()
-        };
+        let t = (t1 - t2).unwrap();
         output.set_data(t);
     }
 }
@@ -278,19 +270,7 @@ impl<D: Device> Eval<D, primitives::Mul> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            (t1 * t2).unwrap_or_else(|e| {
-                panic!(
-                    "Mul({:?}, {:?}) with error {:?}\n{}",
-                    lhs,
-                    rhs,
-                    e,
-                    dot_graph([lhs, rhs])
-                )
-            })
-        } else {
-            t1.broadcast_mul(t2).unwrap()
-        };
+        let t = (t1 * t2).unwrap();
         output.set_data(t);
     }
 }
@@ -303,11 +283,7 @@ impl<D: Device> Eval<D, primitives::Div> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            (t1 / t2).unwrap()
-        } else {
-            t1.broadcast_div(t2).unwrap()
-        };
+        let t = (t1 / t2).unwrap();
         output.set_data(t);
     }
 }
@@ -320,14 +296,7 @@ impl<D: Device> Eval<D, primitives::MatMul> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        // todo: get is required broadcast info in primitives::MatMul
-        let lhs_sp = lhs.shape_of(..-2);
-        let rhs_sp = rhs.shape_of(..-2);
-        let t = if lhs_sp != rhs_sp {
-            t1.broadcast_matmul(t2).unwrap()
-        } else {
-            t1.matmul(t2).unwrap()
-        };
+        let t = t1.matmul(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -548,11 +517,7 @@ impl<D: Device> Eval<D, primitives::Equal> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.eq(t2).unwrap()
-        } else {
-            t1.broadcast_eq(t2).unwrap()
-        };
+        let t = t1.eq(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -565,11 +530,7 @@ impl<D: Device> Eval<D, primitives::NotEqual> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.ne(t2).unwrap()
-        } else {
-            t1.broadcast_ne(t2).unwrap()
-        };
+        let t = t1.ne(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -582,11 +543,7 @@ impl<D: Device> Eval<D, primitives::Greater> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.gt(t2).unwrap()
-        } else {
-            t1.broadcast_gt(t2).unwrap()
-        };
+        let t = t1.gt(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -599,11 +556,7 @@ impl<D: Device> Eval<D, primitives::GreaterEqual> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.ge(t2).unwrap()
-        } else {
-            t1.broadcast_ge(t2).unwrap()
-        };
+        let t = t1.ge(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -616,11 +569,7 @@ impl<D: Device> Eval<D, primitives::Less> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.lt(t2).unwrap()
-        } else {
-            t1.broadcast_lt(t2).unwrap()
-        };
+        let t = t1.lt(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -633,11 +582,7 @@ impl<D: Device> Eval<D, primitives::LessEqual> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.le(t2).unwrap()
-        } else {
-            t1.broadcast_le(t2).unwrap()
-        };
+        let t = t1.le(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -650,11 +595,7 @@ impl<D: Device> Eval<D, primitives::Maximum> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.maximum(t2).unwrap()
-        } else {
-            t1.broadcast_maximum(t2).unwrap()
-        };
+        let t = t1.maximum(t2).unwrap();
         output.set_data(t);
     }
 }
@@ -667,11 +608,7 @@ impl<D: Device> Eval<D, primitives::Minimum> for CandleBackend {
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = if lhs.shape_eq(rhs) {
-            t1.minimum(t2).unwrap()
-        } else {
-            t1.broadcast_minimum(t2).unwrap()
-        };
+        let t = t1.minimum(t2).unwrap();
         output.set_data(t);
     }
 }

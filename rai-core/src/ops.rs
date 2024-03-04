@@ -106,6 +106,57 @@ macro_rules! impl_std_ops {
     };
 }
 
+macro_rules! broadcast_binary_op {
+    ($(#[$meta:meta])* $primitive:ident, $func:ident) => {
+        $(#[$meta])*
+        #[tracing::instrument(ret(level = Level::TRACE))]
+        pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+            let device = lhs.device();
+            let dtype = lhs.dtype();
+            let (shape, lhs_b, rhs_b) = lhs.shape_broadcast_to(rhs).unwrap_or_else(|e| {
+                panic!(
+                    "{}({:?}, {:?}) with error {:?}",
+                    stringify!($func),
+                    lhs,
+                    rhs,
+                    e
+                )
+            });
+            let inputs = match (lhs_b, rhs_b) {
+                (false, false) => vec![lhs.clone(), rhs.clone()],
+                (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&shape)],
+                (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
+                (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
+            };
+            Tensor::new(device, dtype, shape, $primitive, inputs)
+        }
+    };
+    ($(#[$meta:meta])* $primitive:ident, $func:ident, $out_ty:ident) => {
+        $(#[$meta])*
+        #[tracing::instrument(ret(level = Level::TRACE))]
+        pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+            let device = lhs.device();
+            let dtype = $out_ty;
+            let (shape, lhs_b, rhs_b) = lhs.shape_broadcast_to(rhs).unwrap_or_else(|e| {
+                panic!(
+                    "{}({:?}, {:?}) with error {:?}",
+                    stringify!($func),
+                    lhs,
+                    rhs,
+                    e
+                )
+            });
+            let inputs = match (lhs_b, rhs_b) {
+                (false, false) => vec![lhs.clone(), rhs.clone()],
+                (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&shape)],
+                (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
+                (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
+            };
+            Tensor::new(device, dtype, shape, $primitive, inputs)
+        }
+    };
+}
+
 /// Creates a `Tensor` filled with a specified value.
 ///
 /// # Arguments
@@ -495,76 +546,78 @@ pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
     }
 }
 
-/// Adds two `Tensor` objects.
-///
-/// # Arguments
-///
-/// * `lhs` - The first `Tensor`.
-/// * `rhs` - The second `Tensor`.
-///
-/// # Returns
-///
-/// The resulting `Tensor` after the addition.
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn add(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("add({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Add, inputs)
-}
+broadcast_binary_op!(
+    /// Adds two `Tensor` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `lhs` - The first `Tensor`.
+    /// * `rhs` - The second `Tensor`.
+    ///
+    /// # Returns
+    ///
+    /// The resulting `Tensor` after the addition.
+    Add,
+    add
+);
+
+broadcast_binary_op!(
+    /// Subtracts two `Tensor` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `lhs` - The first `Tensor`.
+    /// * `rhs` - The second `Tensor`.
+    ///
+    /// # Returns
+    ///
+    /// The resulting `Tensor` after the subtraction.
+    Sub,
+    sub
+);
+
+broadcast_binary_op!(
+    /// Multiplies two `Tensor` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `lhs` - The first `Tensor`.
+    /// * `rhs` - The second `Tensor`.
+    ///
+    /// # Returns
+    ///
+    /// The resulting `Tensor` after the multiplication.
+    Mul,
+    mul
+);
+
+broadcast_binary_op!(
+    /// Divides two `Tensor` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `lhs` - The first `Tensor`.
+    /// * `rhs` - The second `Tensor`.
+    ///
+    /// # Returns
+    ///
+    /// The resulting `Tensor` after the division.
+    Div,
+    div
+);
+
+broadcast_binary_op!(Equal, eq, U8);
+broadcast_binary_op!(NotEqual, ne, U8);
+broadcast_binary_op!(Greater, gt, U8);
+broadcast_binary_op!(GreaterEqual, ge, U8);
+broadcast_binary_op!(Less, lt, U8);
+broadcast_binary_op!(LessEqual, le, U8);
+broadcast_binary_op!(Maximum, maximum);
+broadcast_binary_op!(Minimum, minimum);
 
 impl_std_ops!(Add, add);
-
-/// Subtracts two `Tensor` objects.
-///
-/// # Arguments
-///
-/// * `lhs` - The first `Tensor`.
-/// * `rhs` - The second `Tensor`.
-///
-/// # Returns
-///
-/// The resulting `Tensor` after the subtraction.
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn sub(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("sub({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Sub, inputs)
-}
-
 impl_std_ops!(Sub, sub);
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn mul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("mul({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Mul, inputs)
-}
-
 impl_std_ops!(Mul, mul);
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn div(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("div({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Div, inputs)
-}
-
 impl_std_ops!(Div, div);
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -641,13 +694,8 @@ pub fn tanh(x: &Tensor) -> Tensor {
 pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let device = lhs.device();
     let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast_matmul(rhs)
-        .unwrap_or_else(|e| panic!("matmul({:?}, {:?}) with error {:?}", lhs, rhs, e));
-
     let lhs_in = lhs;
     let rhs_in = rhs;
-
     let mut lhs = lhs.clone();
     let mut rhs = rhs.clone();
     if lhs.ndim() == 1 {
@@ -656,13 +704,24 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     if rhs.ndim() == 1 {
         rhs = rhs.reshape([rhs.shape(), &[1]].concat());
     }
-    let inputs = vec![lhs.clone(), rhs.clone()];
+    let (mut shape, lhs_shape, rhs_shape, lhs_b, rhs_b) = lhs
+        .shape_broadcast_matmul(&rhs)
+        .unwrap_or_else(|e| panic!("matmul({:?}, {:?}) with error {:?}", lhs, rhs, e));
+    let inputs = match (lhs_b, rhs_b) {
+        (false, false) => vec![lhs.clone(), rhs.clone()],
+        (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&rhs_shape)],
+        (true, false) => vec![lhs.broadcast_to_unchecked(&lhs_shape), rhs.clone()],
+        (true, true) => vec![
+            lhs.broadcast_to_unchecked(&lhs_shape),
+            rhs.broadcast_to_unchecked(&rhs_shape),
+        ],
+    };
     if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
-        let first = shape.ndim() - if lhs_in.ndim() == 1 { 2 } else { 1 };
-        let last = shape.ndim() - if rhs_in.ndim() == 1 { 0 } else { 1 };
-        let out_shape = [&shape[..first], &shape[last..]].concat();
-        let out = Tensor::new(device, dtype, shape, MatMul, inputs);
-        out.reshape(out_shape)
+        let erase_start = shape.len() - if lhs_in.ndim() == 1 { 2 } else { 1 };
+        let erase_end = shape.len() - if rhs_in.ndim() == 1 { 0 } else { 1 };
+        let matml_out = Tensor::new(device, dtype, &shape, MatMul, inputs);
+        shape.drain(erase_start..erase_end);
+        matml_out.reshape(shape)
     } else {
         Tensor::new(device, dtype, shape, MatMul, inputs)
     }
@@ -683,7 +742,7 @@ pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
 pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
-    let out_shape = x.shape_broadcast(&shape).unwrap_or_else(|e| {
+    let (out_shape, _, _) = x.shape_broadcast_to(&shape).unwrap_or_else(|e| {
         panic!(
             "{:?} broadcast_to shape {:?} with error {:?}",
             x,
@@ -696,9 +755,17 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+pub fn broadcast_to_unchecked(x: &Tensor, shape: impl Shape) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, &shape, Broadcast::new(&shape), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
     let out_shape = x.shape_expand_left(&shape);
-    x.broadcast_to(out_shape)
+    x.broadcast_to_unchecked(out_shape)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -708,7 +775,7 @@ pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
     for _ in x.ndim()..out_shape.ndim() {
         x = x.unsqueeze(-1);
     }
-    x.broadcast_to(out_shape)
+    x.broadcast_to_unchecked(out_shape)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -803,95 +870,6 @@ pub fn log10(x: &Tensor) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Log10, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn eq(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = U8;
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("eq({:?}, {:?}) with error {:?}", lhs, rhs, e));
-
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Equal, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn ne(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = U8;
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("ne({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, NotEqual, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn gt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = U8;
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("gt({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Greater, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn ge(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = U8;
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("ge({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, GreaterEqual, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn lt(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = U8;
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("lt({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Less, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn le(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = U8;
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("le({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, LessEqual, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn maximum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("maximum({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Maximum, inputs)
-}
-
-#[tracing::instrument(ret(level = Level::TRACE))]
-pub fn minimum(lhs: &Tensor, rhs: &Tensor) -> Tensor {
-    let device = lhs.device();
-    let dtype = lhs.dtype();
-    let shape = lhs
-        .shape_broadcast(rhs)
-        .unwrap_or_else(|e| panic!("minimum({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = vec![lhs.clone(), rhs.clone()];
-    Tensor::new(device, dtype, shape, Minimum, inputs)
 }
 
 pub trait ClampBound: Debug {
@@ -1372,13 +1350,15 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
     let dims = x.dims(dims).to_vec();
-    let mut shape = x.shape().to_vec();
-    for d in dims.into_iter() {
-        if shape.shape_at(d) == 1 {
-            shape.remove(d);
+    let mut out_shape = Vec::new();
+    for (i, s) in x.shape().iter().enumerate() {
+        if !dims.contains(&i) {
+            out_shape.push(*s);
+        } else if *s != 1 {
+            out_shape.push(*s);
         }
     }
-    x.reshape(shape)
+    x.reshape(out_shape)
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

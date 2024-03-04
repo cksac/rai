@@ -30,3 +30,6 @@ RUN pip install iree-compiler==${IREE_VERSION} iree-runtime==${IREE_VERSION}
 ENV LIB_IREE_COMPILER ${LIB_IREE_COMPILER}
 ENV PATH=/root/.cargo/bin:$PATH
 
+# RUN apt install -y linux-tools-generic
+# ENV PERF=/usr/lib/linux-tools/5.15.0-97-generic/perf
+RUN cargo install flamegraph
