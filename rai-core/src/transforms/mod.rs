@@ -35,8 +35,30 @@ where
     (output, grad)
 }
 
-type VjpFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
-pub fn vjp<IN, OUT, F>(func: F, input: IN) -> (OUT, VjpFunc<OUT::Gradient, IN::Gradient>)
+type BoxedFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
+
+pub fn linearize<IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<IN::Gradient, OUT::Gradient>)
+where
+    F: Func<IN, OUT>,
+    IN: Value,
+    OUT: Value,
+{
+    let input_tensors = input.tensors();
+    let output = func.apply(input);
+    let output_tensors = output.tensors();
+    let jvp_fn = move |tangents: IN::Gradient| {
+        let mut grads = HashMap::new();
+        IN::grad_map(&input_tensors, tangents, &mut grads);
+        let mut jvps = HashMap::new();
+        for t in output_tensors.tensor_iter() {
+            jvps.insert(t.id(), t.jvp(&mut grads));
+        }
+        OUT::grad(&output_tensors, &jvps)
+    };
+    (output, Box::new(jvp_fn))
+}
+
+pub fn vjp<IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<OUT::Gradient, IN::Gradient>)
 where
     F: Func<IN, OUT>,
     IN: Value,

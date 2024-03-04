@@ -22,7 +22,7 @@ mod value;
 pub use value::{Aux, BasicValue, GenericValue, ModuleValue, Value, ValueSpec};
 
 mod transforms;
-pub use transforms::{eval, grad, jvp, raiexpr, value_and_grad, vjp, Func, TensorIter};
+pub use transforms::{eval, grad, jvp, linearize, raiexpr, value_and_grad, vjp, Func, TensorIter};
 
 pub mod dispatch;
 

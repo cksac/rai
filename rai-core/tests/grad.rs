@@ -1,4 +1,20 @@
-use rai_core::{eval, utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
+use rai_core::{eval, jvp, linearize, utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
+
+#[test]
+fn test_linearize() {
+    let device = Cpu;
+    let func = |x: &Tensor, y: &Tensor| x.sin() * y.cos();
+
+    let a = Tensor::ones([1], F32, device);
+    let b = Tensor::ones([1], F32, device);
+    let (y1, y_dot1) = jvp(func, (&a, &b), (a.ones_like(), b.ones_like()));
+    let (y2, f_lin) = linearize(func, (&a, &b));
+    let y_dot2 = f_lin((a.ones_like(), b.ones_like()));
+    println!("{}", y1);
+    println!("{}", y2);
+    println!("{}", y_dot1);
+    println!("{}", y_dot2);
+}
 
 #[test]
 fn test_add_grad() {
