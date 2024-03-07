@@ -1,4 +1,22 @@
-use crate::{Func, Value};
+use crate::{Func, Tensor, Value};
+
+impl<F> Func<Tensor, Tensor> for F
+where
+    F: Fn(Tensor) -> Tensor,
+{
+    fn apply(&self, input: Tensor) -> Tensor {
+        self(input)
+    }
+}
+
+impl<'a, F> Func<&'a Tensor, Tensor> for F
+where
+    F: Fn(&'a Tensor) -> Tensor,
+{
+    fn apply(&self, input: &'a Tensor) -> Tensor {
+        self(input)
+    }
+}
 
 macro_rules! impl_tuple_arg_fn {
     ($($T:tt)*) => {

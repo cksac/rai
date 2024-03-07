@@ -1331,11 +1331,12 @@ impl FlattenArgs for RangeInclusive<i32> {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
+    if x.ndim() == 0 {
+        return x.reshape([1]);
+    }
     let start_dim = x.dim(args.start_dim());
     let end_dim = x.dim(args.end_dim());
-    if x.ndim() == 0 {
-        x.reshape([1])
-    } else if start_dim < end_dim {
+    if start_dim < end_dim {
         let mut dst_dim = x.shape_of(..start_dim);
         dst_dim.push(x.size_of(start_dim..=end_dim));
         if end_dim + 1 < x.ndim() {

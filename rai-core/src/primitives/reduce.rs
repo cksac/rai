@@ -98,11 +98,13 @@ impl Primitive for ReduceMax {
         for dim in self.dims() {
             shape[*dim] = 1;
         }
-        let mask = x.eq(output).to_dtype(x);
-        let normalizer = mask.sum((self.dims(), true));
         let cotangent_x = if self.keep_dim {
+            let mask = x.eq(output).to_dtype(x);
+            let normalizer = mask.sum((self.dims(), true));
             cotangent * mask / normalizer
         } else {
+            let mask = x.eq(output.reshape(&shape)).to_dtype(x);
+            let normalizer = mask.sum((self.dims(), true));
             cotangent.reshape(shape) * mask / normalizer
         };
         vec![cotangent_x]
@@ -155,9 +157,15 @@ impl Primitive for ReduceMin {
         for dim in self.dims() {
             shape[*dim] = 1;
         }
-        let mask = x.eq(output).to_dtype(x);
-        let normalizer = mask.sum((self.dims(), true));
-        let cotangent_x = (cotangent.reshape(shape) / normalizer) * mask;
+        let cotangent_x = if self.keep_dim {
+            let mask = x.eq(output).to_dtype(x);
+            let normalizer = mask.sum((self.dims(), true));
+            cotangent * mask / normalizer
+        } else {
+            let mask = x.eq(output.reshape(&shape)).to_dtype(x);
+            let normalizer = mask.sum((self.dims(), true));
+            cotangent.reshape(shape) * mask / normalizer
+        };
         vec![cotangent_x]
     }
 }

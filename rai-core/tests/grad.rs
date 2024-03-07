@@ -1,4 +1,8 @@
-use rai_core::{eval, jvp, linearize, utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
+use rai_core::{
+    eval, jvp, linearize,
+    utils::{check_vjp, dot_graph},
+    value_and_grad, Cpu, Func, Tensor, F32,
+};
 
 #[test]
 fn test_linearize() {
@@ -107,4 +111,132 @@ fn test_linear_grad() {
     println!("grad_b = {}", gb);
     println!("grad_x = {}", gx);
     println!("{}", dot_graph([&v, &gw, &gb, &gx]))
+}
+
+#[test]
+fn check_add_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x + 2.0;
+    let x = &Tensor::rand([1], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_sub_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x - 2.0;
+    let x = &Tensor::rand([1], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_mul_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x * 2.0;
+    let x = &Tensor::rand([1], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_div_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x / 2.0;
+    let x = &Tensor::rand([1], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_sin_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sin();
+    let x = &Tensor::rand([1], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_cos_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.cos();
+    let x = &Tensor::rand([1], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_sum_all_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sum(..);
+    let x = &Tensor::rand([2, 3], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_sum_all_keep_dim_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sum((.., true));
+    let x = &Tensor::rand([2, 3], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_sum_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sum(-1);
+    let x = &Tensor::rand([2, 3], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_sum_keep_dim_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sum((-1, true));
+    let x = &Tensor::rand([2, 3, 5], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_mean_keep_dim_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.mean((-1, true));
+    let x = &Tensor::rand([2, 3, 5], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_max_keep_dim_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.max((-1, true));
+    let x = &Tensor::rand([2, 3, 5], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_max_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.max(-1);
+    let x = &Tensor::rand([2, 3, 5], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_min_keep_dim_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.min((-1, true));
+    let x = &Tensor::rand([2, 3, 5], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_min_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.min(-1);
+    let x = &Tensor::rand([2, 3, 5], F32, device);
+    check_vjp(func, x, 1e-4);
+}
+
+#[test]
+fn check_gather_grad() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.gather(-1, Tensor::from_array([1u8, 2], [2, 1], device));
+    let x = &Tensor::rand([2, 4], F32, device);
+    check_vjp(func, x, 1e-4);
 }

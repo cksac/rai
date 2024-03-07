@@ -6,7 +6,8 @@ use rai::{
         optimizers::{Optimizer, SDG},
     },
     utils::cuda_enabled,
-    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Shape, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Shape, Tensor, Type, BF16, F16,
+    F32,
 };
 use rai_datasets::image::mnist;
 use std::{collections::HashMap, fmt::Debug, time::Instant};
@@ -80,7 +81,7 @@ fn main() {
     let num_layers = 2;
     let hidden_dim = 100;
     let num_classes = 10;
-    let num_epochs = 1;
+    let num_epochs = 100;
     let learning_rate = 0.05;
 
     let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };

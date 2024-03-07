@@ -110,8 +110,8 @@ impl Primitive for Div {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let rhs = &primals[1];
-        let cotangent_lhs = cotangent * rhs;
-        let cotangent_rhs = cotangent * -output;
+        let cotangent_lhs = cotangent / rhs;
+        let cotangent_rhs = -cotangent * output / rhs;
         vec![cotangent_lhs, cotangent_rhs]
     }
 }

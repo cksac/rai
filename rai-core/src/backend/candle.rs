@@ -352,7 +352,10 @@ impl<D: Device> Eval<D, primitives::ReduceMax> for CandleBackend {
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
         let dims = primitive.dims();
-        assert!(dims.len() == 1, "only support reduce max with single dim");
+        assert!(
+            dims.len() == 1,
+            "Candle only support reduce max with single dim"
+        );
         let t = if primitive.keep_dim {
             t.max_keepdim(dims[0]).unwrap()
         } else {

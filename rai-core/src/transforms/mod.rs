@@ -35,7 +35,7 @@ where
     (output, grad)
 }
 
-type BoxedFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
+pub type BoxedFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
 
 pub fn linearize<IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<IN::Gradient, OUT::Gradient>)
 where
