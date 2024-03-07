@@ -43,11 +43,15 @@ impl Primitive for ReduceSum {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let mut shape = x.shape().to_vec();
-        for dim in self.dims() {
-            shape[*dim] = 1;
-        }
-        let cotangent_x = cotangent.reshape(&shape).broadcast_to(x);
+        let cotangent_x = if self.keep_dim {
+            cotangent.broadcast_to(x)
+        } else {
+            let mut shape = x.shape().to_vec();
+            for dim in self.dims() {
+                shape[*dim] = 1;
+            }
+            cotangent.reshape(&shape).broadcast_to(x)
+        };
         vec![cotangent_x]
     }
 }
@@ -94,15 +98,15 @@ impl Primitive for ReduceMax {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let mut shape = x.shape().to_vec();
-        for dim in self.dims() {
-            shape[*dim] = 1;
-        }
         let cotangent_x = if self.keep_dim {
             let mask = x.eq(output).to_dtype(x);
             let normalizer = mask.sum((self.dims(), true));
             cotangent * mask / normalizer
         } else {
+            let mut shape = x.shape().to_vec();
+            for dim in self.dims() {
+                shape[*dim] = 1;
+            }
             let mask = x.eq(output.reshape(&shape)).to_dtype(x);
             let normalizer = mask.sum((self.dims(), true));
             cotangent.reshape(shape) * mask / normalizer

@@ -9,6 +9,6 @@ pub fn softmax_cross_entropy_with_integer_labels(logits: &Tensor, labels: &Tenso
     let logits_max = logits.max((-1, true));
     let logits = logits - logits_max;
     let label_logits = logits.gather(-1, labels.unsqueeze(-1));
-    let log_normalizers = logits.exp().sum(-1).log();
+    let log_normalizers = logits.exp().sum((-1, true)).log();
     log_normalizers - label_logits
 }
