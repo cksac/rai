@@ -137,7 +137,7 @@ impl Primitive for Transpose {
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        let cotangent_x = cotangent.transpose(self.dim1, self.dim0);
+        let cotangent_x = cotangent.transpose(self.dim0, self.dim1);
         vec![cotangent_x]
     }
 }

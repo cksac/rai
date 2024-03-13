@@ -27,11 +27,15 @@ impl Mlp {
     ) -> Self {
         let device = device.device();
         let mut layers = Vec::with_capacity(num_layers);
-        layers.push(Linear::new(input_dim, hidden_dim, true, dtype, device));
-        for _ in 1..num_layers - 2 {
-            layers.push(Linear::new(hidden_dim, hidden_dim, true, dtype, device));
+        if num_layers > 1 {
+            layers.push(Linear::new(input_dim, hidden_dim, true, dtype, device));
+            for _ in 1..num_layers - 2 {
+                layers.push(Linear::new(hidden_dim, hidden_dim, true, dtype, device));
+            }
+            layers.push(Linear::new(hidden_dim, output_dim, true, dtype, device));
+        } else {
+            layers.push(Linear::new(input_dim, output_dim, true, dtype, device));
         }
-        layers.push(Linear::new(hidden_dim, output_dim, true, dtype, device));
         Self { layers }
     }
 

@@ -318,20 +318,24 @@ impl Primitive for Maximum {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let lhs = &primals[0];
         let rhs = &primals[1];
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
-        tangent_lhs * lhs.gt(rhs).to_dtype(lhs) + tangent_rhs * lhs.le(rhs).to_dtype(rhs)
+        let lhs_mask = &output.eq(lhs).to_dtype(tangent_lhs);
+        let rhs_mask = &output.eq(rhs).to_dtype(tangent_rhs);
+        tangent_lhs * lhs_mask / (rhs_mask + 1.0) + tangent_rhs * rhs_mask / (lhs_mask + 1.0)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
-        let cotangent_lhs = cotangent * lhs.gt(rhs).to_dtype(cotangent);
-        let cotangent_rhs = cotangent * lhs.le(rhs).to_dtype(cotangent);
+        let lhs_mask = &output.eq(lhs).to_dtype(cotangent);
+        let rhs_mask = &output.eq(rhs).to_dtype(cotangent);
+        let cotangent_lhs = cotangent * lhs_mask / (rhs_mask + 1.0);
+        let cotangent_rhs = cotangent * rhs_mask / (lhs_mask + 1.0);
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
@@ -349,20 +353,24 @@ impl Primitive for Minimum {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let lhs = &primals[0];
         let rhs = &primals[1];
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
-        tangent_lhs * lhs.lt(rhs).to_dtype(lhs) + tangent_rhs * lhs.ge(rhs).to_dtype(rhs)
+        let lhs_mask = &output.eq(lhs).to_dtype(tangent_lhs);
+        let rhs_mask = &output.eq(rhs).to_dtype(tangent_rhs);
+        tangent_lhs * lhs_mask / (rhs_mask + 1.0) + tangent_rhs * rhs_mask / (lhs_mask + 1.0)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];
-        let cotangent_lhs = cotangent * lhs.lt(rhs).to_dtype(cotangent);
-        let cotangent_rhs = cotangent * lhs.ge(rhs).to_dtype(cotangent);
+        let lhs_mask = &output.eq(lhs).to_dtype(cotangent);
+        let rhs_mask = &output.eq(rhs).to_dtype(cotangent);
+        let cotangent_lhs = cotangent * lhs_mask / (rhs_mask + 1.0);
+        let cotangent_rhs = cotangent * rhs_mask / (lhs_mask + 1.0);
         vec![cotangent_lhs, cotangent_rhs]
     }
 }

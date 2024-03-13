@@ -3,19 +3,27 @@ use std::collections::{hash_map::RandomState, HashSet};
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
     let mut tape = Vec::new();
+    let mut output_set = HashSet::new();
     for output in args.tensor_iter() {
+        output_set.insert(output.id());
         depth_first_traversal(&mut tape, output);
     }
 
     let nodes: HashSet<String, RandomState> = HashSet::from_iter(tape.iter().map(|tensor| {
+        let color = if output_set.contains(&tensor.id()) {
+            " color=\"red\""
+        } else {
+            ""
+        };
         format!(
-            "{} [label=\"{}: {}|{{dtype:|shape:|inputs:}}|{{{{{:?}}}|{{{:?}}}|{{{:?}}}}}\"];",
+            "{} [label=\"{}: {}|{{dtype:|shape:|inputs:}}|{{{{{:?}}}|{{{:?}}}|{{{:?}}}}}\"{}];",
             tensor.id(),
             tensor.id(),
             tensor.primitive().dot_label(),
             tensor.dtype(),
             tensor.shape(),
             tensor.inputs().iter().map(|t| t.id()).collect::<Vec<_>>(),
+            color
         )
     }));
 
@@ -80,28 +88,22 @@ where
     (f_pos - f_neg) * (0.5 / eps)
 }
 
-pub fn check_vjp<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
+pub fn check_vjp<F>(func: F, input: impl AsRef<Tensor>, eps: f64) -> (Tensor, Tensor)
 where
     F: for<'a> Func<&'a Tensor, Tensor> + Clone,
 {
     let input = input.as_ref();
     let (v_out, vjp_fn) = vjp(func.clone(), input);
-    let tangent = input.rand_like();
-    let tangent_out = numerical_jvp(func, input, &tangent, eps);
+    let tangent = &input.rand_like();
+    let tangent_out = &numerical_jvp(func, input, &tangent, eps);
     let cotangent = &v_out.rand_like();
     let cotangent_out = &vjp_fn(cotangent.clone());
-    dbg!(
-        v_out.shape(),
-        tangent.shape(),
-        tangent_out.shape(),
-        cotangent.shape(),
-        cotangent_out.shape()
-    );
-    let tangent = tangent.flatten(..);
-    let tangent_out = tangent_out.flatten(..);
-    let cotangent = cotangent.flatten(..);
-    let cotangent_out = cotangent_out.flatten(..);
+
+    let tangent = &tangent.flatten(..);
+    let tangent_out = &tangent_out.flatten(..);
+    let cotangent = &cotangent.flatten(..);
+    let cotangent_out = &cotangent_out.flatten(..);
     let ip = tangent.matmul(cotangent_out);
     let ip_expected = tangent_out.matmul(cotangent);
-    println!("{}, {}", ip, ip_expected)
+    (ip, ip_expected)
 }

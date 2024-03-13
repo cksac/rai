@@ -13,6 +13,8 @@ homepage = "https://github.com/cksac/rai"
 
 [dependencies]
 rai-core = { workspace = true }
+tracing = { workspace = true }
+tracing-test = { workspace = true }
 
 [features]
 default = ["candle-backend"]
