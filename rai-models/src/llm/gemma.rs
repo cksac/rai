@@ -326,7 +326,7 @@ impl Model {
             .map(|_| DecoderLayer::new(cfg, dtype, device))
             .collect();
         let norm = RmsNorm::new(cfg.hidden_size, cfg.rms_norm_eps, dtype, device);
-        let lm_head = Linear::new_with(embed_tokens.weight().clone(), None);
+        let lm_head = Linear::new_with_params(embed_tokens.weight().clone(), None);
         let hidden_size = cfg.hidden_size;
         Self {
             embed_tokens,

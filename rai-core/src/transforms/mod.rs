@@ -68,15 +68,23 @@ where
     let output = func.apply(input);
     let output_tensors = output.tensors();
     let vjps_fn = move |cotangents: OUT::Gradient| {
-        let mut grads = HashMap::new();
-        OUT::grad_map(&output_tensors, cotangents, &mut grads);
+        let mut cotangent_cache = HashMap::new();
+        let mut grads_sum = HashMap::new();
+        for i in input_tensors.tensor_iter() {
+            grads_sum.insert(i.id(), i.zeros_like());
+        }
+        OUT::grad_map(&output_tensors, cotangents, &mut cotangent_cache);
         for t in output_tensors.tensor_iter() {
-            t.vjp(&mut grads);
+            let cotangent = cotangent_cache
+                .get(&t.id())
+                .cloned()
+                .unwrap_or_else(|| t.ones_like());
+            t.vjp(&cotangent, &mut grads_sum);
         }
         let mut vjps = HashMap::new();
         for t in input_tensors.tensor_iter() {
             let id = t.id();
-            let c = grads.get(&id).unwrap().clone();
+            let c = grads_sum.get(&id).unwrap().clone();
             vjps.insert(id, c);
         }
         IN::grad(&input_tensors, &vjps)

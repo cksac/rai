@@ -121,6 +121,17 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn rand_with<T: Type>(
+        from: T::Repr,
+        to: T::Repr,
+        shape: impl Shape,
+        dtype: T,
+        device: impl AsDevice,
+    ) -> Tensor {
+        ops::rand_with(from, to, shape, dtype, device)
+    }
+
+    #[inline]
     pub fn rand_like(&self) -> Tensor {
         ops::rand_like(self)
     }
@@ -128,6 +139,17 @@ impl Tensor {
     #[inline]
     pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
         ops::randn(shape, dtype, device)
+    }
+
+    #[inline]
+    pub fn randn_with<T: Type>(
+        mean: T::Repr,
+        std: T::Repr,
+        shape: impl Shape,
+        dtype: T,
+        device: impl AsDevice,
+    ) -> Tensor {
+        ops::randn_with(mean, std, shape, dtype, device)
     }
 
     #[inline]
@@ -529,27 +551,18 @@ impl Tensor {
         tangent
     }
 
-    pub fn vjp(&self, cotangent_cache: &mut HashMap<usize, Tensor>) {
-        let cotan = &cotangent_cache
-            .entry(self.id())
-            .or_insert_with(|| self.ones_like())
-            .clone();
+    pub fn vjp(&self, cotangent: &Tensor, grads_sum: &mut HashMap<usize, Tensor>) {
         let primals = &*self.inputs();
         if primals.is_empty() {
             return;
         }
-
-        let cotangents = self.primitive().vjp(self, primals, cotan);
-        for (i, cotangent) in cotangents.into_iter().enumerate() {
-            let id = primals[i].id();
-            if let Some(sum) = cotangent_cache.get(&id) {
-                cotangent_cache.insert(id, sum + cotangent);
-            } else {
-                cotangent_cache.insert(id, cotangent);
+        let cotangents = self.primitive().vjp(self, primals, cotangent);
+        for (primal, cotan) in primals.iter().zip(cotangents.iter()) {
+            let id = primal.id();
+            if let Some(sum) = grads_sum.get(&id) {
+                grads_sum.insert(id, sum + cotan);
             }
-        }
-        for i in primals {
-            i.vjp(cotangent_cache)
+            primal.vjp(cotan, grads_sum);
         }
     }
 

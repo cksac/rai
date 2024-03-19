@@ -8,13 +8,12 @@ pub struct Embedding {
 }
 
 impl Embedding {
-    pub fn new<T: Type>(
+    pub fn new(
         num_embeddings: usize,
         features: usize,
-        dtype: T,
+        dtype: impl Type,
         device: impl AsDevice,
     ) -> Self {
-        // TODO: init strategy
         let weight = Tensor::rand([num_embeddings, features], dtype, device);
         Self { weight }
     }

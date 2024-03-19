@@ -1,6 +1,8 @@
 use rai_core::{AsDevice, Shape, Tensor, Type};
 use rai_derive::Module;
 
+use crate::init::{self, Init, DEFAULT_KAIMING_NORMAL};
+
 #[derive(Clone, Debug, Module)]
 #[module(crate = rai_core)]
 pub struct Linear {
@@ -9,25 +11,44 @@ pub struct Linear {
 }
 
 impl Linear {
-    pub fn new<T: Type>(
+    #[inline]
+    pub fn new(
         in_features: usize,
         out_features: usize,
         has_bias: bool,
-        dtype: T,
+        dtype: impl Type,
         device: impl AsDevice,
     ) -> Self {
-        let device = device.device();
-        // TODO: init strategy
-        let weight = Tensor::rand([out_features, in_features], dtype, device);
-        let bias = if has_bias {
-            Some(Tensor::rand([out_features], dtype, device))
-        } else {
-            None
+        let bound = 1. / (in_features as f64).sqrt();
+        let bias_init = match has_bias {
+            true => Some(init::Uniform::new(-bound, bound)),
+            false => None,
         };
+        Self::new_with_init(
+            in_features,
+            out_features,
+            dtype,
+            device,
+            DEFAULT_KAIMING_NORMAL,
+            bias_init,
+        )
+    }
+
+    pub fn new_with_init(
+        in_features: usize,
+        out_features: usize,
+        dtype: impl Type,
+        device: impl AsDevice,
+        weight_init: impl Init,
+        bias_init: Option<impl Init>,
+    ) -> Self {
+        let device = device.device();
+        let weight = weight_init.new_tensor([out_features, in_features], dtype, device);
+        let bias = bias_init.map(|init| init.new_tensor([out_features], dtype, device));
         Self { weight, bias }
     }
 
-    pub fn new_with(weight: Tensor, bias: Option<Tensor>) -> Self {
+    pub fn new_with_params(weight: Tensor, bias: Option<Tensor>) -> Self {
         Self { weight, bias }
     }
 
