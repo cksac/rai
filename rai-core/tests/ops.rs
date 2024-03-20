@@ -186,3 +186,13 @@ fn test_conv2d() {
     let out = t.conv2d(w, [0, 0], [1, 1], [1, 1], 1);
     println!("{}", out);
 }
+
+#[test]
+fn test_sign() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sign();
+    let x = &Tensor::rand_with(-1.0, 1.0, [2, 2], F32, device);
+    let out = func(x);
+    println!("{}", x);
+    println!("{}", out);
+}

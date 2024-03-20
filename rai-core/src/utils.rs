@@ -1,4 +1,4 @@
-use crate::{vjp, Func, Shape, Tensor, TensorIter};
+use crate::{vjp, Func, Shape, Tensor, TensorIter, F64};
 use std::collections::{hash_map::RandomState, HashSet};
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
@@ -88,7 +88,15 @@ where
     (f_pos - f_neg) * (0.5 / eps)
 }
 
-pub fn check_vjp<F>(func: F, input: impl AsRef<Tensor>, eps: f64) -> (Tensor, Tensor)
+pub fn check_grad<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
+where
+    F: for<'a> Func<&'a Tensor, Tensor> + Clone,
+{
+    check_vjp(func, input, eps);
+    //todo: check jvp
+}
+
+pub fn check_vjp<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
 where
     F: for<'a> Func<&'a Tensor, Tensor> + Clone,
 {
@@ -103,7 +111,16 @@ where
     let tangent_out = &tangent_out.flatten(..);
     let cotangent = &cotangent.flatten(..);
     let cotangent_out = &cotangent_out.flatten(..);
+
     let ip = tangent.matmul(cotangent_out);
     let ip_expected = tangent_out.matmul(cotangent);
-    (ip, ip_expected)
+    assert_all_close(&ip, &ip_expected, eps);
+}
+
+pub fn assert_all_close(x: &Tensor, y: &Tensor, eps: f64) {
+    let diff = x - y;
+    let t = diff.full_like(eps);
+    let check = diff.gt(t);
+    let r = check.to_dtype(F64).sum(..).as_scalar(F64);
+    assert_eq!(r, 0.0, "diff too large, x: {}, y: {}", x, y)
 }

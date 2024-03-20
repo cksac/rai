@@ -457,7 +457,9 @@ impl<D: Device> Eval<D, primitives::Sign> for CandleBackend {
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
         let zero = t.zeros_like().unwrap();
-        let t = (t.ge(&zero).unwrap() - t.le(&zero).unwrap()).unwrap();
+        let tge = t.ge(&zero).unwrap().to_dtype(t.dtype()).unwrap();
+        let tle = t.le(&zero).unwrap().to_dtype(t.dtype()).unwrap();
+        let t = (tge - tle).unwrap();
         output.set_data(t)
     }
 }
@@ -714,8 +716,8 @@ impl<D: Device> Eval<D, primitives::Gather> for CandleBackend {
 impl<D: Device> Eval<D, primitives::IndexAdd> for CandleBackend {
     fn eval(&self, _: &D, primitive: &primitives::IndexAdd, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
-        let index = &inputs[1];
-        let source = &inputs[2];
+        let source = &inputs[1];
+        let index = &inputs[2];
         let t1 = x.get_data::<Data>().unwrap();
         let t2 = index.get_data::<Data>().unwrap();
         let t3 = source.get_data::<Data>().unwrap();

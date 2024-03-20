@@ -116,11 +116,11 @@ impl Primitive for Convolution {
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
-        todo!("jvp for FlashAttention")
+        todo!("jvp for Convolution")
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!("vjp for FlashAttention")
+        todo!("vjp for Convolution")
     }
 }
