@@ -58,12 +58,12 @@ struct ConvNet {
 }
 
 impl ConvNet {
-    pub fn new(dtype: impl Type, device: impl AsDevice) -> Self {
+    pub fn new(num_classes: usize, dtype: impl Type, device: impl AsDevice) -> Self {
         let device = device.device();
         let conv1 = Conv2d::new(1, 32, 5, Conv2dConfig::default(), true, dtype, device);
         let conv2 = Conv2d::new(32, 64, 5, Conv2dConfig::default(), true, dtype, device);
         let fc1 = Linear::new(1024, 1024, true, dtype, device);
-        let fc2 = Linear::new(128, 10, true, dtype, device);
+        let fc2 = Linear::new(128, num_classes, true, dtype, device);
         Self {
             conv1,
             conv2,
@@ -78,7 +78,7 @@ impl ConvNet {
             .reshape([b_sz, 1, 28, 28])
             .apply(&self.conv1)
             .max_pool2d([2, 2], [2, 2], [0, 0], [1, 1])
-            .apply(&self.conv1)
+            .apply(&self.conv2)
             .max_pool2d([2, 2], [2, 2], [0, 0], [1, 1])
             .flatten(1..)
             .apply(&self.fc1)
@@ -130,6 +130,7 @@ fn main() {
     let dtype = F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
+    //let model = ConvNet::new(num_classes, dtype, device);
     let mut optimizer = SDG::new(model.params(), learning_rate);
 
     let dataset = mnist::load(device).expect("mnist dataset");

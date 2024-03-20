@@ -1856,17 +1856,17 @@ pub fn max_pool2d(
     kernel_size: [usize; 2],
     stride: [usize; 2],
     padding: [usize; 2],
-    dialation: [usize; 2],
+    dilation: [usize; 2],
 ) -> Tensor {
     let device = input.device();
     let dtype = input.dtype();
-    let shape = input.shape_max_pool2d(&kernel_size, &stride, &padding, &dialation);
+    let shape = input.shape_max_pool2d(&kernel_size, &stride, &padding, &dilation);
     let inputs = vec![input.clone()];
     Tensor::new(
         device,
         dtype,
         shape,
-        MaxPool2d::new(kernel_size, stride, padding, dialation),
+        MaxPool2d::new(kernel_size, stride, padding, dilation),
         inputs,
     )
 }

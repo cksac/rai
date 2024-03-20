@@ -984,10 +984,16 @@ impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
         let stride = primitive.stride.as_slice();
         let padding = primitive.padding.as_slice();
         let dilation = primitive.dilation.as_slice();
-        assert_eq!(padding[0], 0, "Candle only support padding = 0");
-        assert_eq!(padding[1], 0, "Candle only support padding = 0");
-        assert_eq!(dilation[0], 1, "Candle only support dilation = 1");
-        assert_eq!(dilation[1], 1, "Candle only support dilation = 1");
+        assert_eq!(padding[0], 0, "Candle max_pool2d only support padding = 0");
+        assert_eq!(padding[1], 0, "Candle max_pool2d only support padding = 0");
+        assert_eq!(
+            dilation[0], 1,
+            "Candle max_pool2d only support dilation = 1"
+        );
+        assert_eq!(
+            dilation[1], 1,
+            "Candle max_pool2d only support dilation = 1"
+        );
         let t = t1
             .max_pool2d_with_stride((kernel_size[0], kernel_size[1]), (stride[0], stride[1]))
             .unwrap();

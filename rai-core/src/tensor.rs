@@ -575,9 +575,9 @@ impl Tensor {
         kernel_size: [usize; 2],
         stride: [usize; 2],
         padding: [usize; 2],
-        dialation: [usize; 2],
+        dilation: [usize; 2],
     ) -> Tensor {
-        ops::max_pool2d(self, kernel_size, stride, padding, dialation)
+        ops::max_pool2d(self, kernel_size, stride, padding, dilation)
     }
 
     #[inline]
