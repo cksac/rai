@@ -95,7 +95,7 @@ where
     let input = input.as_ref();
     let (v_out, vjp_fn) = vjp(func.clone(), input);
     let tangent = &input.rand_like();
-    let tangent_out = &numerical_jvp(func, input, &tangent, eps);
+    let tangent_out = &numerical_jvp(func, input, tangent, eps);
     let cotangent = &v_out.rand_like();
     let cotangent_out = &vjp_fn(cotangent.clone());
 

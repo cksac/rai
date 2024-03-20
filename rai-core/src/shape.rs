@@ -1,5 +1,6 @@
 use crate::{Error, Result};
 use std::{
+    cmp::Ordering,
     fmt::Debug,
     ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
 };
@@ -389,18 +390,20 @@ pub trait Shape: Debug {
         let mut lhs_b = false;
         let mut rhs_b = false;
         let (lhs_shape, rhs_shape) = {
-            if lhs.ndim() < rhs.ndim() {
-                let mut lhs_shape = vec![1; rhs.ndim() - lhs.ndim()];
-                lhs_shape.extend(lhs.shape());
-                lhs_b = true;
-                (lhs_shape, rhs.shape().to_vec())
-            } else if lhs.ndim() > rhs.ndim() {
-                let mut rhs_shape = vec![1; lhs.ndim() - rhs.ndim()];
-                rhs_shape.extend(rhs.shape());
-                rhs_b = true;
-                (lhs.shape().to_vec(), rhs_shape)
-            } else {
-                (lhs.shape().to_vec(), rhs.shape().to_vec())
+            match lhs.ndim().cmp(&rhs.ndim()) {
+                Ordering::Less => {
+                    let mut lhs_shape = vec![1; rhs.ndim() - lhs.ndim()];
+                    lhs_shape.extend(lhs.shape());
+                    lhs_b = true;
+                    (lhs_shape, rhs.shape().to_vec())
+                }
+                Ordering::Greater => {
+                    let mut rhs_shape = vec![1; lhs.ndim() - rhs.ndim()];
+                    rhs_shape.extend(rhs.shape());
+                    rhs_b = true;
+                    (lhs.shape().to_vec(), rhs_shape)
+                }
+                Ordering::Equal => (lhs.shape().to_vec(), rhs.shape().to_vec()),
             }
         };
         let mut out_shape = Vec::with_capacity(lhs_shape.len());
@@ -423,6 +426,7 @@ pub trait Shape: Debug {
         Ok((out_shape, lhs_b, rhs_b))
     }
 
+    #[allow(clippy::type_complexity)]
     fn shape_broadcast_matmul<S: Shape + ?Sized>(
         &self,
         rhs: &S,
