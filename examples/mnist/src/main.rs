@@ -1,6 +1,6 @@
 use rai::{
     eval,
-    nn::{Linear, Module, TrainableModule},
+    nn::{Conv2d, Conv2dConfig, Linear, Module, TrainableModule},
     opt::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
@@ -45,6 +45,45 @@ impl Mlp {
             x = l.forward(&x).relu();
         }
         self.layers[self.layers.len() - 1].forward(&x)
+    }
+}
+
+#[derive(Debug, Clone, Module)]
+struct ConvNet {
+    conv1: Conv2d,
+    conv2: Conv2d,
+    fc1: Linear,
+    fc2: Linear,
+    //dropout: Dropout,
+}
+
+impl ConvNet {
+    pub fn new(dtype: impl Type, device: impl AsDevice) -> Self {
+        let device = device.device();
+        let conv1 = Conv2d::new(1, 32, 5, Conv2dConfig::default(), true, dtype, device);
+        let conv2 = Conv2d::new(32, 64, 5, Conv2dConfig::default(), true, dtype, device);
+        let fc1 = Linear::new(1024, 1024, true, dtype, device);
+        let fc2 = Linear::new(128, 10, true, dtype, device);
+        Self {
+            conv1,
+            conv2,
+            fc1,
+            fc2,
+        }
+    }
+
+    pub fn fwd(&self, xs: &Tensor) -> Tensor {
+        let b_sz = xs.shape_at(0);
+        let xs = xs
+            .reshape([b_sz, 1, 28, 28])
+            .apply(&self.conv1)
+            .max_pool2d([2, 2], [2, 2], [0, 0], [1, 1])
+            .apply(&self.conv1)
+            .max_pool2d([2, 2], [2, 2], [0, 0], [1, 1])
+            .flatten(1..)
+            .apply(&self.fc1)
+            .relu();
+        xs.apply(&self.fc2)
     }
 }
 

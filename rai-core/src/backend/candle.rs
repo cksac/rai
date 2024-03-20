@@ -867,8 +867,29 @@ impl<D: Device> Eval<D, primitives::ScatterAdd> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Convolution> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Convolution, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, primitives::Conv1d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &primitives::Conv1d, inputs: &[Tensor], output: &Tensor) {
+        let x: &Tensor = &inputs[0];
+        let kernel = &inputs[1];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t2 = kernel.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = t1
+            .conv1d(
+                t2,
+                primitive.padding,
+                primitive.stride,
+                primitive.dilation,
+                1,
+            )
+            .unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::Conv2d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &primitives::Conv2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -878,25 +899,99 @@ impl<D: Device> Eval<D, primitives::Convolution> for CandleBackend {
         let padding = primitive.padding.as_slice();
         let stride = primitive.stride.as_slice();
         let dilation = primitive.dilation.as_slice();
-        if x.ndim() == (1 + 2) {
-            let t = t1
-                .conv1d(t2, padding[0], stride[0], dilation[0], primitive.groups)
-                .unwrap();
-            output.set_data(t);
-        } else if x.ndim() == (2 + 2) {
-            assert_eq!(padding[0], padding[1], "Candle only support square padding");
-            assert_eq!(stride[0], stride[1], "Candle only support square stride");
-            assert_eq!(
-                dilation[0], dilation[1],
-                "Candle only support square dilation"
-            );
-            let t = t1
-                .conv2d(t2, padding[0], stride[0], dilation[0], primitive.groups)
-                .unwrap();
-            output.set_data(t);
-        } else {
-            panic!("Candle backend currently only support 1D and 2D convolutions")
-        };
+        assert_eq!(padding[0], padding[1], "Candle only support square padding");
+        assert_eq!(stride[0], stride[1], "Candle only support square stride");
+        assert_eq!(
+            dilation[0], dilation[1],
+            "Candle only support square dilation"
+        );
+        let t = t1
+            .conv2d(t2, padding[0], stride[0], dilation[0], 1)
+            .unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::ConvTranspose1d> for CandleBackend {
+    fn eval(
+        &self,
+        _: &D,
+        primitive: &primitives::ConvTranspose1d,
+        inputs: &[Tensor],
+        output: &Tensor,
+    ) {
+        let x: &Tensor = &inputs[0];
+        let kernel = &inputs[1];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t2 = kernel.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let t = t1
+            .conv_transpose1d(
+                t2,
+                primitive.padding,
+                primitive.output_padding,
+                primitive.stride,
+                primitive.dilation,
+                1,
+            )
+            .unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::ConvTranspose2d> for CandleBackend {
+    fn eval(
+        &self,
+        _: &D,
+        primitive: &primitives::ConvTranspose2d,
+        inputs: &[Tensor],
+        output: &Tensor,
+    ) {
+        let x: &Tensor = &inputs[0];
+        let kernel = &inputs[1];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t2 = kernel.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t2 = t2.deref();
+        let padding = primitive.padding.as_slice();
+        let out_padding = primitive.out_padding.as_slice();
+        let stride = primitive.stride.as_slice();
+        let dilation = primitive.dilation.as_slice();
+        assert_eq!(padding[0], padding[1], "Candle only support square padding");
+        assert_eq!(
+            out_padding[0], out_padding[1],
+            "Candle only support square out_padding"
+        );
+        assert_eq!(stride[0], stride[1], "Candle only support square stride");
+        assert_eq!(
+            dilation[0], dilation[1],
+            "Candle only support square dilation"
+        );
+        let t = t1
+            .conv_transpose2d(t2, padding[0], out_padding[0], stride[0], dilation[0])
+            .unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &primitives::MaxPool2d, inputs: &[Tensor], output: &Tensor) {
+        let x: &Tensor = &inputs[0];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let kernel_size = primitive.kernel_size.as_slice();
+        let stride = primitive.stride.as_slice();
+        let padding = primitive.padding.as_slice();
+        let dilation = primitive.dilation.as_slice();
+        assert_eq!(padding[0], 0, "Candle only support padding = 0");
+        assert_eq!(padding[1], 0, "Candle only support padding = 0");
+        assert_eq!(dilation[0], 1, "Candle only support dilation = 1");
+        assert_eq!(dilation[1], 1, "Candle only support dilation = 1");
+        let t = t1
+            .max_pool2d_with_stride((kernel_size[0], kernel_size[1]), (stride[0], stride[1]))
+            .unwrap();
+        output.set_data(t);
     }
 }
 

@@ -1,11 +1,11 @@
 use crate::{
     primitives::{
-        Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Convolution, Cos, Div, Equal,
-        Erf, Exp, FlashAttention, FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd,
-        IndexSelect, Less, LessEqual, Log, Log10, Log2, LogSoftmax, MatMul, Maximum, Minimum, Mul,
-        Narrow, Negative, Normal, NotEqual, Permute, PowerFloat, Random, ReduceMax, ReduceMin,
-        ReduceSum, Reshape, Rsqrt, ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh,
-        ToContiguous, Transpose, Where,
+        Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Conv1d, Conv2d, ConvTranspose1d,
+        ConvTranspose2d, Cos, Div, Equal, Erf, Exp, FlashAttention, FromArray, Full, Gather,
+        Greater, GreaterEqual, IndexAdd, IndexSelect, Less, LessEqual, Log, Log10, Log2,
+        LogSoftmax, MatMul, MaxPool2d, Maximum, Minimum, Mul, Narrow, Negative, Normal, NotEqual,
+        Permute, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, ScatterAdd,
+        Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -1647,6 +1647,27 @@ pub fn flash_attention(
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
+fn conv1d_single_group(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: usize,
+    stride: usize,
+    dilation: usize,
+) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_conv1d(kernel, padding, stride, dilation);
+    let inputs = vec![input.clone(), kernel.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Conv1d::new(padding, stride, dilation),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
 pub fn conv1d(
     input: &Tensor,
     kernel: &Tensor,
@@ -1655,25 +1676,40 @@ pub fn conv1d(
     dilation: usize,
     groups: usize,
 ) -> Tensor {
+    let c_in = input.shape_at(1);
+    let c_in_k = kernel.shape_at(1);
+    assert_eq!(c_in, c_in_k * groups);
+    if groups == 1 {
+        conv1d_single_group(input, kernel, padding, stride, dilation)
+    } else {
+        let blocks = input.chunk(groups, 1);
+        let kernels = kernel.chunk(groups, 0);
+        let outputs = blocks
+            .iter()
+            .zip(kernels.iter())
+            .map(|(block, kernel)| conv1d_single_group(block, kernel, padding, stride, dilation))
+            .collect::<Vec<_>>();
+        cat(&outputs, 1)
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+fn conv2d_single_group(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: [usize; 2],
+    stride: [usize; 2],
+    dilation: [usize; 2],
+) -> Tensor {
     let device = input.device();
     let dtype = input.dtype();
-    let padding_vec = vec![padding];
-    let stride_vec = vec![stride];
-    let dilation_vec = vec![dilation];
-    let shape = input
-        .shape_conv(kernel, &padding_vec, &stride_vec, &dilation_vec, groups)
-        .unwrap_or_else(|e| {
-            panic!(
-                "conv1d({:?}, {:?}, {:?}, {:?}, {:?}, {}) with error {:?}",
-                input, kernel, padding, stride, dilation, groups, e
-            )
-        });
+    let shape = input.shape_conv2d(kernel, &padding, &stride, &dilation);
     let inputs = vec![input.clone(), kernel.clone()];
     Tensor::new(
         device,
         dtype,
         shape,
-        Convolution::new(padding_vec, stride_vec, dilation_vec, groups),
+        Conv2d::new(padding, stride, dilation),
         inputs,
     )
 }
@@ -1687,26 +1723,150 @@ pub fn conv2d(
     dilation: [usize; 2],
     groups: usize,
 ) -> Tensor {
+    let c_in = input.shape_at(1);
+    let c_in_k = kernel.shape_at(1);
+    assert_eq!(c_in, c_in_k * groups);
+    if groups == 1 {
+        conv2d_single_group(input, kernel, padding, stride, dilation)
+    } else {
+        let blocks = input.chunk(groups, 1);
+        let kernels = kernel.chunk(groups, 0);
+        let outputs = blocks
+            .iter()
+            .zip(kernels.iter())
+            .map(|(block, kernel)| conv2d_single_group(block, kernel, padding, stride, dilation))
+            .collect::<Vec<_>>();
+        cat(&outputs, 1)
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+fn conv_transpose1d_single_group(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: usize,
+    output_padding: usize,
+    stride: usize,
+    dilation: usize,
+) -> Tensor {
     let device = input.device();
     let dtype = input.dtype();
-    let padding_vec: Vec<usize> = padding.into();
-    let stride_vec: Vec<usize> = stride.into();
-    let dilation_vec: Vec<usize> = dilation.into();
-    let shape = input
-        .shape_conv(kernel, &padding_vec, &stride_vec, &dilation_vec, groups)
-        .unwrap_or_else(|e| {
-            panic!(
-                "conv1d({:?}, {:?}, {:?}, {:?}, {:?}, {}) with error {:?}",
-                input, kernel, padding, stride, dilation, groups, e
-            )
-        });
-
+    let shape = input.shape_conv_transpose1d(kernel, padding, output_padding, stride, dilation);
     let inputs = vec![input.clone(), kernel.clone()];
     Tensor::new(
         device,
         dtype,
         shape,
-        Convolution::new(padding_vec, stride_vec, dilation_vec, groups),
+        ConvTranspose1d::new(padding, output_padding, stride, dilation),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn conv_transpose1d(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: usize,
+    output_padding: usize,
+    stride: usize,
+    dilation: usize,
+    groups: usize,
+) -> Tensor {
+    if groups == 1 {
+        conv_transpose1d_single_group(input, kernel, padding, output_padding, stride, dilation)
+    } else {
+        let blocks = input.chunk(groups, 1);
+        let kernels = kernel.chunk(groups, 0);
+        let outputs = blocks
+            .iter()
+            .zip(kernels.iter())
+            .map(|(block, kernel)| {
+                conv_transpose1d_single_group(
+                    block,
+                    kernel,
+                    padding,
+                    output_padding,
+                    stride,
+                    dilation,
+                )
+            })
+            .collect::<Vec<_>>();
+        cat(&outputs, 1)
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+fn conv_transpose2d_single_group(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: [usize; 2],
+    output_padding: [usize; 2],
+    stride: [usize; 2],
+    dilation: [usize; 2],
+) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_conv_transpose2d(kernel, &padding, &output_padding, &stride, &dilation);
+    let inputs = vec![input.clone(), kernel.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        ConvTranspose2d::new(padding, output_padding, stride, dilation),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn conv_transpose2d(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: [usize; 2],
+    output_padding: [usize; 2],
+    stride: [usize; 2],
+    dilation: [usize; 2],
+    groups: usize,
+) -> Tensor {
+    if groups == 1 {
+        conv_transpose2d_single_group(input, kernel, padding, output_padding, stride, dilation)
+    } else {
+        let blocks = input.chunk(groups, 1);
+        let kernels = kernel.chunk(groups, 0);
+        let outputs = blocks
+            .iter()
+            .zip(kernels.iter())
+            .map(|(block, kernel)| {
+                conv_transpose2d_single_group(
+                    block,
+                    kernel,
+                    padding,
+                    output_padding,
+                    stride,
+                    dilation,
+                )
+            })
+            .collect::<Vec<_>>();
+        cat(&outputs, 1)
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn max_pool2d(
+    input: &Tensor,
+    kernel_size: [usize; 2],
+    stride: [usize; 2],
+    padding: [usize; 2],
+    dialation: [usize; 2],
+) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_max_pool2d(&kernel_size, &stride, &padding, &dialation);
+    let inputs = vec![input.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        MaxPool2d::new(kernel_size, stride, padding, dialation),
         inputs,
     )
 }

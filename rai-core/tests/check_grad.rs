@@ -437,20 +437,22 @@ fn check_powf_grad() {
 fn check_conv1d_grad() {
     let device = Cpu;
     let w = &Tensor::rand([2, 4, 3], F64, device);
-    let func = |x: &Tensor| x.conv1d(w, 0, 1, 1, 1);
-    let x = Tensor::rand([1, 4, 5], F64, device);
-    //todo: vjp
-    //check_grad(func, x, EPS);
+    let x = &Tensor::rand([1, 4, 5], F64, device);
+    let func = |t: &Tensor| t.conv1d(w, 0, 1, 1, 1);
+    check_grad(func, x, EPS);
+    let func = |t: &Tensor| x.conv1d(t, 0, 1, 1, 1);
+    check_grad(func, w, EPS);
 }
 
 #[test]
 fn check_conv2d_grad() {
     let device = Cpu;
     let w = &Tensor::rand([1, 2, 1, 1], F64, device);
-    let func = |x: &Tensor| x.conv2d(w, [0, 0], [1, 1], [1, 1], 1);
-    let x = Tensor::rand([1, 2, 3, 3], F64, device);
-    //todo: vjp
-    //check_grad(func, x, EPS);
+    let x = &Tensor::rand([1, 2, 3, 3], F64, device);
+    let func = |t: &Tensor| t.conv2d(w, [0, 0], [1, 1], [1, 1], 1);
+    check_grad(func, x, EPS);
+    let func = |t: &Tensor| x.conv2d(t, [0, 0], [1, 1], [1, 1], 1);
+    check_grad(func, w, EPS);
 }
 
 #[test]

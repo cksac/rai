@@ -1,4 +1,4 @@
-use rai_core::{utils::dot_graph, value_and_grad, Cpu, Func, Tensor, F32};
+use rai_core::{utils::dot_graph, value_and_grad, Cpu, Func, Shape, Tensor, F32};
 
 #[test]
 fn test_dot_graph() {
@@ -179,11 +179,69 @@ fn test_conv1d() {
 }
 
 #[test]
+fn test_conv1d_with_groups() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 8, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3], F32, device);
+    let out = t.conv1d(w, 0, 1, 1, 2);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv_transpose1d() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 4, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3], F32, device);
+    let out = t.conv_transpose1d(w.transpose(0, 1), 0, 0, 1, 1, 1);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv_transpose1d_with_groups() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 4, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3], F32, device);
+    let out = t.conv_transpose1d(w.transpose(0, 1), 0, 0, 1, 1, 2);
+    println!("{}", out);
+}
+
+#[test]
 fn test_conv2d() {
     let device = Cpu;
-    let t = Tensor::rand([1, 2, 3, 3], F32, device);
-    let w = Tensor::rand([1, 2, 1, 1], F32, device);
+    let t = Tensor::rand([1, 4, 5, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3, 3], F32, device);
     let out = t.conv2d(w, [0, 0], [1, 1], [1, 1], 1);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv2d_with_groups() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 4, 5, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3, 3], F32, device);
+    let out = t.conv2d(w.transpose(0, 1), [0, 0], [1, 1], [1, 1], 2);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv_transpose2d() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 4, 5, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3, 3], F32, device);
+    let w_t = w.transpose(0, 1);
+    dbg!(w_t.shape());
+    let out = t.conv_transpose2d(w_t, [0, 0], [0, 0], [1, 1], [1, 1], 1);
+    println!("{}", out);
+}
+
+#[test]
+fn test_conv_transpose2d_with_groups() {
+    let device = Cpu;
+    let t = Tensor::rand([1, 4, 5, 5], F32, device);
+    let w = Tensor::rand([2, 4, 3, 3], F32, device);
+    let w_t = w.transpose(0, 1);
+    dbg!(w_t.shape());
+    let out = t.conv_transpose2d(w_t, [0, 0], [0, 0], [1, 1], [1, 1], 2);
     println!("{}", out);
 }
 

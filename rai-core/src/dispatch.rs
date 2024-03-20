@@ -153,7 +153,10 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::ArgMin>($backend, &mut $rules);
 
         // others
-        _register::<$backend, $device, primitives::Convolution>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Conv1d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::Conv2d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ConvTranspose1d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::ConvTranspose2d>($backend, &mut $rules);
     };
 }
 

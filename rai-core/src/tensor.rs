@@ -516,6 +516,27 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn conv_transpose1d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: usize,
+        output_padding: usize,
+        stride: usize,
+        dilation: usize,
+        groups: usize,
+    ) -> Tensor {
+        ops::conv_transpose1d(
+            self,
+            kernel.as_ref(),
+            padding,
+            output_padding,
+            stride,
+            dilation,
+            groups,
+        )
+    }
+
+    #[inline]
     pub fn conv2d(
         &self,
         kernel: impl AsRef<Tensor>,
@@ -525,6 +546,38 @@ impl Tensor {
         groups: usize,
     ) -> Tensor {
         ops::conv2d(self, kernel.as_ref(), padding, stride, dilation, groups)
+    }
+
+    #[inline]
+    pub fn conv_transpose2d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: [usize; 2],
+        output_padding: [usize; 2],
+        stride: [usize; 2],
+        dilation: [usize; 2],
+        groups: usize,
+    ) -> Tensor {
+        ops::conv_transpose2d(
+            self,
+            kernel.as_ref(),
+            padding,
+            output_padding,
+            stride,
+            dilation,
+            groups,
+        )
+    }
+
+    #[inline]
+    pub fn max_pool2d(
+        &self,
+        kernel_size: [usize; 2],
+        stride: [usize; 2],
+        padding: [usize; 2],
+        dialation: [usize; 2],
+    ) -> Tensor {
+        ops::max_pool2d(self, kernel_size, stride, padding, dialation)
     }
 
     #[inline]

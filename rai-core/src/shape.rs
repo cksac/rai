@@ -472,26 +472,81 @@ pub trait Shape: Debug {
         out_shape
     }
 
-    fn shape_conv<S: Shape + ?Sized>(
+    fn shape_conv1d<S: Shape + ?Sized>(
         &self,
         kernel: &S,
-        padding: &[usize],
-        stride: &[usize],
-        dilation: &[usize],
-        groups: usize,
-    ) -> Result<Vec<usize>> {
-        let mut out_shape = Vec::with_capacity(self.ndim());
-        out_shape.push(self.shape_at(0));
-        out_shape.push(kernel.shape_at(0) / groups);
-        for i in 2..self.ndim() {
-            let s = (self.shape_at(i) + 2 * padding[i - 2]
-                - dilation[i - 2] * (kernel.shape_at(i) - 1)
-                - 1)
-                / stride[i - 2]
-                + 1;
-            out_shape.push(s);
-        }
-        Ok(out_shape)
+        padding: usize,
+        stride: usize,
+        dilation: usize,
+    ) -> Vec<usize> {
+        let [b_size, c_in, l_in] = self.shape_before::<3>();
+        let [c_out, c_in_k, k_size] = kernel.shape_before::<3>();
+        assert_eq!(c_in, c_in_k);
+        let l_out = (l_in + 2 * padding - dilation * (k_size - 1) - 1) / stride + 1;
+        vec![b_size, c_out, l_out]
+    }
+
+    fn shape_conv2d<S: Shape + ?Sized>(
+        &self,
+        kernel: &S,
+        padding: &[usize; 2],
+        stride: &[usize; 2],
+        dilation: &[usize; 2],
+    ) -> Vec<usize> {
+        let [b_size, c_in, h_in, w_in] = self.shape_before::<4>();
+        let [c_out, c_in_k, h_k, w_k] = kernel.shape_before::<4>();
+        assert_eq!(c_in, c_in_k);
+        let h_out = (h_in + 2 * padding[0] - dilation[0] * (h_k - 1) - 1) / stride[0] + 1;
+        let w_out = (w_in + 2 * padding[1] - dilation[1] * (w_k - 1) - 1) / stride[1] + 1;
+        vec![b_size, c_out, h_out, w_out]
+    }
+
+    fn shape_conv_transpose1d<S: Shape + ?Sized>(
+        &self,
+        kernel: &S,
+        padding: usize,
+        output_padding: usize,
+        stride: usize,
+        dilation: usize,
+    ) -> Vec<usize> {
+        let [b_size, c_in, l_in] = self.shape_before::<3>();
+        let [c_in_k, c_out, k_siz] = kernel.shape_before::<3>();
+        assert_eq!(c_in, c_in_k);
+        let l_out = (l_in - 1) * stride + dilation * (k_siz - 1) + output_padding + 1 - 2 * padding;
+        vec![b_size, c_out, l_out]
+    }
+
+    fn shape_conv_transpose2d<S: Shape + ?Sized>(
+        &self,
+        kernel: &S,
+        padding: &[usize; 2],
+        output_padding: &[usize; 2],
+        stride: &[usize; 2],
+        dilation: &[usize; 2],
+    ) -> Vec<usize> {
+        let [b_size, c_in, h_in, w_in] = self.shape_before::<4>();
+        let [c_in_k, c_out, h_k, w_k] = kernel.shape_before::<4>();
+        assert_eq!(c_in, c_in_k);
+        let h_out = (h_in - 1) * stride[0] + dilation[0] * (h_k - 1) + output_padding[0] + 1
+            - 2 * padding[0];
+        let w_out = (w_in - 1) * stride[1] + dilation[1] * (w_k - 1) + output_padding[1] + 1
+            - 2 * padding[1];
+        vec![b_size, c_out, h_out, w_out]
+    }
+
+    fn shape_max_pool2d(
+        &self,
+        kernel_size: &[usize; 2],
+        stride: &[usize; 2],
+        padding: &[usize; 2],
+        dialation: &[usize; 2],
+    ) -> Vec<usize> {
+        let [b_size, c_in, h_in, w_in] = self.shape_before::<4>();
+        let h_out =
+            (h_in + 2 * padding[0] - dialation[0] * (kernel_size[0] - 1) - 1) / stride[0] + 1;
+        let w_out =
+            (w_in + 2 * padding[1] - dialation[1] * (kernel_size[1] - 1) - 1) / stride[1] + 1;
+        vec![b_size, c_in, h_out, w_out]
     }
 }
 
