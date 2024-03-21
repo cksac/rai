@@ -976,15 +976,8 @@ impl<D: Device> Eval<D, primitives::ConvTranspose2d> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, primitives::MaxPool1d> for CandleBackend {
-    fn eval(&self, _: &D, p: &primitives::MaxPool1d, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, _p: &primitives::MaxPool1d, _inputs: &[Tensor], _output: &Tensor) {
         unimplemented!("Candle max_pool1d is not implemented")
-        // let x: &Tensor = &inputs[0];
-        // let t1 = x.get_data::<Data>().unwrap();
-        // let t1 = t1.deref();
-        // assert_eq!(p.padding, 0, "Candle max_pool1d only support padding=0");
-        // assert_eq!(p.dilation, 1, "Candle max_pool1d only support dilation=1");
-        // let t = t1.max_pool1d_with_stride(p.kernel_size, p.stride).unwrap();
-        // output.set_data(t);
     }
 }
 
@@ -998,6 +991,44 @@ impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
         assert_eq!(p.dilation.0, 1, "Candle max_pool2d only support dilation=1");
         assert_eq!(p.dilation.1, 1, "Candle max_pool2d only support dilation=1");
         let t = t1.max_pool2d_with_stride(p.kernel_size, p.stride).unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::AvgPool1d> for CandleBackend {
+    fn eval(&self, _: &D, _p: &primitives::AvgPool1d, _inputs: &[Tensor], _output: &Tensor) {
+        unimplemented!("Candle avg_pool1d is not implemented")
+    }
+}
+
+impl<D: Device> Eval<D, primitives::AvgPool2d> for CandleBackend {
+    fn eval(&self, _: &D, p: &primitives::AvgPool2d, inputs: &[Tensor], output: &Tensor) {
+        let x: &Tensor = &inputs[0];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        assert_eq!(p.padding.0, 0, "Candle avg_pool2d only support padding=0");
+        assert_eq!(p.padding.1, 0, "Candle avg_pool2d only support padding=0");
+        let t = t1.avg_pool2d_with_stride(p.kernel_size, p.stride).unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::UpsampleNearest1d> for CandleBackend {
+    fn eval(&self, _: &D, p: &primitives::UpsampleNearest1d, inputs: &[Tensor], output: &Tensor) {
+        let x: &Tensor = &inputs[0];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t = t1.upsample_nearest1d(p.size).unwrap();
+        output.set_data(t);
+    }
+}
+
+impl<D: Device> Eval<D, primitives::UpsampleNearest2d> for CandleBackend {
+    fn eval(&self, _: &D, p: &primitives::UpsampleNearest2d, inputs: &[Tensor], output: &Tensor) {
+        let x: &Tensor = &inputs[0];
+        let t1 = x.get_data::<Data>().unwrap();
+        let t1 = t1.deref();
+        let t = t1.upsample_nearest2d(p.size.0, p.size.1).unwrap();
         output.set_data(t);
     }
 }

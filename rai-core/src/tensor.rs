@@ -2,8 +2,8 @@ use crate::{
     eval,
     nn::{ApplyModule, Module},
     ops::{
-        self, ArangeArgs, ArgReduceArgs, ClampBound, FlattenArgs, MaxPool1dArgs, MaxPool2dArgs,
-        ReduceArgs, VarArgs,
+        self, ArangeArgs, ArgReduceArgs, AvgPool1dArgs, AvgPool2dArgs, ClampBound, FlattenArgs,
+        MaxPool1dArgs, MaxPool2dArgs, ReduceArgs, ToPair, VarArgs,
     },
     utils::{self, dot_graph},
     AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, Primitive, Shape, Type,
@@ -580,6 +580,26 @@ impl Tensor {
     #[inline]
     pub fn max_pool2d(&self, args: impl MaxPool2dArgs) -> Tensor {
         ops::max_pool2d(self, args)
+    }
+
+    #[inline]
+    pub fn avg_pool1d(&self, args: impl AvgPool1dArgs) -> Tensor {
+        ops::avg_pool1d(self, args)
+    }
+
+    #[inline]
+    pub fn avg_pool2d(&self, args: impl AvgPool2dArgs) -> Tensor {
+        ops::avg_pool2d(self, args)
+    }
+
+    #[inline]
+    pub fn upsample_nearest1d(&self, size: usize) -> Tensor {
+        ops::upsample_nearest1d(self, size)
+    }
+
+    #[inline]
+    pub fn upsample_nearest2d(&self, size: impl ToPair<usize>) -> Tensor {
+        ops::upsample_nearest2d(self, size)
     }
 
     #[inline]

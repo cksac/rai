@@ -425,3 +425,165 @@ impl Primitive for MaxPool2d {
         todo!("vjp for MaxPool2d")
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AvgPool1d {
+    pub kernel_size: usize,
+    pub stride: usize,
+    pub padding: usize,
+}
+
+impl AvgPool1d {
+    pub fn new(kernel_size: usize, stride: usize, padding: usize) -> Self {
+        Self {
+            kernel_size,
+            stride,
+            padding,
+        }
+    }
+}
+
+impl Primitive for AvgPool1d {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!(
+            "AvgPool1d({}, {}, {})",
+            self.kernel_size, self.stride, self.padding
+        )
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!("jvp for AvgPool1d")
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!("vjp for AvgPool1d")
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AvgPool2d {
+    pub kernel_size: (usize, usize),
+    pub stride: (usize, usize),
+    pub padding: (usize, usize),
+}
+
+impl AvgPool2d {
+    pub fn new(
+        kernel_size: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize),
+    ) -> Self {
+        Self {
+            kernel_size,
+            stride,
+            padding,
+        }
+    }
+}
+
+impl Primitive for AvgPool2d {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!(
+            "AvgPool2d({:?}, {:?}, {:?})",
+            self.kernel_size, self.stride, self.padding
+        )
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!("jvp for AvgPool2d")
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!("vjp for AvgPool2d")
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UpsampleNearest1d {
+    pub size: usize,
+}
+
+impl UpsampleNearest1d {
+    pub fn new(size: usize) -> Self {
+        Self { size }
+    }
+}
+
+impl Primitive for UpsampleNearest1d {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("UpsampleNearest1d({})", self.size)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!("jvp for UpsampleNearest1d")
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!("vjp for UpsampleNearest1d")
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UpsampleNearest2d {
+    pub size: (usize, usize),
+}
+
+impl UpsampleNearest2d {
+    pub fn new(size: (usize, usize)) -> Self {
+        Self { size }
+    }
+}
+
+impl Primitive for UpsampleNearest2d {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!("UpsampleNearest2d({:?})", self.size)
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!("jvp for UpsampleNearest2d")
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!("vjp for UpsampleNearest2d")
+    }
+}

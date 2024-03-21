@@ -534,6 +534,24 @@ pub trait Shape: Debug {
         vec![b_size, c_out, h_out, w_out]
     }
 
+    fn shape_avg_pool1d(&self, kernel_size: usize, stride: usize, padding: usize) -> Vec<usize> {
+        let [b_size, c_in, l_in] = self.shape_before::<3>();
+        let l_out = (l_in + 2 * padding - kernel_size) / stride + 1;
+        vec![b_size, c_in, l_out]
+    }
+
+    fn shape_avg_pool2d(
+        &self,
+        kernel_size: &(usize, usize),
+        stride: &(usize, usize),
+        padding: &(usize, usize),
+    ) -> Vec<usize> {
+        let [b_size, c_in, h_in, w_in] = self.shape_before::<4>();
+        let h_out = (h_in + 2 * padding.0 - kernel_size.0) / stride.0 + 1;
+        let w_out = (w_in + 2 * padding.1 - kernel_size.1) / stride.1 + 1;
+        vec![b_size, c_in, h_out, w_out]
+    }
+
     fn shape_max_pool1d(
         &self,
         kernel_size: usize,
@@ -557,6 +575,16 @@ pub trait Shape: Debug {
         let h_out = (h_in + 2 * padding.0 - dialation.1 * (kernel_size.0 - 1) - 1) / stride.0 + 1;
         let w_out = (w_in + 2 * padding.1 - dialation.1 * (kernel_size.1 - 1) - 1) / stride.1 + 1;
         vec![b_size, c_in, h_out, w_out]
+    }
+
+    fn shape_upsample_nearest1d(&self, size: usize) -> Vec<usize> {
+        let [b_size, c_in, _l_in] = self.shape_before::<3>();
+        vec![b_size, c_in, size]
+    }
+
+    fn shape_upsample_nearest2d(&self, size: &(usize, usize)) -> Vec<usize> {
+        let [b_size, c_in, _h_in, _w_in] = self.shape_before::<4>();
+        vec![b_size, c_in, size.0, size.1]
     }
 }
 

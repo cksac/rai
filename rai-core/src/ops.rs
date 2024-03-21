@@ -1,11 +1,12 @@
 use crate::{
     primitives::{
-        Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Conv1d, Conv2d, ConvTranspose1d,
-        ConvTranspose2d, Cos, Div, Equal, Erf, Exp, FlashAttention, FromArray, Full, Gather,
-        Greater, GreaterEqual, IndexAdd, IndexSelect, Less, LessEqual, Log, Log10, Log2,
-        LogSoftmax, MatMul, MaxPool1d, MaxPool2d, Maximum, Minimum, Mul, Narrow, Negative, Normal,
-        NotEqual, Permute, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt,
-        ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
+        Abs, Add, Arange, ArgMax, ArgMin, AvgPool1d, AvgPool2d, Broadcast, Concatenate, Conv1d,
+        Conv2d, ConvTranspose1d, ConvTranspose2d, Cos, Div, Equal, Erf, Exp, FlashAttention,
+        FromArray, Full, Gather, Greater, GreaterEqual, IndexAdd, IndexSelect, Less, LessEqual,
+        Log, Log10, Log2, LogSoftmax, MatMul, MaxPool1d, MaxPool2d, Maximum, Minimum, Mul, Narrow,
+        Negative, Normal, NotEqual, Permute, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum,
+        Reshape, Rsqrt, ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous,
+        Transpose, UpsampleNearest1d, UpsampleNearest2d, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -1863,6 +1864,54 @@ pub trait MaxPool1dArgs: Debug {
     }
 }
 
+impl MaxPool1dArgs for usize {
+    fn kernel_size(&self) -> usize {
+        *self
+    }
+}
+
+impl MaxPool1dArgs for (usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+}
+
+impl MaxPool1dArgs for (usize, usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+
+    fn padding(&self) -> usize {
+        self.2
+    }
+}
+
+impl MaxPool1dArgs for (usize, usize, usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+
+    fn padding(&self) -> usize {
+        self.2
+    }
+
+    fn dilation(&self) -> usize {
+        self.3
+    }
+}
+
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
     let kernel_size = args.kernel_size();
@@ -1988,4 +2037,149 @@ pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
         MaxPool2d::new(kernel_size, stride, padding, dilation),
         inputs,
     )
+}
+
+pub trait AvgPool2dArgs: Debug {
+    fn kernel_size(&self) -> (usize, usize);
+    fn stride(&self) -> (usize, usize) {
+        self.kernel_size()
+    }
+    fn padding(&self) -> (usize, usize) {
+        (0, 0)
+    }
+}
+
+impl<T> AvgPool2dArgs for T
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.to_pair()
+    }
+}
+
+impl<T> AvgPool2dArgs for (T, T)
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+}
+
+impl<T> AvgPool2dArgs for (T, T, T)
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+
+    fn padding(&self) -> (usize, usize) {
+        self.2.to_pair()
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn avg_pool2d(input: &Tensor, args: impl AvgPool2dArgs) -> Tensor {
+    let kernel_size = args.kernel_size();
+    let stride = args.stride();
+    let padding = args.padding();
+
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_avg_pool2d(&kernel_size, &stride, &padding);
+    let inputs = vec![input.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        AvgPool2d::new(kernel_size, stride, padding),
+        inputs,
+    )
+}
+
+pub trait AvgPool1dArgs: Debug {
+    fn kernel_size(&self) -> usize;
+    fn stride(&self) -> usize {
+        self.kernel_size()
+    }
+    fn padding(&self) -> usize {
+        0
+    }
+}
+
+impl AvgPool1dArgs for usize {
+    fn kernel_size(&self) -> usize {
+        *self
+    }
+}
+
+impl AvgPool1dArgs for (usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+}
+
+impl AvgPool1dArgs for (usize, usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+
+    fn padding(&self) -> usize {
+        self.2
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn avg_pool1d(input: &Tensor, args: impl AvgPool1dArgs) -> Tensor {
+    let kernel_size = args.kernel_size();
+    let stride = args.stride();
+    let padding = args.padding();
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_avg_pool1d(kernel_size, stride, padding);
+    let inputs = vec![input.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        AvgPool1d::new(kernel_size, stride, padding),
+        inputs,
+    )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn upsample_nearest1d(input: &Tensor, size: usize) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_upsample_nearest1d(size);
+    let inputs = vec![input.clone()];
+    Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs)
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let size = size.to_pair();
+    let shape = input.shape_upsample_nearest2d(&size);
+    let inputs = vec![input.clone()];
+    Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs)
 }

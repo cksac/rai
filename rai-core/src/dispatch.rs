@@ -159,6 +159,10 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::ConvTranspose2d>($backend, &mut $rules);
         _register::<$backend, $device, primitives::MaxPool1d>($backend, &mut $rules);
         _register::<$backend, $device, primitives::MaxPool2d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AvgPool1d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::AvgPool2d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::UpsampleNearest1d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::UpsampleNearest2d>($backend, &mut $rules);
     };
 }
 
