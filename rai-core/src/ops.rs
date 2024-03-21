@@ -1850,14 +1850,101 @@ pub fn conv_transpose2d(
     }
 }
 
+pub trait ToPair<T>: Debug {
+    fn to_pair(&self) -> (T, T);
+}
+
+impl ToPair<usize> for usize {
+    fn to_pair(&self) -> (usize, usize) {
+        (*self, *self)
+    }
+}
+
+impl ToPair<usize> for [usize; 2] {
+    fn to_pair(&self) -> (usize, usize) {
+        (self[0], self[1])
+    }
+}
+
+pub trait MaxPool2dArgs: Debug {
+    fn kernel_size(&self) -> (usize, usize);
+    fn stride(&self) -> (usize, usize) {
+        self.kernel_size()
+    }
+    fn padding(&self) -> (usize, usize) {
+        (0, 0)
+    }
+    fn dilation(&self) -> (usize, usize) {
+        (1, 1)
+    }
+}
+
+impl<T> MaxPool2dArgs for T
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.to_pair()
+    }
+}
+
+impl<T> MaxPool2dArgs for (T, T)
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+}
+
+impl<T> MaxPool2dArgs for (T, T, T)
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+
+    fn padding(&self) -> (usize, usize) {
+        self.2.to_pair()
+    }
+}
+
+impl<T> MaxPool2dArgs for (T, T, T, T)
+where
+    T: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+
+    fn padding(&self) -> (usize, usize) {
+        self.2.to_pair()
+    }
+
+    fn dilation(&self) -> (usize, usize) {
+        self.3.to_pair()
+    }
+}
+
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn max_pool2d(
-    input: &Tensor,
-    kernel_size: [usize; 2],
-    stride: [usize; 2],
-    padding: [usize; 2],
-    dilation: [usize; 2],
-) -> Tensor {
+pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
+    let kernel_size = args.kernel_size();
+    let stride = args.stride();
+    let padding = args.padding();
+    let dilation = args.dilation();
     let device = input.device();
     let dtype = input.dtype();
     let shape = input.shape_max_pool2d(&kernel_size, &stride, &padding, &dilation);

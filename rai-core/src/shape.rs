@@ -536,16 +536,14 @@ pub trait Shape: Debug {
 
     fn shape_max_pool2d(
         &self,
-        kernel_size: &[usize; 2],
-        stride: &[usize; 2],
-        padding: &[usize; 2],
-        dialation: &[usize; 2],
+        kernel_size: &(usize, usize),
+        stride: &(usize, usize),
+        padding: &(usize, usize),
+        dialation: &(usize, usize),
     ) -> Vec<usize> {
         let [b_size, c_in, h_in, w_in] = self.shape_before::<4>();
-        let h_out =
-            (h_in + 2 * padding[0] - dialation[0] * (kernel_size[0] - 1) - 1) / stride[0] + 1;
-        let w_out =
-            (w_in + 2 * padding[1] - dialation[1] * (kernel_size[1] - 1) - 1) / stride[1] + 1;
+        let h_out = (h_in + 2 * padding.0 - dialation.1 * (kernel_size.0 - 1) - 1) / stride.0 + 1;
+        let w_out = (w_in + 2 * padding.1 - dialation.1 * (kernel_size.1 - 1) - 1) / stride.1 + 1;
         vec![b_size, c_in, h_out, w_out]
     }
 }

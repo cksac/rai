@@ -976,27 +976,15 @@ impl<D: Device> Eval<D, primitives::ConvTranspose2d> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::MaxPool2d, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, p: &primitives::MaxPool2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let t1 = x.get_data::<Data>().unwrap();
         let t1 = t1.deref();
-        let kernel_size = primitive.kernel_size.as_slice();
-        let stride = primitive.stride.as_slice();
-        let padding = primitive.padding.as_slice();
-        let dilation = primitive.dilation.as_slice();
-        assert_eq!(padding[0], 0, "Candle max_pool2d only support padding = 0");
-        assert_eq!(padding[1], 0, "Candle max_pool2d only support padding = 0");
-        assert_eq!(
-            dilation[0], 1,
-            "Candle max_pool2d only support dilation = 1"
-        );
-        assert_eq!(
-            dilation[1], 1,
-            "Candle max_pool2d only support dilation = 1"
-        );
-        let t = t1
-            .max_pool2d_with_stride((kernel_size[0], kernel_size[1]), (stride[0], stride[1]))
-            .unwrap();
+        assert_eq!(p.padding.0, 0, "Candle max_pool2d only support padding=0");
+        assert_eq!(p.padding.1, 0, "Candle max_pool2d only support padding=0");
+        assert_eq!(p.dilation.0, 1, "Candle max_pool2d only support dilation=1");
+        assert_eq!(p.dilation.1, 1, "Candle max_pool2d only support dilation=1");
+        let t = t1.max_pool2d_with_stride(p.kernel_size, p.stride).unwrap();
         output.set_data(t);
     }
 }

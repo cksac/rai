@@ -331,18 +331,18 @@ impl Primitive for ConvTranspose2d {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MaxPool2d {
-    pub kernel_size: [usize; 2],
-    pub stride: [usize; 2],
-    pub padding: [usize; 2],
-    pub dilation: [usize; 2],
+    pub kernel_size: (usize, usize),
+    pub stride: (usize, usize),
+    pub padding: (usize, usize),
+    pub dilation: (usize, usize),
 }
 
 impl MaxPool2d {
     pub fn new(
-        kernel_size: [usize; 2],
-        stride: [usize; 2],
-        padding: [usize; 2],
-        dilation: [usize; 2],
+        kernel_size: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize),
+        dilation: (usize, usize),
     ) -> Self {
         Self {
             kernel_size,

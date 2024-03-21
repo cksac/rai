@@ -77,9 +77,9 @@ impl ConvNet {
         let xs = xs
             .reshape([b_sz, 1, 28, 28])
             .apply(&self.conv1)
-            .max_pool2d([2, 2], [2, 2], [0, 0], [1, 1])
+            .max_pool2d(2)
             .apply(&self.conv2)
-            .max_pool2d([2, 2], [2, 2], [0, 0], [1, 1])
+            .max_pool2d(2)
             .flatten(1..)
             .apply(&self.fc1)
             .relu();
