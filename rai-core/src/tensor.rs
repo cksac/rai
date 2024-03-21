@@ -467,6 +467,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn dropout(&self, p: f32) -> Tensor {
+        ops::dropout(self, p)
+    }
+
+    #[inline]
     pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
         ops::flatten(self, args)
     }

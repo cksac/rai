@@ -16,4 +16,7 @@ pub use rms_norm::*;
 mod conv;
 pub use conv::*;
 
+mod dropout;
+pub use dropout::*;
+
 pub mod init;

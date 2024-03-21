@@ -2183,3 +2183,12 @@ pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
     let inputs = vec![input.clone()];
     Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs)
 }
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn dropout(input: &Tensor, p: f32) -> Tensor {
+    assert!(p >= 0.0 && p < 1.0);
+    let r = input.rand_like();
+    let scale = 1.0 / (1.0 - p);
+    let mask = r.ge(r.full_like(p)) * scale;
+    input * mask
+}

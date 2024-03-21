@@ -1,6 +1,6 @@
 use rai::{
     eval,
-    nn::{Conv2d, Conv2dConfig, Linear, Module, TrainableModule},
+    nn::{Conv2d, Conv2dConfig, Dropout, Linear, Module, TrainableModule},
     opt::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
@@ -49,12 +49,13 @@ impl Mlp {
 }
 
 #[derive(Debug, Clone, Module)]
+#[module(input = (Tensor, bool))]
 struct ConvNet {
     conv1: Conv2d,
     conv2: Conv2d,
     fc1: Linear,
     fc2: Linear,
-    //dropout: Dropout,
+    dropout: Dropout,
 }
 
 impl ConvNet {
@@ -64,15 +65,17 @@ impl ConvNet {
         let conv2 = Conv2d::new(32, 64, 5, Conv2dConfig::default(), true, dtype, device);
         let fc1 = Linear::new(1024, 1024, true, dtype, device);
         let fc2 = Linear::new(128, num_classes, true, dtype, device);
+        let dropout = Dropout::new(0.5);
         Self {
             conv1,
             conv2,
             fc1,
             fc2,
+            dropout,
         }
     }
 
-    pub fn fwd(&self, xs: &Tensor) -> Tensor {
+    pub fn fwd(&self, xs: &Tensor, train: bool) -> Tensor {
         let b_sz = xs.shape_at(0);
         let xs = xs
             .reshape([b_sz, 1, 28, 28])
@@ -83,7 +86,7 @@ impl ConvNet {
             .flatten(1..)
             .apply(&self.fc1)
             .relu();
-        xs.apply(&self.fc2)
+        self.dropout.fwd(&xs, train).apply(&self.fc2)
     }
 }
 
