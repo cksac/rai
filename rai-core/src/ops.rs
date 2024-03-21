@@ -3,9 +3,9 @@ use crate::{
         Abs, Add, Arange, ArgMax, ArgMin, Broadcast, Concatenate, Conv1d, Conv2d, ConvTranspose1d,
         ConvTranspose2d, Cos, Div, Equal, Erf, Exp, FlashAttention, FromArray, Full, Gather,
         Greater, GreaterEqual, IndexAdd, IndexSelect, Less, LessEqual, Log, Log10, Log2,
-        LogSoftmax, MatMul, MaxPool2d, Maximum, Minimum, Mul, Narrow, Negative, Normal, NotEqual,
-        Permute, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt, ScatterAdd,
-        Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
+        LogSoftmax, MatMul, MaxPool1d, MaxPool2d, Maximum, Minimum, Mul, Narrow, Negative, Normal,
+        NotEqual, Permute, PowerFloat, Random, ReduceMax, ReduceMin, ReduceSum, Reshape, Rsqrt,
+        ScatterAdd, Sign, Sin, Softmax, Sqrt, Square, Sub, Tanh, ToContiguous, Transpose, Where,
     },
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
@@ -1848,6 +1848,38 @@ pub fn conv_transpose2d(
             .collect::<Vec<_>>();
         cat(&outputs, 1)
     }
+}
+
+pub trait MaxPool1dArgs: Debug {
+    fn kernel_size(&self) -> usize;
+    fn stride(&self) -> usize {
+        self.kernel_size()
+    }
+    fn padding(&self) -> usize {
+        0
+    }
+    fn dilation(&self) -> usize {
+        1
+    }
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
+    let kernel_size = args.kernel_size();
+    let stride = args.stride();
+    let padding = args.padding();
+    let dilation = args.dilation();
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_max_pool1d(kernel_size, stride, padding, dilation);
+    let inputs = vec![input.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        MaxPool1d::new(kernel_size, stride, padding, dilation),
+        inputs,
+    )
 }
 
 pub trait ToPair<T>: Debug {

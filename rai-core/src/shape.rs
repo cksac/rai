@@ -534,6 +534,18 @@ pub trait Shape: Debug {
         vec![b_size, c_out, h_out, w_out]
     }
 
+    fn shape_max_pool1d(
+        &self,
+        kernel_size: usize,
+        stride: usize,
+        padding: usize,
+        dialation: usize,
+    ) -> Vec<usize> {
+        let [b_size, c_in, l_in] = self.shape_before::<3>();
+        let l_out = (l_in + 2 * padding - dialation * (kernel_size - 1) - 1) / stride + 1;
+        vec![b_size, c_in, l_out]
+    }
+
     fn shape_max_pool2d(
         &self,
         kernel_size: &(usize, usize),

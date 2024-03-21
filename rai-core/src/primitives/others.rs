@@ -330,6 +330,52 @@ impl Primitive for ConvTranspose2d {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct MaxPool1d {
+    pub kernel_size: usize,
+    pub stride: usize,
+    pub padding: usize,
+    pub dilation: usize,
+}
+
+impl MaxPool1d {
+    pub fn new(kernel_size: usize, stride: usize, padding: usize, dilation: usize) -> Self {
+        Self {
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+        }
+    }
+}
+
+impl Primitive for MaxPool1d {
+    fn clone_boxed(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dot_label(&self) -> String {
+        format!(
+            "MaxPool1d({}, {}, {}, {})",
+            self.kernel_size, self.stride, self.padding, self.dilation
+        )
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+        todo!("jvp for MaxPool1d")
+    }
+
+    #[tracing::instrument(ret(level = Level::TRACE))]
+    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        todo!("vjp for MaxPool1d")
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct MaxPool2d {
     pub kernel_size: (usize, usize),
     pub stride: (usize, usize),

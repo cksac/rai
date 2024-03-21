@@ -157,6 +157,7 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::Conv2d>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ConvTranspose1d>($backend, &mut $rules);
         _register::<$backend, $device, primitives::ConvTranspose2d>($backend, &mut $rules);
+        _register::<$backend, $device, primitives::MaxPool1d>($backend, &mut $rules);
         _register::<$backend, $device, primitives::MaxPool2d>($backend, &mut $rules);
     };
 }

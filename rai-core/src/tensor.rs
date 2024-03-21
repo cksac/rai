@@ -2,8 +2,8 @@ use crate::{
     eval,
     nn::{ApplyModule, Module},
     ops::{
-        self, ArangeArgs, ArgReduceArgs, ClampBound, FlattenArgs, MaxPool2dArgs, ReduceArgs,
-        VarArgs,
+        self, ArangeArgs, ArgReduceArgs, ClampBound, FlattenArgs, MaxPool1dArgs, MaxPool2dArgs,
+        ReduceArgs, VarArgs,
     },
     utils::{self, dot_graph},
     AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, Primitive, Shape, Type,
@@ -570,6 +570,11 @@ impl Tensor {
             dilation,
             groups,
         )
+    }
+
+    #[inline]
+    pub fn max_pool1d(&self, args: impl MaxPool1dArgs) -> Tensor {
+        ops::max_pool1d(self, args)
     }
 
     #[inline]

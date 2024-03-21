@@ -975,6 +975,19 @@ impl<D: Device> Eval<D, primitives::ConvTranspose2d> for CandleBackend {
     }
 }
 
+impl<D: Device> Eval<D, primitives::MaxPool1d> for CandleBackend {
+    fn eval(&self, _: &D, p: &primitives::MaxPool1d, inputs: &[Tensor], output: &Tensor) {
+        unimplemented!("Candle max_pool1d is not implemented")
+        // let x: &Tensor = &inputs[0];
+        // let t1 = x.get_data::<Data>().unwrap();
+        // let t1 = t1.deref();
+        // assert_eq!(p.padding, 0, "Candle max_pool1d only support padding=0");
+        // assert_eq!(p.dilation, 1, "Candle max_pool1d only support dilation=1");
+        // let t = t1.max_pool1d_with_stride(p.kernel_size, p.stride).unwrap();
+        // output.set_data(t);
+    }
+}
+
 impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
     fn eval(&self, _: &D, p: &primitives::MaxPool2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
