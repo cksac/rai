@@ -1,8 +1,8 @@
 use crate::Value;
 use std::collections::HashMap;
 
-pub trait Func<IN, OUT> {
-    fn apply(&self, input: IN) -> OUT;
+pub trait Func<InKind, In, Out> {
+    fn apply(&self, input: In) -> Out;
 }
 
 mod tensor_iter;
@@ -16,9 +16,9 @@ mod fn_impls;
 mod raiexpr;
 pub use raiexpr::raiexpr;
 
-pub fn jvp<IN, OUT, F>(func: F, input: IN, tangents: IN::Gradient) -> (OUT, OUT::Gradient)
+pub fn jvp<K, IN, OUT, F>(func: F, input: IN, tangents: IN::Gradient) -> (OUT, OUT::Gradient)
 where
-    F: Func<IN, OUT>,
+    F: Func<K, IN, OUT>,
     IN: Value,
     OUT: Value,
 {
@@ -37,9 +37,9 @@ where
 
 pub type BoxedFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
 
-pub fn linearize<IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<IN::Gradient, OUT::Gradient>)
+pub fn linearize<K, IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<IN::Gradient, OUT::Gradient>)
 where
-    F: Func<IN, OUT>,
+    F: Func<K, IN, OUT>,
     IN: Value,
     OUT: Value,
 {
@@ -58,9 +58,9 @@ where
     (output, Box::new(jvp_fn))
 }
 
-pub fn vjp<IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<OUT::Gradient, IN::Gradient>)
+pub fn vjp<K, IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<OUT::Gradient, IN::Gradient>)
 where
-    F: Func<IN, OUT>,
+    F: Func<K, IN, OUT>,
     IN: Value,
     OUT: Value,
 {
@@ -93,17 +93,17 @@ where
 }
 
 #[derive(Clone)]
-pub struct GradFunc<IN, OUT, F>
+pub struct GradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
 {
     func: F,
-    phantom: std::marker::PhantomData<(IN, OUT)>,
+    phantom: std::marker::PhantomData<(K, IN, OUT)>,
 }
 
-impl<IN, OUT, F> GradFunc<IN, OUT, F>
+impl<K, IN, OUT, F> GradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
 {
     pub fn new(func: F) -> Self {
         Self {
@@ -113,9 +113,9 @@ where
     }
 }
 
-impl<IN, OUT, F> Func<IN, IN::Gradient> for GradFunc<IN, OUT, F>
+impl<K, IN, OUT, F> Func<K, IN, IN::Gradient> for GradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
     IN: Value,
     OUT: Value,
 {
@@ -130,9 +130,9 @@ where
     }
 }
 
-pub fn grad<IN, OUT, F>(func: F) -> GradFunc<IN, OUT, F>
+pub fn grad<K, IN, OUT, F>(func: F) -> GradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
     IN: Value,
     OUT: Value,
 {
@@ -140,17 +140,17 @@ where
 }
 
 #[derive(Clone)]
-pub struct ValueAndGradFunc<IN, OUT, F>
+pub struct ValueAndGradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
 {
     func: F,
-    phantom: std::marker::PhantomData<(IN, OUT)>,
+    phantom: std::marker::PhantomData<(K, IN, OUT)>,
 }
 
-impl<IN, OUT, F> ValueAndGradFunc<IN, OUT, F>
+impl<K, IN, OUT, F> ValueAndGradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
 {
     pub fn new(func: F) -> Self {
         Self {
@@ -160,9 +160,9 @@ where
     }
 }
 
-impl<IN, OUT, F> Func<IN, (OUT, IN::Gradient)> for ValueAndGradFunc<IN, OUT, F>
+impl<K, IN, OUT, F> Func<K, IN, (OUT, IN::Gradient)> for ValueAndGradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
     IN: Value,
     OUT: Value,
 {
@@ -177,9 +177,9 @@ where
     }
 }
 
-pub fn value_and_grad<IN, OUT, F>(func: F) -> ValueAndGradFunc<IN, OUT, F>
+pub fn value_and_grad<K, IN, OUT, F>(func: F) -> ValueAndGradFunc<K, IN, OUT, F>
 where
-    F: Func<IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone,
     IN: Value,
     OUT: Value,
 {

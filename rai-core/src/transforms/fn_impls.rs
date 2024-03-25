@@ -1,19 +1,20 @@
-use crate::{Func, Tensor, Value};
+use crate::{nn::Module, ty_kind, Func};
 
-impl<F> Func<Tensor, Tensor> for F
+impl<I, O, F> Func<ty_kind::Basic, I, O> for F
 where
-    F: Fn(Tensor) -> Tensor,
+    F: Fn(I) -> O,
 {
-    fn apply(&self, input: Tensor) -> Tensor {
+    fn apply(&self, input: I) -> O {
         self(input)
     }
 }
 
-impl<'a, F> Func<&'a Tensor, Tensor> for F
+impl<I, O, F> Func<ty_kind::Module, I, O> for F
 where
-    F: Fn(&'a Tensor) -> Tensor,
+    F: Fn(I) -> O,
+    I: Module,
 {
-    fn apply(&self, input: &'a Tensor) -> Tensor {
+    fn apply(&self, input: I) -> O {
         self(input)
     }
 }
@@ -21,10 +22,8 @@ where
 macro_rules! impl_tuple_arg_fn {
     ($($T:tt)*) => {
         paste::paste! {
-            impl<$($T,)* OUT, FUNC> Func<($($T,)*), OUT> for FUNC
+            impl<$($T,)* OUT, FUNC> Func<ty_kind::Tuple<($($T,)*)>, ($($T,)*), OUT> for FUNC
             where
-                $($T: Value,)*
-                OUT: Value,
                 FUNC: Fn($($T,)*) -> OUT,
             {
                 fn apply(&self, input: ($($T,)*)) -> OUT {
@@ -52,10 +51,8 @@ impl_tuple_arg_fn!(A B C D E F G H I J K L);
 macro_rules! impl_array_arg_fn {
     ($S:expr; $($N:expr)*; $($T:tt)*) => {
         paste::paste! {
-            impl<I, OUT, FUNC> Func<[I; $S], OUT> for FUNC
+            impl<I, OUT, FUNC> Func<ty_kind::Array<[I; $S]>, [I; $S], OUT> for FUNC
             where
-                I: Value,
-                OUT: Value,
                 FUNC: Fn($($T,)*) -> OUT,
             {
                 fn apply(&self, input: [I; $S]) -> OUT {

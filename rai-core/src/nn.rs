@@ -1,4 +1,4 @@
-use crate::{AsDevice, GenericValue, ModuleValue, Tensor, ValueSpec};
+use crate::{ty_kind, AsDevice, GenericValue, Tensor, ValueSpec};
 use std::{borrow::Cow, collections::HashMap, path::Path};
 
 pub trait Module {
@@ -87,7 +87,7 @@ where
 pub trait TrainableModule:
     Module
     + ValueSpec<
-        Kind = ModuleValue,
+        Kind = ty_kind::Module,
         Tensors = HashMap<usize, Tensor>,
         Gradient = HashMap<usize, Tensor>,
     >
@@ -96,7 +96,7 @@ pub trait TrainableModule:
 
 impl<'a, T> TrainableModule for &'a T where T: TrainableModule {}
 
-impl<T> GenericValue<ModuleValue, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
+impl<T> GenericValue<ty_kind::Module, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
 where
     T: TrainableModule<Tensors = HashMap<usize, Tensor>, Gradient = HashMap<usize, Tensor>>,
 {
@@ -129,12 +129,12 @@ where
 }
 
 pub trait NonTrainableModule:
-    Module + ValueSpec<Kind = ModuleValue, Tensors = (), Gradient = ()>
+    Module + ValueSpec<Kind = ty_kind::Module, Tensors = (), Gradient = ()>
 {
 }
 impl<'a, T> NonTrainableModule for &'a T where T: NonTrainableModule {}
 
-impl<T> GenericValue<ModuleValue, (), ()> for T
+impl<T> GenericValue<ty_kind::Module, (), ()> for T
 where
     T: NonTrainableModule<Tensors = (), Gradient = ()>,
 {

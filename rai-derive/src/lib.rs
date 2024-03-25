@@ -131,7 +131,7 @@ pub fn module(item: TokenStream) -> TokenStream {
             }
 
             impl #impl_generics ::#crate_root::ValueSpec for #receiver_name #type_generics #where_clause {
-                type Kind = ::#crate_root::ModuleValue;
+                type Kind = ::#crate_root::ty_kind::Module;
                 type Tensors = ();
                 type Gradient = ();
             }
@@ -215,7 +215,7 @@ pub fn module(item: TokenStream) -> TokenStream {
             }
 
             impl #impl_generics ::#crate_root::ValueSpec for #receiver_name #type_generics #where_clause {
-                type Kind = ::#crate_root::ModuleValue;
+                type Kind = ::#crate_root::ty_kind::Module;
                 type Tensors = std::collections::HashMap<usize, Tensor>;
                 type Gradient = std::collections::HashMap<usize, Tensor>;
             }

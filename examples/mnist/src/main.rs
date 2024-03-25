@@ -1,6 +1,6 @@
 use rai::{
     eval,
-    nn::{Conv2d, Conv2dConfig, Dropout, Linear, Module, TrainableModule},
+    nn::{Linear, Module, TrainableModule},
     opt::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
@@ -9,7 +9,7 @@ use rai::{
     value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
-use std::{collections::HashMap, fmt::Debug, time::Instant};
+use std::{fmt::Debug, time::Instant};
 
 #[derive(Debug, Clone, Module)]
 struct Mlp {
@@ -48,48 +48,6 @@ impl Mlp {
     }
 }
 
-#[derive(Debug, Clone, Module)]
-#[module(input = (Tensor, bool))]
-struct ConvNet {
-    conv1: Conv2d,
-    conv2: Conv2d,
-    fc1: Linear,
-    fc2: Linear,
-    dropout: Dropout,
-}
-
-impl ConvNet {
-    pub fn new(num_classes: usize, dtype: impl Type, device: impl AsDevice) -> Self {
-        let device = device.device();
-        let conv1 = Conv2d::new(1, 32, 5, Conv2dConfig::default(), true, dtype, device);
-        let conv2 = Conv2d::new(32, 64, 5, Conv2dConfig::default(), true, dtype, device);
-        let fc1 = Linear::new(1024, 1024, true, dtype, device);
-        let fc2 = Linear::new(128, num_classes, true, dtype, device);
-        let dropout = Dropout::new(0.5);
-        Self {
-            conv1,
-            conv2,
-            fc1,
-            fc2,
-            dropout,
-        }
-    }
-
-    pub fn fwd(&self, xs: &Tensor, train: bool) -> Tensor {
-        let b_sz = xs.shape_at(0);
-        let xs = xs
-            .reshape([b_sz, 1, 28, 28])
-            .apply(&self.conv1)
-            .max_pool2d(2)
-            .apply(&self.conv2)
-            .max_pool2d(2)
-            .flatten(1..)
-            .apply(&self.fc1)
-            .relu();
-        self.dropout.fwd(&xs, train).apply(&self.fc2)
-    }
-}
-
 fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     model: &M,
     input: &Tensor,
@@ -100,15 +58,7 @@ fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     (loss, Aux(logits))
 }
 
-fn train_step<
-    M: TrainableModule<
-        Input = Tensor,
-        Output = Tensor,
-        Tensors = HashMap<usize, Tensor>,
-        Gradient = HashMap<usize, Tensor>,
-    >,
-    O: Optimizer,
->(
+fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>(
     optimizer: &mut O,
     model: &M,
     images: &Tensor,
@@ -133,7 +83,6 @@ fn main() {
     let dtype = F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);
-    //let model = ConvNet::new(num_classes, dtype, device);
     let mut optimizer = SDG::new(model.params(), learning_rate);
 
     let dataset = mnist::load(device).expect("mnist dataset");

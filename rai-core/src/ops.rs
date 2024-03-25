@@ -1947,6 +1947,12 @@ impl ToPair<usize> for [usize; 2] {
     }
 }
 
+impl ToPair<usize> for (usize, usize) {
+    fn to_pair(&self) -> (usize, usize) {
+        *self
+    }
+}
+
 pub trait MaxPool2dArgs: Debug {
     fn kernel_size(&self) -> (usize, usize);
     fn stride(&self) -> (usize, usize) {
@@ -1960,18 +1966,31 @@ pub trait MaxPool2dArgs: Debug {
     }
 }
 
-impl<T> MaxPool2dArgs for T
-where
-    T: ToPair<usize>,
-{
+impl MaxPool2dArgs for usize {
     fn kernel_size(&self) -> (usize, usize) {
         self.to_pair()
     }
 }
 
-impl<T> MaxPool2dArgs for (T, T)
+impl MaxPool2dArgs for [usize; 2] {
+    fn kernel_size(&self) -> (usize, usize) {
+        self.to_pair()
+    }
+}
+
+impl<A> MaxPool2dArgs for (A,)
 where
-    T: ToPair<usize>,
+    A: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+}
+
+impl<A, B> MaxPool2dArgs for (A, B)
+where
+    A: ToPair<usize>,
+    B: ToPair<usize>,
 {
     fn kernel_size(&self) -> (usize, usize) {
         self.0.to_pair()
@@ -1982,9 +2001,11 @@ where
     }
 }
 
-impl<T> MaxPool2dArgs for (T, T, T)
+impl<A, B, C> MaxPool2dArgs for (A, B, C)
 where
-    T: ToPair<usize>,
+    A: ToPair<usize>,
+    B: ToPair<usize>,
+    C: ToPair<usize>,
 {
     fn kernel_size(&self) -> (usize, usize) {
         self.0.to_pair()
@@ -1999,9 +2020,12 @@ where
     }
 }
 
-impl<T> MaxPool2dArgs for (T, T, T, T)
+impl<A, B, C, D> MaxPool2dArgs for (A, B, C, D)
 where
-    T: ToPair<usize>,
+    A: ToPair<usize>,
+    B: ToPair<usize>,
+    C: ToPair<usize>,
+    D: ToPair<usize>,
 {
     fn kernel_size(&self) -> (usize, usize) {
         self.0.to_pair()
@@ -2049,18 +2073,31 @@ pub trait AvgPool2dArgs: Debug {
     }
 }
 
-impl<T> AvgPool2dArgs for T
-where
-    T: ToPair<usize>,
-{
+impl AvgPool2dArgs for usize {
     fn kernel_size(&self) -> (usize, usize) {
         self.to_pair()
     }
 }
 
-impl<T> AvgPool2dArgs for (T, T)
+impl AvgPool2dArgs for [usize; 2] {
+    fn kernel_size(&self) -> (usize, usize) {
+        self.to_pair()
+    }
+}
+
+impl<A> AvgPool2dArgs for (A,)
 where
-    T: ToPair<usize>,
+    A: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+}
+
+impl<A, B> AvgPool2dArgs for (A, B)
+where
+    A: ToPair<usize>,
+    B: ToPair<usize>,
 {
     fn kernel_size(&self) -> (usize, usize) {
         self.0.to_pair()
@@ -2071,9 +2108,11 @@ where
     }
 }
 
-impl<T> AvgPool2dArgs for (T, T, T)
+impl<A, B, C> AvgPool2dArgs for (A, B, C)
 where
-    T: ToPair<usize>,
+    A: ToPair<usize>,
+    B: ToPair<usize>,
+    C: ToPair<usize>,
 {
     fn kernel_size(&self) -> (usize, usize) {
         self.0.to_pair()
@@ -2186,9 +2225,9 @@ pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
 
 #[tracing::instrument(ret(level = Level::TRACE))]
 pub fn dropout(input: &Tensor, p: f32) -> Tensor {
-    assert!(p >= 0.0 && p < 1.0);
+    assert!((0.0..1.0).contains(&p));
     let r = input.rand_like();
     let scale = 1.0 / (1.0 - p);
-    let mask = r.ge(r.full_like(p)) * scale;
+    let mask = r.ge(r.full_like(p)).to_dtype(r) * scale;
     input * mask
 }

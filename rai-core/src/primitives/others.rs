@@ -421,8 +421,18 @@ impl Primitive for MaxPool2d {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        todo!("vjp for MaxPool2d")
+    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+        assert_eq!(
+            self.kernel_size, self.stride,
+            "vjp not supported for maxpool2d if kernel_size != stride"
+        );
+        let x = &primals[0];
+        let [_n, _c, h, w] = x.shape_before::<4>();
+        let out_unsampled = output.upsample_nearest2d([h, w]);
+        let mask = x.eq(&out_unsampled).to_dtype(x);
+        let avg = mask.avg_pool2d((self.kernel_size, self.stride));
+        let cotan_x = (cotangent * avg).upsample_nearest2d([h, w]);
+        vec![cotan_x]
     }
 }
 

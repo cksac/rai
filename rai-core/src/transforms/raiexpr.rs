@@ -2,9 +2,9 @@ use crate::{Func, Shape, Tensor, TensorIter, Value};
 use colored::*;
 use std::collections::{BTreeSet, HashMap};
 
-pub fn raiexpr<IN, OUT, F>(func: &F, input: IN) -> String
+pub fn raiexpr<K, IN, OUT, F>(func: &F, input: IN) -> String
 where
-    F: Func<IN, OUT>,
+    F: Func<K, IN, OUT>,
     IN: Value,
     OUT: Value,
 {

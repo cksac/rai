@@ -19,7 +19,7 @@ mod backend;
 pub use backend::{Backend, CandleBackend, Eval};
 
 mod value;
-pub use value::{Aux, BasicValue, GenericValue, ModuleValue, Value, ValueSpec};
+pub use value::{Aux, GenericValue, Value, ValueSpec};
 
 mod transforms;
 pub use transforms::{eval, grad, jvp, linearize, raiexpr, value_and_grad, vjp, Func, TensorIter};
@@ -35,3 +35,5 @@ pub mod nn;
 
 #[macro_use]
 mod macros;
+
+pub mod ty_kind;

@@ -43,15 +43,7 @@ fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     (loss, Aux(logits))
 }
 
-fn train_step<
-    M: TrainableModule<
-        Input = Tensor,
-        Output = Tensor,
-        Tensors = HashMap<usize, Tensor>,
-        Gradient = HashMap<usize, Tensor>,
-    >,
-    O: Optimizer,
->(
+fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>(
     optimizer: &mut O,
     model: &M,
     input: &Tensor,

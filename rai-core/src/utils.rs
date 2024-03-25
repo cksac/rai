@@ -1,5 +1,9 @@
-use crate::{vjp, Func, Shape, Tensor, TensorIter, F64};
+use crate::{ty_kind, vjp, Func, Shape, Tensor, TensorIter, F64};
 use std::collections::{hash_map::RandomState, HashSet};
+
+pub fn dprint<T: TensorIter>(args: T) {
+    println!("{}", dot_graph(args));
+}
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
     let mut tape = Vec::new();
@@ -78,7 +82,7 @@ pub fn numerical_jvp<F>(
     eps: f64,
 ) -> Tensor
 where
-    F: for<'a> Func<&'a Tensor, Tensor>,
+    F: for<'a> Func<ty_kind::Basic, &'a Tensor, Tensor>,
 {
     let input = input.as_ref();
     let tangent = tangent.as_ref();
@@ -90,7 +94,7 @@ where
 
 pub fn check_grad<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
 where
-    F: for<'a> Func<&'a Tensor, Tensor> + Clone,
+    F: for<'a> Func<ty_kind::Basic, &'a Tensor, Tensor> + Clone,
 {
     check_vjp(func, input, eps);
     //todo: check jvp
@@ -98,7 +102,7 @@ where
 
 pub fn check_vjp<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
 where
-    F: for<'a> Func<&'a Tensor, Tensor> + Clone,
+    F: for<'a> Func<ty_kind::Basic, &'a Tensor, Tensor> + Clone,
 {
     let input = input.as_ref();
     let (v_out, vjp_fn) = vjp(func.clone(), input);

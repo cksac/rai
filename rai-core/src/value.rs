@@ -1,8 +1,7 @@
-use crate::{non_differentiable, Tensor, TensorIter};
+use crate::{non_differentiable, ty_kind, Tensor, TensorIter};
+use half::{bf16, f16};
 use std::collections::HashMap;
-
-pub struct BasicValue;
-pub struct ModuleValue;
+use ty_kind::Basic;
 
 pub trait ValueSpec {
     type Kind;
@@ -53,9 +52,9 @@ where
     }
 }
 
-impl<'a, T, G, X> GenericValue<BasicValue, T, G> for &'a X
+impl<'a, T, G, X> GenericValue<ty_kind::Basic, T, G> for &'a X
 where
-    X: GenericValue<BasicValue, T, G>,
+    X: GenericValue<ty_kind::Basic, T, G>,
 {
     #[inline]
     fn gv_tensors(&self) -> T {
@@ -64,22 +63,62 @@ where
 
     #[inline]
     fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
-        <X as GenericValue<BasicValue, T, G>>::gv_grad(tensors, grad_map)
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad(tensors, grad_map)
     }
 
     #[inline]
     fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
-        <X as GenericValue<BasicValue, T, G>>::gv_grad_map(tensors, grad, out)
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad_map(tensors, grad, out)
+    }
+}
+
+impl<'a, A, T, G, X> GenericValue<ty_kind::Array<A>, T, G> for &'a X
+where
+    X: GenericValue<ty_kind::Array<A>, T, G>,
+{
+    #[inline]
+    fn gv_tensors(&self) -> T {
+        (*self).gv_tensors()
+    }
+
+    #[inline]
+    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
+        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad(tensors, grad_map)
+    }
+
+    #[inline]
+    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
+        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad_map(tensors, grad, out)
+    }
+}
+
+impl<'a, A, T, G, X> GenericValue<ty_kind::Tuple<A>, T, G> for &'a X
+where
+    X: GenericValue<ty_kind::Tuple<A>, T, G>,
+{
+    #[inline]
+    fn gv_tensors(&self) -> T {
+        (*self).gv_tensors()
+    }
+
+    #[inline]
+    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
+        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad(tensors, grad_map)
+    }
+
+    #[inline]
+    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
+        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad_map(tensors, grad, out)
     }
 }
 
 impl ValueSpec for Tensor {
-    type Kind = BasicValue;
+    type Kind = ty_kind::Basic;
     type Tensors = Tensor;
     type Gradient = Tensor;
 }
 
-impl GenericValue<BasicValue, Tensor, Tensor> for Tensor {
+impl GenericValue<ty_kind::Basic, Tensor, Tensor> for Tensor {
     fn gv_tensors(&self) -> Tensor {
         self.clone()
     }
@@ -94,12 +133,12 @@ impl GenericValue<BasicValue, Tensor, Tensor> for Tensor {
 }
 
 impl ValueSpec for HashMap<usize, Tensor> {
-    type Kind = BasicValue;
+    type Kind = ty_kind::Basic;
     type Tensors = HashMap<usize, Tensor>;
     type Gradient = HashMap<usize, Tensor>;
 }
 
-impl GenericValue<BasicValue, HashMap<usize, Tensor>, HashMap<usize, Tensor>>
+impl GenericValue<ty_kind::Basic, HashMap<usize, Tensor>, HashMap<usize, Tensor>>
     for HashMap<usize, Tensor>
 {
     fn gv_tensors(&self) -> HashMap<usize, Tensor> {
@@ -132,12 +171,13 @@ where
     T: Value,
     [T::Tensors; N]: TensorIter,
 {
-    type Kind = BasicValue;
+    type Kind = ty_kind::Array<[T; N]>;
     type Tensors = [T::Tensors; N];
     type Gradient = [T::Gradient; N];
 }
 
-impl<const N: usize, T> GenericValue<BasicValue, [T::Tensors; N], [T::Gradient; N]> for [T; N]
+impl<const N: usize, T> GenericValue<ty_kind::Array<[T; N]>, [T::Tensors; N], [T::Gradient; N]>
+    for [T; N]
 where
     T: Value,
     [T::Tensors; N]: TensorIter,
@@ -175,12 +215,12 @@ where
     A: Value,
     A::Tensors: TensorIter,
 {
-    type Kind = BasicValue;
+    type Kind = ty_kind::Tuple<(A,)>;
     type Tensors = A::Tensors;
     type Gradient = A::Gradient;
 }
 
-impl<A> GenericValue<BasicValue, A::Tensors, A::Gradient> for (A,)
+impl<A> GenericValue<ty_kind::Tuple<(A,)>, A::Tensors, A::Gradient> for (A,)
 where
     A: Value,
     A::Tensors: TensorIter,
@@ -206,12 +246,12 @@ macro_rules! impl_tuple_differentiable {
                 $($T: Value,)*
                 ($($T::Tensors,)*): TensorIter,
             {
-                type Kind = BasicValue;
+                type Kind = ty_kind::Tuple<($($T,)*)>;
                 type Tensors = ($($T::Tensors,)*);
                 type Gradient = ($($T::Gradient,)*);
             }
 
-            impl<$($T,)*> GenericValue<BasicValue, ($($T::Tensors,)*), ($($T::Gradient,)*)> for ($($T,)*)
+            impl<$($T,)*> GenericValue<ty_kind::Tuple<($($T,)*)>, ($($T::Tensors,)*), ($($T::Gradient,)*)> for ($($T,)*)
             where
                 $($T: Value,)*
                 ($($T::Tensors,)*): TensorIter,
@@ -248,5 +288,32 @@ impl_tuple_differentiable!(A B C D E F G H I J);
 impl_tuple_differentiable!(A B C D E F G H I J K);
 impl_tuple_differentiable!(A B C D E F G H I J K L);
 
+macro_rules! non_differentiable_primitive {
+    ($T:ty) => {
+        non_differentiable!(Basic; $T);
+        non_differentiable!(Basic; Option<$T>);
+        non_differentiable!(Basic; <E> Result<$T, E>);
+    };
+}
+
+non_differentiable_primitive!(());
+non_differentiable_primitive!(i8);
+non_differentiable_primitive!(i16);
+non_differentiable_primitive!(i32);
+non_differentiable_primitive!(i64);
+non_differentiable_primitive!(i128);
+non_differentiable_primitive!(isize);
+non_differentiable_primitive!(u8);
+non_differentiable_primitive!(u16);
+non_differentiable_primitive!(u32);
+non_differentiable_primitive!(u64);
+non_differentiable_primitive!(u128);
+non_differentiable_primitive!(usize);
+non_differentiable_primitive!(f16);
+non_differentiable_primitive!(bf16);
+non_differentiable_primitive!(f32);
+non_differentiable_primitive!(f64);
+non_differentiable_primitive!(bool);
+
 pub struct Aux<T>(pub T);
-non_differentiable!(BasicValue; <T> Aux<T>);
+non_differentiable!(Basic; <T> Aux<T>);
