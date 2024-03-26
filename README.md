@@ -62,6 +62,10 @@ fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>
     - `cargo run --bin linear_regression --release`
 - [mnist](https://github.com/cksac/rai/blob/main/examples/mnist/src/main.rs)
     - `cargo run --bin mnist --release`
+    - `cargo run --bin mnist --release --features=cuda`
+- [mnist-cnn](https://github.com/cksac/rai/blob/main/examples/mnist-cnn/src/main.rs)
+    - `cargo run --bin mnist-cnn --release`
+    - `cargo run --bin mnist-cnn --release --features=cuda`
 - [phi2](https://github.com/cksac/rai/blob/main/examples/phi2/src/main.rs)
     - `cargo run --bin phi2 --release`
 - [qwen2](https://github.com/cksac/rai/blob/main/examples/qwen2/src/main.rs)

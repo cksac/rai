@@ -79,7 +79,7 @@ fn main() {
     let num_epochs = 200;
     let learning_rate = 0.05;
 
-    let device: &dyn Device = if cuda_enabled() { &Cuda(1) } else { &Cpu };
+    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
     println!("device: {:?}", device);
     let dtype = F32;
 
