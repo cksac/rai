@@ -1,9 +1,8 @@
-use std::fs::File;
-
 use crate::{Error, Result};
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use rai::{AsDevice, Tensor, F32};
+use std::fs::File;
 
 #[derive(Debug, Clone)]
 pub struct Dataset {
