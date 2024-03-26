@@ -18,3 +18,6 @@ serde_json = { workspace = true }
 image = { workspace = true }
 imageproc = { workspace = true }
 reqwest = { workspace = true }
+
+[features]
+cuda = ["rai/cuda"]

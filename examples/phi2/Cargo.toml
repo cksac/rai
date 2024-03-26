@@ -16,3 +16,5 @@ hf-hub = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+[features]
+cuda = ["rai/cuda"]

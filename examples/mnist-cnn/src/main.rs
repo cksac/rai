@@ -86,6 +86,7 @@ fn main() {
     let batch_size = 64;
 
     let device: &dyn Device = if cuda_enabled() { &Cuda(1) } else { &Cpu };
+    println!("device: {:?}", device);
     let dtype = F32;
 
     let model = ConvNet::new(num_classes, dtype, device);

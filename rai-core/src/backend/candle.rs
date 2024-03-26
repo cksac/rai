@@ -4,10 +4,13 @@ use crate::{
 };
 use candle_core::{backend::BackendDevice, CudaDevice};
 use half::{bf16, f16};
+use once_cell::sync::Lazy;
 use safetensors::View;
 use std::{
     any::{Any, TypeId},
+    collections::HashMap,
     ops::Deref,
+    sync::RwLock,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -140,15 +143,31 @@ impl<'a> From<&'a Cpu> for candle_core::Device {
     }
 }
 
+static CUDA_DEVICES: Lazy<RwLock<HashMap<usize, candle_core::Device>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+fn cuda_device(id: usize) -> candle_core::Device {
+    let devices = CUDA_DEVICES.read().unwrap();
+    if let Some(dev) = devices.get(&id) {
+        return dev.clone();
+    }
+    drop(devices);
+    let mut devices = CUDA_DEVICES.write().unwrap();
+    let dev = devices
+        .entry(id)
+        .or_insert_with(|| candle_core::Device::Cuda(CudaDevice::new(id).expect("cuda device")));
+    dev.clone()
+}
+
 impl From<Cuda> for candle_core::Device {
     fn from(device: Cuda) -> Self {
-        candle_core::Device::Cuda(CudaDevice::new(device.0).expect("cuda"))
+        cuda_device(device.0)
     }
 }
 
 impl<'a> From<&'a Cuda> for candle_core::Device {
     fn from(device: &'a Cuda) -> Self {
-        candle_core::Device::Cuda(CudaDevice::new(device.0).expect("cuda"))
+        cuda_device(device.0)
     }
 }
 

@@ -11,6 +11,10 @@ pub trait ElemType: Clone + Copy + Debug + PartialEq + 'static {
     fn zero() -> Self;
     fn one() -> Self;
     fn elem_count(start: Self, stop: Self, step: Self) -> usize;
+    #[allow(unused_variables)]
+    fn from_f64(val: f64) -> Option<Self> {
+        None
+    }
 }
 
 pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
@@ -21,8 +25,13 @@ pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
     fn zero() -> Self::Repr {
         Self::Repr::zero()
     }
+
     fn one() -> Self::Repr {
         Self::Repr::one()
+    }
+
+    fn from_f64(val: f64) -> Option<Self::Repr> {
+        Self::Repr::from_f64(val)
     }
 
     fn primitive_full_zero() -> Full<Self> {
@@ -244,6 +253,10 @@ impl ElemType for f16 {
     fn elem_count(start: Self, stop: Self, step: Self) -> usize {
         std::cmp::max(((stop - start) / step).ceil().to_f32() as usize, 0)
     }
+
+    fn from_f64(val: f64) -> Option<Self> {
+        Some(f16::from_f64(val))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -273,6 +286,10 @@ impl ElemType for bf16 {
 
     fn elem_count(start: Self, stop: Self, step: Self) -> usize {
         std::cmp::max(((stop - start) / step).ceil().to_f32() as usize, 0)
+    }
+
+    fn from_f64(val: f64) -> Option<Self> {
+        Some(bf16::from_f64(val))
     }
 }
 
@@ -304,6 +321,10 @@ impl ElemType for f32 {
     fn elem_count(start: Self, stop: Self, step: Self) -> usize {
         std::cmp::max(((stop - start) / step).ceil() as usize, 0)
     }
+
+    fn from_f64(val: f64) -> Option<Self> {
+        Some(val as f32)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -333,6 +354,10 @@ impl ElemType for f64 {
 
     fn elem_count(start: Self, stop: Self, step: Self) -> usize {
         std::cmp::max(((stop - start) / step).ceil() as usize, 0)
+    }
+
+    fn from_f64(val: f64) -> Option<Self> {
+        Some(val)
     }
 }
 
