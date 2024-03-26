@@ -191,8 +191,8 @@ fn test_conv1d_with_groups() {
 fn test_conv_transpose1d() {
     let device = Cpu;
     let t = Tensor::rand([1, 4, 5], F32, device);
-    let w = Tensor::rand([2, 4, 3], F32, device);
-    let out = t.conv_transpose1d(w.transpose(0, 1), 0, 0, 1, 1, 1);
+    let w = Tensor::rand([2, 4, 3], F32, device).transpose(0, 1);
+    let out = t.conv_transpose1d(w, 0, 0, 1, 1, 1);
     println!("{}", out);
 }
 
@@ -200,8 +200,8 @@ fn test_conv_transpose1d() {
 fn test_conv_transpose1d_with_groups() {
     let device = Cpu;
     let t = Tensor::rand([1, 4, 5], F32, device);
-    let w = Tensor::rand([2, 4, 3], F32, device);
-    let out = t.conv_transpose1d(w.transpose(0, 1), 0, 0, 1, 1, 2);
+    let w = Tensor::rand([2, 4, 3], F32, device).transpose(0, 1);
+    let out = t.conv_transpose1d(w, 0, 0, 1, 1, 2);
     println!("{}", out);
 }
 
@@ -229,7 +229,6 @@ fn test_conv_transpose2d() {
     let t = Tensor::rand([1, 4, 5, 5], F32, device);
     let w = Tensor::rand([2, 4, 3, 3], F32, device);
     let w_t = w.transpose(0, 1);
-    dbg!(w_t.shape());
     let out = t.conv_transpose2d(w_t, [0, 0], [0, 0], [1, 1], [1, 1], 1);
     println!("{}", out);
 }
@@ -240,7 +239,6 @@ fn test_conv_transpose2d_with_groups() {
     let t = Tensor::rand([1, 4, 5, 5], F32, device);
     let w = Tensor::rand([2, 4, 3, 3], F32, device);
     let w_t = w.transpose(0, 1);
-    dbg!(w_t.shape());
     let out = t.conv_transpose2d(w_t, [0, 0], [0, 0], [1, 1], [1, 1], 2);
     println!("{}", out);
 }
@@ -249,7 +247,7 @@ fn test_conv_transpose2d_with_groups() {
 fn test_sign() {
     let device = Cpu;
     let func = |x: &Tensor| x.sign();
-    let x = &Tensor::rand_with(-1.0, 1.0, [2, 2], F32, device);
+    let x = &Tensor::rand_with(-1.0f32, 1.0, [2, 2], device);
     let out = func(x);
     println!("{}", x);
     println!("{}", out);

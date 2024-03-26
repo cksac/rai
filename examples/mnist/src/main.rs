@@ -80,6 +80,7 @@ fn main() {
     let learning_rate = 0.05;
 
     let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
+    println!("device: {:?}", device);
     let dtype = F32;
 
     let model = Mlp::new(num_layers, 784, hidden_dim, num_classes, dtype, device);

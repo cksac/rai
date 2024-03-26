@@ -50,5 +50,14 @@ pub use reduce::*;
 mod indexing;
 pub use indexing::*;
 
+mod convolution;
+pub use convolution::*;
+
+mod pooling;
+pub use pooling::*;
+
+mod vision;
+pub use vision::*;
+
 mod others;
 pub use others::*;

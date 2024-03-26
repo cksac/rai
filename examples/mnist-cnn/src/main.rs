@@ -81,11 +81,11 @@ fn train_step<M: TrainableModule<Input = (Tensor, bool), Output = Tensor>, O: Op
 
 fn main() {
     let num_classes = 10;
-    let num_epochs = 1;
+    let num_epochs = 10;
     let learning_rate = 0.05;
     let batch_size = 64;
 
-    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
+    let device: &dyn Device = if cuda_enabled() { &Cuda(1) } else { &Cpu };
     let dtype = F32;
 
     let model = ConvNet::new(num_classes, dtype, device);
@@ -109,7 +109,7 @@ fn main() {
             let train_labels = train_labels.narrow(0, batch_idx * batch_size, batch_size);
             let (loss, _logits) = train_step(&mut optimizer, &model, &train_images, &train_labels);
             let loss = loss.as_scalar(F32);
-            sum_loss += loss
+            sum_loss += loss;
         }
         let avg_loss = sum_loss / n_batches as f32;
         let test_logits: Tensor = model.fwd(test_images, false);

@@ -349,7 +349,7 @@ fn check_rsqrt_grad() {
 fn check_sign_grad() {
     let device = Cpu;
     let func = |x: &Tensor| x.sign();
-    let x = &Tensor::rand_with(-1.0, 1.0, [2, 2], F64, device);
+    let x = &Tensor::rand_with(-1.0f64, 1.0, [2, 2], device);
     check_grad(func, x, EPS);
 }
 
@@ -452,6 +452,28 @@ fn check_conv2d_grad() {
     let func = |t: &Tensor| t.conv2d(w, [0, 0], [1, 1], [1, 1], 1);
     check_grad(func, x, EPS);
     let func = |t: &Tensor| x.conv2d(t, [0, 0], [1, 1], [1, 1], 1);
+    check_grad(func, w, EPS);
+}
+
+#[test]
+fn check_conv_transpose1d_grad() {
+    let device = Cpu;
+    let x = &Tensor::rand([1, 4, 5], F64, device);
+    let w = &Tensor::rand([4, 2, 3], F64, device);
+    let func = |t: &Tensor| t.conv_transpose1d(w, 0, 0, 1, 1, 1);
+    check_grad(func, x, EPS);
+    let func = |t: &Tensor| x.conv_transpose1d(t, 0, 0, 1, 1, 1);
+    check_grad(func, w, EPS);
+}
+
+#[test]
+fn check_conv_transpose2d_grad() {
+    let device = Cpu;
+    let x = &Tensor::rand([1, 4, 5, 5], F64, device);
+    let w = &Tensor::rand([4, 2, 3, 3], F64, device);
+    let func = |t: &Tensor| t.conv_transpose2d(w, [0, 0], [0, 0], [1, 1], [1, 1], 1);
+    check_grad(func, x, EPS);
+    let func = |t: &Tensor| x.conv_transpose2d(t, [0, 0], [0, 0], [1, 1], [1, 1], 1);
     check_grad(func, w, EPS);
 }
 

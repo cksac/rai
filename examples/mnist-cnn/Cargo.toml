@@ -11,3 +11,6 @@ publish = false
 rai = { workspace = true }
 rai-datasets = { workspace = true }
 rand = { workspace = true }
+
+[features]
+cuda = ["rai/cuda"]

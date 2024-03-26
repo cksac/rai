@@ -1,3 +1,4 @@
+use crate::init::{self, Init, DEFAULT_KAIMING_NORMAL};
 use rai_core::{AsDevice, Shape, Tensor, Type};
 use rai_derive::Module;
 use std::fmt::Debug;
@@ -135,9 +136,37 @@ impl Conv2d {
         dtype: impl Type,
         device: impl AsDevice,
     ) -> Self {
+        let bound = 1. / (in_channels as f64).sqrt();
+        let bias_init = match has_bias {
+            true => Some(init::Uniform::new(-bound, bound)),
+            false => None,
+        };
+        Self::new_with_init(
+            in_channels,
+            out_channels,
+            kernel_size,
+            config,
+            dtype,
+            device,
+            DEFAULT_KAIMING_NORMAL,
+            bias_init,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_init(
+        in_channels: usize,
+        out_channels: usize,
+        kernel_size: usize,
+        config: impl IntoConv2dConfig,
+        dtype: impl Type,
+        device: impl AsDevice,
+        weight_init: impl Init,
+        bias_init: Option<impl Init>,
+    ) -> Self {
         let device = device.device();
         let config = config.into_conv2d_config();
-        let weight = Tensor::rand(
+        let weight = weight_init.new_tensor(
             [
                 out_channels,
                 in_channels / config.groups,
@@ -147,11 +176,7 @@ impl Conv2d {
             dtype,
             device,
         );
-        let bias = if has_bias {
-            Some(Tensor::rand([out_channels], dtype, device))
-        } else {
-            None
-        };
+        let bias = bias_init.map(|init| init.new_tensor([out_channels], dtype, device));
         Self {
             weight,
             bias,

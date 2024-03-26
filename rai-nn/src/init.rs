@@ -1,4 +1,4 @@
-use rai_core::{AsDevice, Shape, Tensor, Type, F64};
+use rai_core::{AsDevice, Shape, Tensor, Type};
 
 // ref: https://github.com/pytorch/pytorch/blob/main/torch/nn/init.py
 
@@ -90,11 +90,10 @@ impl Init for Kaiming {
         match self.dist {
             NormalOrUniform::Uniform => {
                 let bound = 3f64.sqrt() * std;
-                Tensor::rand_with(-bound, bound, shape, F64, device).to_dtype(dtype)
+                // TODO: typed init, advoid call to_dtype
+                Tensor::rand_with(-bound, bound, shape, device).to_dtype(dtype)
             }
-            NormalOrUniform::Normal => {
-                Tensor::randn_with(0.0, std, shape, F64, device).to_dtype(dtype)
-            }
+            NormalOrUniform::Normal => Tensor::randn_with(0.0, std, shape, device).to_dtype(dtype),
         }
     }
 }
@@ -113,6 +112,7 @@ impl Uniform {
 
 impl Init for Uniform {
     fn new_tensor(&self, shape: impl Shape, dtype: impl Type, device: impl AsDevice) -> Tensor {
-        Tensor::rand_with(self.from, self.to, shape, F64, device).to_dtype(dtype)
+        // TODO: typed init, advoid call to_dtype
+        Tensor::rand_with(self.from, self.to, shape, device).to_dtype(dtype)
     }
 }

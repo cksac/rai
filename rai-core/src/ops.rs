@@ -300,16 +300,21 @@ pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Ten
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn randn_with<T: Type>(
-    mean: T::Repr,
-    std: T::Repr,
+pub fn randn_with<T: ElemType>(
+    mean: T,
+    std: T,
     shape: impl Shape,
-    dtype: T,
     device: impl AsDevice,
 ) -> Tensor {
-    let dtype = T::boxed_dtype();
+    let dtype = T::DType::boxed_dtype();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, Normal::<T>::new(mean, std), inputs)
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Normal::<T::DType>::new(mean, std),
+        inputs,
+    )
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
@@ -347,16 +352,16 @@ pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tens
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]
-pub fn rand_with<T: Type>(
-    from: T::Repr,
-    to: T::Repr,
-    shape: impl Shape,
-    dtype: T,
-    device: impl AsDevice,
-) -> Tensor {
-    let dtype = T::boxed_dtype();
+pub fn rand_with<T: ElemType>(from: T, to: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
+    let dtype = T::DType::boxed_dtype();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, Random::<T>::new(from, to), inputs)
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Random::<T::DType>::new(from, to),
+        inputs,
+    )
 }
 
 #[tracing::instrument(ret(level = Level::TRACE))]

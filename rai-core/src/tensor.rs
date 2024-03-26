@@ -124,14 +124,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn rand_with<T: Type>(
-        from: T::Repr,
-        to: T::Repr,
+    pub fn rand_with<T: ElemType>(
+        from: T,
+        to: T,
         shape: impl Shape,
-        dtype: T,
         device: impl AsDevice,
     ) -> Tensor {
-        ops::rand_with(from, to, shape, dtype, device)
+        ops::rand_with(from, to, shape, device)
     }
 
     #[inline]
@@ -145,14 +144,13 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn randn_with<T: Type>(
-        mean: T::Repr,
-        std: T::Repr,
+    pub fn randn_with<T: ElemType>(
+        mean: T,
+        std: T,
         shape: impl Shape,
-        dtype: T,
         device: impl AsDevice,
     ) -> Tensor {
-        ops::randn_with(mean, std, shape, dtype, device)
+        ops::randn_with(mean, std, shape, device)
     }
 
     #[inline]
