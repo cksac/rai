@@ -3,18 +3,18 @@ use crate::{
     U8,
 };
 use once_cell::sync::Lazy;
-use std::{any::TypeId, collections::HashMap, sync::Mutex};
+use std::{any::TypeId, collections::HashMap, sync::RwLock};
 
 #[derive(Debug, Clone)]
 pub struct BackendWrapper<D, P, B> {
     backend: B,
-    phantom: std::marker::PhantomData<(D, P)>,
+    phantom: std::marker::PhantomData<fn(D, P)>,
 }
 
 impl<D, P, B> Eval<dyn Device, dyn Primitive> for BackendWrapper<D, P, B>
 where
-    D: Device + 'static + Sync + Send + Clone,
-    P: Primitive + 'static + Sync + Send + Clone,
+    D: Device + 'static + Clone,
+    P: Primitive + 'static + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
@@ -33,8 +33,8 @@ where
 
 impl<D, P, B> Eval<Box<dyn Device>, Box<dyn Primitive>> for BackendWrapper<D, P, B>
 where
-    D: Device + 'static + Sync + Send + Clone,
-    P: Primitive + 'static + Sync + Send + Clone,
+    D: Device + 'static + Clone,
+    P: Primitive + 'static + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
@@ -166,7 +166,7 @@ macro_rules! register_backend {
     };
 }
 
-static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Lazy::new(|| {
+static EVAL_DISPATCHER: Lazy<RwLock<HashMap<(TypeId, TypeId), DynBackend>>> = Lazy::new(|| {
     let mut rules: HashMap<(TypeId, TypeId), DynBackend> = HashMap::new();
 
     #[cfg(feature = "candle-backend")]
@@ -182,36 +182,36 @@ static EVAL_DISPATCHER: Lazy<Mutex<HashMap<(TypeId, TypeId), DynBackend>>> = Laz
     ))]
     _register::<CandleBackend, crate::Cuda, primitives::FlashAttention>(CandleBackend, rules);
 
-    Mutex::new(rules)
+    RwLock::new(rules)
 });
 
 pub fn register<D, P, B>(backend: B)
 where
-    D: Device + 'static + Sync + Send + Clone,
-    P: Primitive + 'static + Sync + Send + Clone,
+    D: Device + 'static + Clone,
+    P: Primitive + 'static + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
-    let mut dispatcher = EVAL_DISPATCHER.lock().unwrap();
+    let mut dispatcher = EVAL_DISPATCHER.write().unwrap();
     _register::<B, D, P>(backend, &mut dispatcher);
 }
 
 fn _register<B, D, P>(backend: B, dispatcher: &mut HashMap<(TypeId, TypeId), DynBackend>)
 where
-    D: Device + 'static + Sync + Send + Clone,
-    P: Primitive + 'static + Sync + Send + Clone,
+    D: Device + 'static + Clone,
+    P: Primitive + 'static + Clone,
     B: Eval<D, P> + 'static + Clone,
 {
     dispatcher.insert(
         (TypeId::of::<D>(), TypeId::of::<P>()),
         Box::new(BackendWrapper {
             backend,
-            phantom: std::marker::PhantomData::<(D, P)>,
+            phantom: std::marker::PhantomData::<fn(D, P)>,
         }),
     );
 }
 
 pub fn eval_rule(device: &dyn Device, primitive: &dyn Primitive) -> Option<DynBackend> {
-    let dispatcher = EVAL_DISPATCHER.lock().unwrap();
+    let dispatcher = EVAL_DISPATCHER.read().unwrap();
     dispatcher
         .get(&(device.as_any().type_id(), primitive.as_any().type_id()))
         .cloned()

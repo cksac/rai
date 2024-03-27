@@ -13,7 +13,7 @@ use std::{
     sync::RwLock,
 };
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CandleBackend;
 
 type Data = candle_core::Tensor;
@@ -70,7 +70,7 @@ impl TensorLike for candle_core::Tensor {
 
 impl Backend for CandleBackend {
     fn clone_boxed(&self) -> Box<dyn Backend> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 
     fn as_any(&self) -> &dyn Any {
