@@ -24,8 +24,8 @@ fn f(x: &Tensor) -> Tensor {
 
 fn main() {
     let grad_fn = grad(grad(f));
-    let x = Tensor::ones([1], F32, &Cpu);
-    let grad = grad_fn.apply((&x,));
+    let x = &Tensor::ones([1], F32, &Cpu);
+    let grad = grad_fn.apply(x);
     println!("{}", grad.dot_graph());
     println!("{}", grad);
 }
@@ -68,15 +68,19 @@ fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>
     - `cargo run --bin mnist-cnn --release --features=cuda`
 - [phi2](https://github.com/cksac/rai/blob/main/examples/phi2/src/main.rs)
     - `cargo run --bin phi2 --release`
+    - `cargo run --bin phi2 --release --features=cuda`
 - [qwen2](https://github.com/cksac/rai/blob/main/examples/qwen2/src/main.rs)
     - `cargo run --bin qwen2 --release`
+    - `cargo run --bin qwen2 --release --features=cuda`
 - [gemma](https://github.com/cksac/rai/blob/main/examples/gemma/src/main.rs)
     - accept license agreement in https://huggingface.co/google/gemma-2b
     - `pip install huggingface_hub`
     - login to hf `huggingface-cli login`
     - `cargo run --bin gemma --release`
+    - `cargo run --bin gemma --release --features=cuda`
 - [vit](https://github.com/cksac/rai/blob/main/examples/vit/src/main.rs)
     - `cargo run --bin vit --release`
+    - `cargo run --bin vit --release --features=cuda`
 
 ## LICENSE
 This project is licensed under either of
