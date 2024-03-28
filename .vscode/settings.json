@@ -42,6 +42,7 @@
         "softmax",
         "thiserror",
         "unsqueeze",
+        "varmap",
         "vjps"
     ],
     "rust-analyzer.linkedProjects": [

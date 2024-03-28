@@ -59,12 +59,11 @@ pub mod rai_mnist {
         labels: &Tensor,
     ) -> Tensor {
         let logits = model.forward(&(input.clone(), true));
-        let loss = logits
+        logits
             .log_softmax(-1)
             .gather(-1, labels.unsqueeze(-1))
             .neg()
-            .mean(..);
-        loss
+            .mean(..)
     }
 
     pub fn training(num_epochs: usize, learning_rate: f64, batch_size: usize, gpu_id: usize) {
@@ -173,7 +172,7 @@ pub mod candle_mnist {
     }
 
     fn loss_fn(logits: &Tensor, labels: &Tensor) -> Result<Tensor> {
-        let log_sm = ops::log_softmax(&logits, D::Minus1)?;
+        let log_sm = ops::log_softmax(logits, D::Minus1)?;
         let loss = log_sm
             .gather(&labels.unsqueeze(D::Minus1)?, D::Minus1)?
             .neg()?
@@ -196,7 +195,7 @@ pub mod candle_mnist {
         let dtype = DType::F32;
 
         let varmap = VarMap::new();
-        let vs = VarBuilder::from_varmap(&varmap, dtype, &device);
+        let vs = VarBuilder::from_varmap(&varmap, dtype, device);
         let model = ConvNet::new(vs.clone(), num_classes).unwrap();
         let mut optimizer = candle_nn::SGD::new(varmap.all_vars(), learning_rate)?;
 
