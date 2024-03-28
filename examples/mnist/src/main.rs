@@ -1,12 +1,11 @@
 use rai::{
-    eval,
+    device, eval,
     nn::{Linear, Module, TrainableModule},
     opt::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    utils::cuda_enabled,
-    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Shape, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Device, Func, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use std::{fmt::Debug, time::Instant};
@@ -79,7 +78,8 @@ fn main() {
     let num_epochs = 200;
     let learning_rate = 0.05;
 
-    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
+    let device: Box<dyn Device> = device::cuda_if_available(0);
+    let device = device.as_ref();
     println!("device: {:?}", device);
     let dtype = F32;
 
@@ -97,7 +97,7 @@ fn main() {
         let start = Instant::now();
         let (loss, _logits) = train_step(&mut optimizer, &model, train_images, train_labels);
         let loss = loss.as_scalar(F32);
-        let test_logits: Tensor = model.forward(test_images);
+        let test_logits = model.forward(test_images);
         let sum_ok = test_logits
             .argmax(-1)
             .to_dtype(test_labels)

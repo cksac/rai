@@ -4,16 +4,16 @@ use std::collections::HashMap;
 
 pub struct SDG {
     params: Vec<Tensor>,
-    lr: f32,
-    momentum: Option<f32>,
-    weight_decay: Option<f32>,
-    dampening: Option<f32>,
-    nesterov: Option<f32>,
+    lr: f64,
+    momentum: Option<f64>,
+    weight_decay: Option<f64>,
+    dampening: Option<f64>,
+    nesterov: Option<f64>,
     state: HashMap<usize, Tensor>,
 }
 
 impl SDG {
-    pub fn new(params: impl TensorIter, lr: f32) -> Self {
+    pub fn new(params: impl TensorIter, lr: f64) -> Self {
         Self {
             params: params.tensor_iter().cloned().collect(),
             lr,
@@ -25,22 +25,22 @@ impl SDG {
         }
     }
 
-    pub fn with_momentum(mut self, momentum: f32) -> Self {
+    pub fn with_momentum(mut self, momentum: f64) -> Self {
         self.momentum = Some(momentum);
         self
     }
 
-    pub fn with_weight_decay(mut self, weight_decay: f32) -> Self {
+    pub fn with_weight_decay(mut self, weight_decay: f64) -> Self {
         self.weight_decay = Some(weight_decay);
         self
     }
 
-    pub fn with_dampening(mut self, dampening: f32) -> Self {
+    pub fn with_dampening(mut self, dampening: f64) -> Self {
         self.dampening = Some(dampening);
         self
     }
 
-    pub fn with_nesterov(mut self, nesterov: f32) -> Self {
+    pub fn with_nesterov(mut self, nesterov: f64) -> Self {
         self.nesterov = Some(nesterov);
         self
     }

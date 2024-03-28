@@ -1,6 +1,6 @@
 use clap::Parser;
 use hf_hub::{api::sync::Api, Repo, RepoType};
-use rai::{nn::Module, utils::cuda_enabled, AsDevice, Cpu, Cuda, Device, Tensor, Type, F32};
+use rai::{device, nn::Module, AsDevice, Device, Tensor, Type, F32};
 use rai_models::cv::vit::{ImageClassificationConfig, ImageClassificationModel};
 use std::time::Instant;
 
@@ -60,7 +60,8 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
+    let device: Box<dyn Device> = device::cuda_if_available(0);
+    let device = device.as_ref();
     let dtype = F32;
     let (cfg, model) = load_model(dtype, device);
     let image = load_image(args.image_url, dtype, device);

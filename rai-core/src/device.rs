@@ -1,4 +1,4 @@
-use crate::{primitives::ToDevice, Primitive, Tensor};
+use crate::{primitives::ToDevice, utils::cuda_enabled, Primitive, Tensor};
 use std::{any::Any, fmt::Debug};
 
 pub trait Device: Debug {
@@ -44,6 +44,24 @@ impl<'a> Device for &'a dyn Device {
 
     fn primitive_to_device(&self) -> Box<dyn Primitive> {
         Device::primitive_to_device(*self)
+    }
+}
+
+impl Device for Box<dyn Device> {
+    fn as_any(&self) -> &dyn Any {
+        self.as_ref().as_any()
+    }
+
+    fn clone_boxed(&self) -> Box<dyn Device> {
+        self.as_ref().clone_boxed()
+    }
+
+    fn eq(&self, rhs: &dyn Device) -> bool {
+        self.as_ref().eq(rhs)
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        self.as_ref().primitive_to_device()
     }
 }
 
@@ -143,5 +161,13 @@ impl Device for Cuda {
 
     fn primitive_to_device(&self) -> Box<dyn Primitive> {
         Box::new(ToDevice::new(*self))
+    }
+}
+
+pub fn cuda_if_available(id: usize) -> Box<dyn Device> {
+    if cuda_enabled() {
+        Box::new(Cuda(id))
+    } else {
+        Box::new(Cpu)
     }
 }

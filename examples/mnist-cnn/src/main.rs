@@ -1,12 +1,11 @@
 use rai::{
-    eval,
+    device, eval,
     nn::{Conv2d, Conv2dConfig, Dropout, Linear, Module, TrainableModule},
     opt::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    utils::cuda_enabled,
-    value_and_grad, AsDevice, Aux, Cpu, Cuda, Device, Func, Module, Shape, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Device, Func, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -85,7 +84,8 @@ fn main() {
     let learning_rate = 0.05;
     let batch_size = 64;
 
-    let device: &dyn Device = if cuda_enabled() { &Cuda(0) } else { &Cpu };
+    let device: Box<dyn Device> = device::cuda_if_available(0);
+    let device = device.as_ref();
     println!("device: {:?}", device);
     let dtype = F32;
 
@@ -113,7 +113,7 @@ fn main() {
             sum_loss += loss;
         }
         let avg_loss = sum_loss / n_batches as f32;
-        let test_logits: Tensor = model.fwd(test_images, false);
+        let test_logits = model.fwd(test_images, false);
         let sum_ok = test_logits
             .argmax(-1)
             .to_dtype(test_labels)

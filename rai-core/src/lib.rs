@@ -12,7 +12,7 @@ pub use tensor::Tensor;
 mod dtype;
 pub use dtype::{AsDType, DType, ElemType, Type, BF16, F16, F32, F64, I64, U32, U8};
 
-mod device;
+pub mod device;
 pub use device::{AsDevice, Cpu, Cuda, Device};
 
 mod backend;
