@@ -4,8 +4,8 @@ use rai_core::{AsDevice, Cpu, Cuda};
 fn test_device() {
     let cpu = Cpu;
     let cpu_ref = &Cpu;
-    let cuda0 = Cuda(0);
-    let cuda1 = Cuda(1);
+    let cuda0 = Cuda::new(0);
+    let cuda1 = Cuda::new(1);
     assert_ne!(cpu.device(), cuda0.device());
     assert_ne!(cuda0.device(), cuda1.device());
     assert_eq!(cuda0.device(), cuda0.device());

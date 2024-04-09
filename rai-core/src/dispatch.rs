@@ -129,6 +129,8 @@ macro_rules! register_backend {
         _register::<$backend, $device, primitives::ToDevice<Cpu>>($backend, &mut $rules);
         #[cfg(feature = "cuda")]
         _register::<$backend, $device, primitives::ToDevice<crate::Cuda>>($backend, &mut $rules);
+        #[cfg(feature = "metal")]
+        _register::<$backend, $device, primitives::ToDevice<crate::Metal>>($backend, &mut $rules);
 
         // indexing
         _register::<$backend, $device, primitives::Gather>($backend, &mut $rules);
@@ -174,6 +176,9 @@ static EVAL_DISPATCHER: Lazy<RwLock<HashMap<(TypeId, TypeId), DynBackend>>> = La
 
     #[cfg(all(feature = "candle-backend", feature = "cuda"))]
     register_backend!(CandleBackend, crate::Cuda, rules);
+
+    #[cfg(all(feature = "candle-backend", feature = "metal"))]
+    register_backend!(CandleBackend, crate::Metal, rules);
 
     #[cfg(all(
         feature = "candle-backend",

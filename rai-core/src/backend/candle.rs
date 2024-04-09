@@ -1,8 +1,7 @@
 use crate::{
-    primitives, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Shape, Tensor, Type,
-    BF16, F16, F32, F64, I64, U32, U8,
+    device::Metal, primitives, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Shape,
+    Tensor, Type, BF16, F16, F32, F64, I64, U32, U8,
 };
-use candle_core::{backend::BackendDevice, CudaDevice};
 use half::{bf16, f16};
 use once_cell::sync::Lazy;
 use safetensors::View;
@@ -131,9 +130,6 @@ impl From<I64> for candle_core::DType {
     }
 }
 
-static CUDA_DEVICES: Lazy<RwLock<HashMap<usize, candle_core::Device>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-
 trait WithDevice {
     fn with_device<F>(&self, func: F)
     where
@@ -141,6 +137,12 @@ trait WithDevice {
 }
 
 static CPU_DEV: candle_core::Device = candle_core::Device::Cpu;
+
+static CUDA_DEVICES: Lazy<RwLock<HashMap<usize, candle_core::Device>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+static METAL_DEVICES: Lazy<RwLock<HashMap<usize, candle_core::Device>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 impl WithDevice for Cpu {
     #[inline(always)]
@@ -159,13 +161,33 @@ impl WithDevice for Cuda {
         for<'a> F: FnOnce(&'a candle_core::Device),
     {
         let devices = CUDA_DEVICES.read().unwrap();
-        if let Some(dev) = devices.get(&self.0) {
+        if let Some(dev) = devices.get(&self.id()) {
             func(dev);
         } else {
             drop(devices);
             let mut devices = CUDA_DEVICES.write().unwrap();
-            let dev = devices.entry(self.0).or_insert_with(|| {
-                candle_core::Device::Cuda(CudaDevice::new(self.0).expect("cuda device"))
+            let dev = devices
+                .entry(self.id())
+                .or_insert_with(|| candle_core::Device::new_cuda(self.id()).expect("cuda device"));
+            func(dev);
+        }
+    }
+}
+
+impl WithDevice for Metal {
+    #[inline(always)]
+    fn with_device<F>(&self, func: F)
+    where
+        for<'a> F: FnOnce(&'a candle_core::Device),
+    {
+        let devices = METAL_DEVICES.read().unwrap();
+        if let Some(dev) = devices.get(&self.id()) {
+            func(dev);
+        } else {
+            drop(devices);
+            let mut devices = METAL_DEVICES.write().unwrap();
+            let dev = devices.entry(self.id()).or_insert_with(|| {
+                candle_core::Device::new_metal(self.id()).expect("metal device")
             });
             func(dev);
         }

@@ -142,7 +142,17 @@ impl Device for Cpu {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Cuda(pub usize);
+pub struct Cuda(usize);
+
+impl Cuda {
+    pub fn new(id: usize) -> Self {
+        Self(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
 
 impl Device for Cuda {
     fn as_any(&self) -> &dyn Any {
@@ -166,8 +176,41 @@ impl Device for Cuda {
 
 pub fn cuda_if_available(id: usize) -> Box<dyn Device> {
     if cuda_enabled() {
-        Box::new(Cuda(id))
+        Box::new(Cuda::new(id))
     } else {
         Box::new(Cpu)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Metal(usize);
+
+impl Metal {
+    pub fn new(id: usize) -> Self {
+        Self(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
+
+impl Device for Metal {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_boxed(&self) -> Box<dyn Device> {
+        Box::new(*self)
+    }
+
+    fn eq(&self, rhs: &dyn Device) -> bool {
+        rhs.as_any()
+            .downcast_ref::<Self>()
+            .map_or(false, |other| self == other)
+    }
+
+    fn primitive_to_device(&self) -> Box<dyn Primitive> {
+        Box::new(ToDevice::new(*self))
     }
 }
