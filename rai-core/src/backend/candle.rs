@@ -131,111 +131,111 @@ impl From<I64> for candle_core::DType {
     }
 }
 
-impl From<Cpu> for candle_core::Device {
-    fn from(_: Cpu) -> Self {
-        candle_core::Device::Cpu
-    }
-}
-
-impl<'a> From<&'a Cpu> for candle_core::Device {
-    fn from(_: &'a Cpu) -> Self {
-        candle_core::Device::Cpu
-    }
-}
-
 static CUDA_DEVICES: Lazy<RwLock<HashMap<usize, candle_core::Device>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
-fn cuda_device(id: usize) -> candle_core::Device {
-    let devices = CUDA_DEVICES.read().unwrap();
-    if let Some(dev) = devices.get(&id) {
-        return dev.clone();
-    }
-    drop(devices);
-    let mut devices = CUDA_DEVICES.write().unwrap();
-    let dev = devices
-        .entry(id)
-        .or_insert_with(|| candle_core::Device::Cuda(CudaDevice::new(id).expect("cuda device")));
-    dev.clone()
+trait WithDevice {
+    fn with_device<F>(&self, func: F)
+    where
+        for<'a> F: FnOnce(&'a candle_core::Device);
 }
 
-impl From<Cuda> for candle_core::Device {
-    fn from(device: Cuda) -> Self {
-        cuda_device(device.0)
+static CPU_DEV: candle_core::Device = candle_core::Device::Cpu;
+
+impl WithDevice for Cpu {
+    #[inline(always)]
+    fn with_device<F>(&self, func: F)
+    where
+        for<'a> F: FnOnce(&'a candle_core::Device),
+    {
+        func(&CPU_DEV);
     }
 }
 
-impl<'a> From<&'a Cuda> for candle_core::Device {
-    fn from(device: &'a Cuda) -> Self {
-        cuda_device(device.0)
+impl WithDevice for Cuda {
+    #[inline(always)]
+    fn with_device<F>(&self, func: F)
+    where
+        for<'a> F: FnOnce(&'a candle_core::Device),
+    {
+        let devices = CUDA_DEVICES.read().unwrap();
+        if let Some(dev) = devices.get(&self.0) {
+            func(dev);
+        } else {
+            drop(devices);
+            let mut devices = CUDA_DEVICES.write().unwrap();
+            let dev = devices.entry(self.0).or_insert_with(|| {
+                candle_core::Device::Cuda(CudaDevice::new(self.0).expect("cuda device"))
+            });
+            func(dev);
+        }
     }
 }
 
 impl<D, T> Eval<D, primitives::Full<T>> for CandleBackend
 where
-    D: Device,
-    for<'a> &'a D: Into<candle_core::Device>,
+    D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::WithDType,
 {
     fn eval(&self, device: &D, primitive: &primitives::Full<T>, _: &[Tensor], output: &Tensor) {
-        let device = &Into::<candle_core::Device>::into(device);
-        let t = candle_core::Tensor::full(primitive.val, output.shape(), device).unwrap();
-        output.set_data(t);
+        device.with_device(|dev| {
+            let t = candle_core::Tensor::full(primitive.val, output.shape(), dev).unwrap();
+            output.set_data(t);
+        });
     }
 }
 
 impl<D, T> Eval<D, primitives::Normal<T>> for CandleBackend
 where
-    D: Device,
-    for<'a> &'a D: Into<candle_core::Device>,
+    D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::FloatDType,
 {
     fn eval(&self, device: &D, primitive: &primitives::Normal<T>, _: &[Tensor], output: &Tensor) {
-        let device = &Into::<candle_core::Device>::into(device);
-        let t = candle_core::Tensor::randn(primitive.mean, primitive.std, output.shape(), device);
-        let t = t.unwrap();
-        output.set_data(t);
+        device.with_device(|dev| {
+            let t = candle_core::Tensor::randn(primitive.mean, primitive.std, output.shape(), dev);
+            let t = t.unwrap();
+            output.set_data(t);
+        });
     }
 }
 
 impl<D, T> Eval<D, primitives::Random<T>> for CandleBackend
 where
-    D: Device,
-    for<'a> &'a D: Into<candle_core::Device>,
+    D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::FloatDType,
 {
     fn eval(&self, device: &D, primitive: &primitives::Random<T>, _: &[Tensor], output: &Tensor) {
-        let device = &Into::<candle_core::Device>::into(device);
-        let t = candle_core::Tensor::rand(primitive.from, primitive.to, output.shape(), device);
-        let t = t.unwrap();
-        output.set_data(t);
+        device.with_device(|dev| {
+            let t = candle_core::Tensor::rand(primitive.from, primitive.to, output.shape(), dev);
+            let t = t.unwrap();
+            output.set_data(t);
+        });
     }
 }
 
 impl<D, T> Eval<D, primitives::Arange<T>> for CandleBackend
 where
-    D: Device,
-    for<'a> &'a D: Into<candle_core::Device>,
+    D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::WithDType,
 {
     fn eval(&self, device: &D, primitive: &primitives::Arange<T>, _: &[Tensor], output: &Tensor) {
-        let device = &Into::<candle_core::Device>::into(device);
-        let start = primitive.start;
-        let end = primitive.stop;
-        let step = primitive.step;
-        let t = candle_core::Tensor::arange_step::<T::Repr>(start, end, step, device).unwrap();
-        output.set_data(t);
+        device.with_device(|dev| {
+            let start = primitive.start;
+            let end = primitive.stop;
+            let step = primitive.step;
+            let t = candle_core::Tensor::arange_step::<T::Repr>(start, end, step, dev).unwrap();
+            output.set_data(t);
+        });
     }
 }
 
 impl<D, T> Eval<D, primitives::FromArray<T>> for CandleBackend
 where
-    D: Device,
-    for<'a> &'a D: Into<candle_core::Device>,
+    D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::WithDType,
 {
@@ -246,12 +246,13 @@ where
         _: &[Tensor],
         output: &Tensor,
     ) {
-        let device = &Into::<candle_core::Device>::into(device);
-        let t = candle_core::Tensor::new(primitive.data.as_slice(), device)
-            .unwrap()
-            .reshape(output.shape())
-            .unwrap();
-        output.set_data(t);
+        device.with_device(|dev| {
+            let t = candle_core::Tensor::new(primitive.data.as_slice(), dev)
+                .unwrap()
+                .reshape(output.shape())
+                .unwrap();
+            output.set_data(t);
+        });
     }
 }
 
@@ -654,8 +655,7 @@ where
 impl<D1, D2> Eval<D1, primitives::ToDevice<D2>> for CandleBackend
 where
     D1: Device,
-    D2: Device + Clone,
-    for<'a> &'a D2: Into<candle_core::Device>,
+    D2: Device + Clone + WithDevice,
 {
     fn eval(
         &self,
@@ -664,12 +664,13 @@ where
         inputs: &[Tensor],
         output: &Tensor,
     ) {
-        let device = &Into::<candle_core::Device>::into(&primitive.device);
-        let x = &inputs[0];
-        let t = x.get_data::<Data>().unwrap();
-        let t = t.deref();
-        let t = t.to_device(device).unwrap();
-        output.set_data(t)
+        primitive.device.with_device(|dev| {
+            let x = &inputs[0];
+            let t = x.get_data::<Data>().unwrap();
+            let t = t.deref();
+            let t = t.to_device(dev).unwrap();
+            output.set_data(t)
+        });
     }
 }
 
