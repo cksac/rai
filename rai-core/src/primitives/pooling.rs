@@ -166,7 +166,7 @@ impl Primitive for AvgPool1d {
         let x = &primals[0];
         let [_n, _c, l] = x.shape_before::<3>();
         let cotan_upsampled = cotangent.upsample_nearest1d(l);
-        let cotan_x = cotan_upsampled * (1.0f64 / self.kernel_size as f64);
+        let cotan_x = cotan_upsampled * (1.0f32 / self.kernel_size as f32);
         vec![cotan_x]
     }
 }
@@ -222,7 +222,7 @@ impl Primitive for AvgPool2d {
         let x = &primals[0];
         let [_n, _c, h, w] = x.shape_before::<4>();
         let cotan_upsampled = cotangent.upsample_nearest2d([h, w]);
-        let cotan_x = cotan_upsampled * (1.0f64 / (self.kernel_size.0 * self.kernel_size.1) as f64);
+        let cotan_x = cotan_upsampled * (1.0f32 / (self.kernel_size.0 * self.kernel_size.1) as f32);
         vec![cotan_x]
     }
 }

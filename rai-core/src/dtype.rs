@@ -4,7 +4,11 @@ use crate::{
 };
 use half::{bf16, f16};
 use num_traits::Float;
-use std::{any::Any, fmt::Debug};
+use std::{
+    any::Any,
+    fmt::Debug,
+    ops::{Add, Div, Mul, Sub},
+};
 
 pub trait ElemType: Clone + Copy + Debug + PartialEq + 'static {
     type DType: Type<Repr = Self>;
@@ -15,6 +19,10 @@ pub trait ElemType: Clone + Copy + Debug + PartialEq + 'static {
     fn from_f64(val: f64) -> Option<Self> {
         None
     }
+}
+
+pub trait FloatElemType: ElemType + Add + Sub + Div + Mul {
+    fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self>;
 }
 
 pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
@@ -259,6 +267,24 @@ impl ElemType for f16 {
     }
 }
 
+impl FloatElemType for f16 {
+    fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
+        match steps {
+            0 => vec![],
+            1 => vec![start],
+            s => {
+                let delta = (end - start).to_f64() / (s - 1) as f64;
+                let mut data = (1..s - 1)
+                    .map(|i| start + f16::from_f64(i as f64 * delta))
+                    .collect::<Vec<_>>();
+                data.insert(0, start);
+                data.push(end);
+                data
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct F16;
 impl Type for F16 {
@@ -290,6 +316,24 @@ impl ElemType for bf16 {
 
     fn from_f64(val: f64) -> Option<Self> {
         Some(bf16::from_f64(val))
+    }
+}
+
+impl FloatElemType for bf16 {
+    fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
+        match steps {
+            0 => vec![],
+            1 => vec![start],
+            s => {
+                let delta = (end - start).to_f64() / (s - 1) as f64;
+                let mut data = (1..s - 1)
+                    .map(|i| start + bf16::from_f64(i as f64 * delta))
+                    .collect::<Vec<_>>();
+                data.insert(0, start);
+                data.push(end);
+                data
+            }
+        }
     }
 }
 
@@ -327,6 +371,24 @@ impl ElemType for f32 {
     }
 }
 
+impl FloatElemType for f32 {
+    fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
+        match steps {
+            0 => vec![],
+            1 => vec![start],
+            s => {
+                let delta = ((end - start) as f64) / (s - 1) as f64;
+                let mut data = (1..s - 1)
+                    .map(|i| start + (i as f64 * delta) as f32)
+                    .collect::<Vec<_>>();
+                data.insert(0, start);
+                data.push(end);
+                data
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct F32;
 impl Type for F32 {
@@ -358,6 +420,24 @@ impl ElemType for f64 {
 
     fn from_f64(val: f64) -> Option<Self> {
         Some(val)
+    }
+}
+
+impl FloatElemType for f64 {
+    fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
+        match steps {
+            0 => vec![],
+            1 => vec![start],
+            s => {
+                let delta = (end - start) / (s - 1) as f64;
+                let mut data = (1..s - 1)
+                    .map(|i| start + i as f64 * delta)
+                    .collect::<Vec<_>>();
+                data.insert(0, start);
+                data.push(end);
+                data
+            }
+        }
     }
 }
 

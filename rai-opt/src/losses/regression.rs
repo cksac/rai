@@ -1,5 +1,9 @@
 use rai_core::Tensor;
 
+pub fn l1_loss(predictions: &Tensor, targets: &Tensor) -> Tensor {
+    (predictions - targets).abs()
+}
+
 pub fn squared_error(predictions: &Tensor, targets: &Tensor) -> Tensor {
     let errors = &(predictions - targets);
     // TODO: use integer power error.powi(2);

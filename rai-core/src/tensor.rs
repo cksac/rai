@@ -6,7 +6,7 @@ use crate::{
         MaxPool1dArgs, MaxPool2dArgs, ReduceArgs, ToPair, VarArgs,
     },
     utils::{self, dot_graph},
-    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, Primitive, Shape, Type,
+    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, Primitive, Shape, Type,
 };
 use safetensors::tensor::TensorView;
 use std::{
@@ -159,12 +159,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor
-    where
-        D::Repr:
-            std::ops::Sub<D::Repr, Output = D::Repr> + std::ops::Div<D::Repr, Output = D::Repr>,
-        D::Repr: Into<f64> + Copy,
-    {
+    pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor {
         ops::arange(args, device)
     }
 
@@ -175,6 +170,16 @@ impl Tensor {
         device: impl AsDevice,
     ) -> Tensor {
         ops::from_array(data, shape, device)
+    }
+
+    #[inline]
+    pub fn linspace<T: FloatElemType>(
+        start: T,
+        end: T,
+        steps: usize,
+        device: impl AsDevice,
+    ) -> Tensor {
+        ops::linspace(start, end, steps, device)
     }
 
     /// see [`ops::from_safetensor`](ops::from_safetensor)
@@ -856,5 +861,28 @@ impl<'a> safetensors::View for &'a Tensor {
     fn data_len(&self) -> usize {
         // number of elements * byte size of element
         self.0.shape.size() * self.0.dtype.size_of_elem()
+    }
+}
+
+// custom drop implementation to avoid stack overflow in recursive drop
+impl Drop for TensorImpl {
+    fn drop(&mut self) {
+        let mut inputs = self.inputs.borrow_mut();
+        let inputs = inputs.drain(..);
+        let mut tensors = Vec::new();
+        for input in inputs {
+            if let Ok(t) = Rc::try_unwrap(input.0) {
+                tensors.push(t);
+            }
+        }
+        while let Some(t) = tensors.pop() {
+            let mut inputs = t.inputs.borrow_mut();
+            let inputs = inputs.drain(..);
+            for input in inputs {
+                if let Ok(t) = Rc::try_unwrap(input.0) {
+                    tensors.push(t);
+                }
+            }
+        }
     }
 }

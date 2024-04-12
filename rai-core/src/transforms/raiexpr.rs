@@ -15,19 +15,6 @@ where
     let output = func.apply(input);
     let out_tensors = output.tensors();
 
-    let mut tape = BTreeSet::new();
-    let input_set = in_tensors.tensor_iter().cloned().collect::<BTreeSet<_>>();
-
-    fn recurse(tape: &mut BTreeSet<Tensor>, inputs: &BTreeSet<Tensor>, t: &Tensor) {
-        for input in t.inputs().iter() {
-            recurse(tape, inputs, input);
-        }
-        if tape.contains(t) || inputs.contains(t) {
-            return;
-        }
-        tape.insert(t.clone());
-    }
-
     fn id(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {
         let id = *id_map.entry(t.id()).or_insert_with(|| {
             *id_seq += 1;
@@ -48,8 +35,23 @@ where
         )
     }
 
+    // use iterative instead of recursive to avoid stack overflow
+    // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
+    let input_set = in_tensors.tensor_iter().cloned().collect::<BTreeSet<_>>();
+    let mut tape = BTreeSet::new();
+    let mut stack = Vec::new();
     for output in out_tensors.tensor_iter() {
-        recurse(&mut tape, &input_set, output);
+        stack.push(output.clone());
+    }
+
+    while let Some(t) = stack.pop() {
+        if tape.contains(&t) || input_set.contains(&t) {
+            continue;
+        }
+        tape.insert(t.clone());
+        for input in t.inputs().iter() {
+            stack.push(input.clone());
+        }
     }
 
     let inputs = in_tensors

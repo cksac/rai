@@ -29,23 +29,28 @@ where
         self.1
     }
 }
-
 pub fn eval<T: EvalArgs>(args: T) {
-    fn recurse(tape: &mut BTreeSet<Tensor>, t: &Tensor) {
-        if t.is_evaluated() || tape.contains(t) {
-            return;
-        }
-        for input in t.inputs().iter() {
-            recurse(tape, input);
+    let mut tape = BTreeSet::new();
+    let mut stack = Vec::new();
+
+    // use iterative instead of recursive to avoid stack overflow
+    // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
+    for output in args.outputs() {
+        stack.push(output.clone());
+    }
+
+    while let Some(t) = stack.pop() {
+        if t.is_evaluated() || tape.contains(&t) {
+            continue;
         }
         tape.insert(t.clone());
+        for input in t.inputs().iter() {
+            stack.push(input.clone());
+        }
     }
 
-    let mut tape = BTreeSet::new();
-    for output in args.outputs() {
-        recurse(&mut tape, output);
-    }
-
+    //dbg!(tape.len());
+    // Process the sorted tensors in the tape
     for t in tape.into_iter() {
         {
             let device = t.device().clone_boxed();

@@ -9,7 +9,7 @@ use crate::{
         Transpose, UpsampleNearest1d, UpsampleNearest2d, Where,
     },
     shape::Dims,
-    AsDType, AsDevice, Dim, ElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
+    AsDType, AsDevice, Dim, ElemType, FloatElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
 };
 use half::{bf16, f16};
 use safetensors::tensor::TensorView;
@@ -489,6 +489,12 @@ pub fn from_array<T: ElemType>(
         FromArray::<T::DType>::new(data),
         inputs,
     )
+}
+
+#[tracing::instrument(ret(level = Level::TRACE))]
+pub fn linspace<T: FloatElemType>(start: T, end: T, steps: usize, device: impl AsDevice) -> Tensor {
+    let data = T::linspace(start, end, steps);
+    from_array(data, [steps], device)
 }
 
 // Note: modified from candle candle_core::safetensors::convert_slice

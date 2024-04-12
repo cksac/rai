@@ -1,16 +1,30 @@
 use crate::{ty_kind, vjp, Func, Shape, Tensor, TensorIter, F64};
-use std::collections::{hash_map::RandomState, HashSet};
+use std::collections::{hash_map::RandomState, BTreeSet, HashSet};
 
 pub fn dprint<T: TensorIter>(args: T) {
     println!("{}", dot_graph(args));
 }
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
-    let mut tape = Vec::new();
+    let mut tape = BTreeSet::new();
+    let mut stack = Vec::new();
+
+    // use iterative instead of recursive to avoid stack overflow
+    // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
     let mut output_set = HashSet::new();
     for output in args.tensor_iter() {
+        stack.push(output.clone());
         output_set.insert(output.id());
-        depth_first_traversal(&mut tape, output);
+    }
+
+    while let Some(t) = stack.pop() {
+        if tape.contains(&t) {
+            continue;
+        }
+        tape.insert(t.clone());
+        for input in t.inputs().iter() {
+            stack.push(input.clone());
+        }
     }
 
     let nodes: HashSet<String, RandomState> = HashSet::from_iter(tape.iter().map(|tensor| {
@@ -47,16 +61,6 @@ pub fn dot_graph<T: TensorIter>(args: T) -> String {
 
     dot.push('}');
     dot
-}
-
-fn depth_first_traversal(tape: &mut Vec<Tensor>, tensor: &Tensor) {
-    if tape.contains(tensor) {
-        return;
-    }
-    for input in tensor.inputs().iter() {
-        depth_first_traversal(tape, input);
-    }
-    tape.push(tensor.clone());
 }
 
 pub fn accelerate_enabled() -> bool {

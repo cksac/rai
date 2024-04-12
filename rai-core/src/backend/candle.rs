@@ -339,6 +339,11 @@ impl<D: Device> Eval<D, primitives::MatMul> for CandleBackend {
         let t1 = t1.deref();
         let t2 = t2.deref();
         let t = t1.matmul(t2).unwrap();
+        // let t = t1
+        //     .contiguous()
+        //     .unwrap()
+        //     .matmul(&t2.contiguous().unwrap())
+        //     .unwrap();
         output.set_data(t);
     }
 }
