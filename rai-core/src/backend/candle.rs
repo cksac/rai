@@ -330,20 +330,120 @@ impl<D: Device> Eval<D, primitives::Div> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::MatMul> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::MatMul, inputs: &[Tensor], output: &Tensor) {
+trait MatMulCheck {
+    fn check_matmul(
+        &self,
+        lhs: &[usize],
+        rhs: &[usize],
+        lhs_stride: &[usize],
+        rhs_stride: &[usize],
+    ) -> (bool, bool);
+}
+
+impl MatMulCheck for Cpu {
+    // TODO: update check logic for mkl, accelerate by reference candle
+    fn check_matmul(
+        &self,
+        lhs: &[usize],
+        rhs: &[usize],
+        lhs_stride: &[usize],
+        rhs_stride: &[usize],
+    ) -> (bool, bool) {
+        let m = lhs[lhs.len() - 2];
+        let k = lhs[lhs.len() - 1];
+        let n = rhs[rhs.len() - 1];
+        let rhs_m1 = rhs_stride[rhs_stride.len() - 1];
+        let rhs_m2 = rhs_stride[rhs_stride.len() - 2];
+        let lhs_m1 = lhs_stride[lhs_stride.len() - 1];
+        let lhs_m2 = lhs_stride[lhs_stride.len() - 2];
+        let l_stride_ok = (lhs_m1 == 1 && lhs_m2 == k) || (lhs_m1 == m && lhs_m2 == 1);
+        let r_stride_ok = (rhs_m1 == 1 && rhs_m2 == n) || (rhs_m1 == k && rhs_m2 == 1);
+        (l_stride_ok, r_stride_ok)
+    }
+}
+
+impl MatMulCheck for Cuda {
+    fn check_matmul(
+        &self,
+        lhs: &[usize],
+        rhs: &[usize],
+        lhs_stride: &[usize],
+        rhs_stride: &[usize],
+    ) -> (bool, bool) {
+        let m = lhs[lhs.len() - 2];
+        let k = lhs[lhs.len() - 1];
+        let n = rhs[rhs.len() - 1];
+        let rhs_m1 = rhs_stride[rhs_stride.len() - 1];
+        let rhs_m2 = rhs_stride[rhs_stride.len() - 2];
+        let lhs_m1 = lhs_stride[lhs_stride.len() - 1];
+        let lhs_m2 = lhs_stride[lhs_stride.len() - 2];
+        let l_stride_ok = (lhs_m1 == 1 && lhs_m2 == k) || (lhs_m1 == m && lhs_m2 == 1);
+        let r_stride_ok = (rhs_m1 == 1 && rhs_m2 == n) || (rhs_m1 == k && rhs_m2 == 1);
+        (l_stride_ok, r_stride_ok)
+    }
+}
+
+impl MatMulCheck for Metal {
+    fn check_matmul(
+        &self,
+        lhs: &[usize],
+        rhs: &[usize],
+        lhs_stride: &[usize],
+        rhs_stride: &[usize],
+    ) -> (bool, bool) {
+        let m = lhs[lhs.len() - 2];
+        let k = lhs[lhs.len() - 1];
+        let n = rhs[rhs.len() - 1];
+        let rhs_m1 = rhs_stride[rhs_stride.len() - 1];
+        let rhs_m2 = rhs_stride[rhs_stride.len() - 2];
+        let lhs_m1 = lhs_stride[lhs_stride.len() - 1];
+        let lhs_m2 = lhs_stride[lhs_stride.len() - 2];
+        let l_stride_ok = (lhs_m1 == 1 && lhs_m2 == k) || (lhs_m1 == m && lhs_m2 == 1);
+        let r_stride_ok = (rhs_m1 == 1 && rhs_m2 == n) || (rhs_m1 == k && rhs_m2 == 1);
+        (l_stride_ok, r_stride_ok)
+    }
+}
+
+impl<D: Device + MatMulCheck> Eval<D, primitives::MatMul> for CandleBackend {
+    fn eval(&self, device: &D, _: &primitives::MatMul, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
         let t2 = rhs.get_data::<Data>().unwrap();
-        let t1 = t1.deref();
-        let t2 = t2.deref();
-        let t = t1.matmul(t2).unwrap();
-        // let t = t1
-        //     .contiguous()
-        //     .unwrap()
-        //     .matmul(&t2.contiguous().unwrap())
-        //     .unwrap();
+        let t1_ref = t1.deref();
+        let t2_ref = t2.deref();
+        // candle only allow matmul with compatible tensors
+        let (l_stride_ok, r_stride_ok) = device.check_matmul(
+            t1_ref.shape().dims(),
+            t2_ref.shape().dims(),
+            t1_ref.stride(),
+            t2_ref.stride(),
+        );
+        // set a contiguous tensor to lhs and rhs?
+        let t = match (l_stride_ok, r_stride_ok) {
+            (true, true) => t1_ref.matmul(&t2_ref).unwrap(),
+            (true, false) => {
+                let t2_c = t2_ref.contiguous().unwrap();
+                drop(t2);
+                rhs.set_data(t2_c.clone());
+                t1_ref.matmul(&t2_c).unwrap()
+            }
+            (false, true) => {
+                let t1_c = t1_ref.contiguous().unwrap();
+                drop(t1);
+                lhs.set_data(t1_c.clone());
+                t1_c.matmul(t2_ref).unwrap()
+            }
+            (false, false) => {
+                let t1_c = t1_ref.contiguous().unwrap();
+                let t2_c = t2_ref.contiguous().unwrap();
+                drop(t1);
+                drop(t2);
+                lhs.set_data(t1_c.clone());
+                rhs.set_data(t2_c.clone());
+                t1_c.matmul(&t2_c).unwrap()
+            }
+        };
         output.set_data(t);
     }
 }

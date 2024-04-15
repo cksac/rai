@@ -176,15 +176,14 @@ impl SelfAttention {
         let query = self.query.forward(xs);
         let key = self.key.forward(xs);
         let value = self.value.forward(xs);
-        let query = self.transpose_for_scores(&query).to_contiguous();
-        let key = self.transpose_for_scores(&key).to_contiguous();
-        let value = self.transpose_for_scores(&value).to_contiguous();
+        let query = self.transpose_for_scores(&query);
+        let key = self.transpose_for_scores(&key);
+        let value = self.transpose_for_scores(&value);
         let attention_scores = query.matmul(key.t()) / f64::sqrt(self.attention_head_size as f64);
         let attention_probs = attention_scores.softmax(-1);
         attention_probs
             .matmul(value)
             .permute([0, 2, 1, 3])
-            .to_contiguous()
             .flatten(2)
     }
 }

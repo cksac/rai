@@ -19,13 +19,13 @@ use std::{
     ops::{Neg, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
     slice::from_raw_parts,
 };
-use tracing::Level;
 
 macro_rules! impl_std_ops_for_scalar {
     ($T:ty, $op:ident, $func:ident) => {
         impl std::ops::$op<Tensor> for $T {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: Tensor) -> Self::Output {
                 let lhs = rhs.full_like::<$T>(self);
                 $func(&lhs, &rhs)
@@ -35,6 +35,7 @@ macro_rules! impl_std_ops_for_scalar {
         impl<'a> std::ops::$op<&'a Tensor> for $T {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: &'a Tensor) -> Self::Output {
                 let lhs = rhs.full_like::<$T>(self);
                 $func(&lhs, &rhs)
@@ -48,6 +49,7 @@ macro_rules! impl_std_ops {
         impl std::ops::$op<Tensor> for Tensor {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: Tensor) -> Tensor {
                 $func(&self, &rhs)
             }
@@ -56,6 +58,7 @@ macro_rules! impl_std_ops {
         impl<'a> std::ops::$op<&'a Tensor> for Tensor {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: &'a Tensor) -> Tensor {
                 $func(&self, rhs)
             }
@@ -64,6 +67,7 @@ macro_rules! impl_std_ops {
         impl<'a> std::ops::$op<Tensor> for &'a Tensor {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: Tensor) -> Tensor {
                 $func(self, &rhs)
             }
@@ -72,6 +76,7 @@ macro_rules! impl_std_ops {
         impl<'a, 'b> std::ops::$op<&'b Tensor> for &'a Tensor {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: &'b Tensor) -> Tensor {
                 $func(self, rhs)
             }
@@ -83,6 +88,7 @@ macro_rules! impl_std_ops {
         {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: T) -> Self::Output {
                 let rhs = self.full_like::<T>(rhs);
                 $func(&self, &rhs)
@@ -95,6 +101,7 @@ macro_rules! impl_std_ops {
         {
             type Output = Tensor;
 
+            #[track_caller]
             fn $func(self, rhs: T) -> Self::Output {
                 let rhs = self.full_like::<T>(rhs);
                 $func(self, &rhs)
@@ -110,7 +117,7 @@ macro_rules! impl_std_ops {
 macro_rules! broadcast_binary_op {
     ($(#[$meta:meta])* $primitive:ident, $func:ident) => {
         $(#[$meta])*
-        #[tracing::instrument(ret(level = Level::TRACE))]
+        #[track_caller]
         pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
             let device = lhs.device();
             let dtype = lhs.dtype();
@@ -134,7 +141,7 @@ macro_rules! broadcast_binary_op {
     };
     ($(#[$meta:meta])* $primitive:ident, $func:ident, $out_ty:ident) => {
         $(#[$meta])*
-        #[tracing::instrument(ret(level = Level::TRACE))]
+        #[track_caller]
         pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
             let device = lhs.device();
             let dtype = $out_ty;
@@ -169,7 +176,7 @@ macro_rules! broadcast_binary_op {
 /// # Returns
 ///
 /// A `Tensor` filled with the specified value.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
     let inputs = vec![];
     Tensor::new(
@@ -192,7 +199,7 @@ pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Te
 /// # Returns
 ///
 /// A `Tensor` filled with ones.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
     let primitive = dtype.primitive_full_one();
@@ -210,7 +217,7 @@ pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Te
 /// # Returns
 ///
 /// A `Tensor` filled with zeros.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
     let primitive = dtype.primitive_full_zero();
@@ -227,7 +234,7 @@ pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> T
 /// # Returns
 ///
 /// A `Tensor` filled with the specified value, with the same shape, data type and device as `x`.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
     if x.dtype() == T::DType::boxed_dtype().as_ref() {
         full::<T>(val, x.shape(), x.device())
@@ -246,7 +253,7 @@ pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
 /// # Returns
 ///
 /// A `Tensor` filled with zeros, with the same shape, data type and device as `x`.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn zeros_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -265,7 +272,7 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
 /// # Returns
 ///
 /// A `Tensor` filled with ones, with the same shape, data type and device as `x`.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn ones_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -286,7 +293,7 @@ pub fn ones_like(x: &Tensor) -> Tensor {
 /// # Returns
 ///
 /// A `Tensor` filled with random values from a normal distribution.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
     let dtype = T::boxed_dtype();
     let inputs = vec![];
@@ -299,7 +306,7 @@ pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Ten
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn randn_with<T: ElemType>(
     mean: T,
     std: T,
@@ -317,7 +324,7 @@ pub fn randn_with<T: ElemType>(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn randn_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -338,7 +345,7 @@ pub fn randn_like(x: &Tensor) -> Tensor {
 /// # Returns
 ///
 /// A `Tensor` filled with random values from a uniform distribution.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
     let dtype = T::boxed_dtype();
     let inputs = vec![];
@@ -351,7 +358,7 @@ pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tens
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn rand_with<T: ElemType>(from: T, to: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
     let dtype = T::DType::boxed_dtype();
     let inputs = vec![];
@@ -364,7 +371,7 @@ pub fn rand_with<T: ElemType>(from: T, to: T, shape: impl Shape, device: impl As
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn rand_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -445,7 +452,7 @@ impl_arange_args!(u32, U32);
 /// # Returns
 ///
 /// A 1-D `Tensor` with values from the specified range.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tensor {
     let start = args.start();
     let stop = args.stop();
@@ -473,7 +480,7 @@ pub fn arange<D: Type, T: ArangeArgs<D>>(args: T, device: impl AsDevice) -> Tens
 /// # Returns
 ///
 /// A `Tensor` created from the array of values.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn from_array<T: ElemType>(
     data: impl Into<Vec<T>> + Debug,
     shape: impl Shape,
@@ -491,7 +498,7 @@ pub fn from_array<T: ElemType>(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn linspace<T: FloatElemType>(start: T, end: T, steps: usize, device: impl AsDevice) -> Tensor {
     let data = T::linspace(start, end, steps);
     from_array(data, [steps], device)
@@ -541,7 +548,7 @@ fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
 /// # Returns
 ///
 /// A `Tensor` created from the `safetensors::TensorView`.
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
     let shape = view.shape();
     let data = view.data();
@@ -658,7 +665,7 @@ impl_std_ops!(Sub, sub);
 impl_std_ops!(Mul, mul);
 impl_std_ops!(Div, div);
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn neg(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -670,6 +677,7 @@ pub fn neg(x: &Tensor) -> Tensor {
 impl Neg for Tensor {
     type Output = Tensor;
 
+    #[track_caller]
     fn neg(self) -> Self::Output {
         neg(&self)
     }
@@ -678,12 +686,13 @@ impl Neg for Tensor {
 impl<'a> Neg for &'a Tensor {
     type Output = Tensor;
 
+    #[track_caller]
     fn neg(self) -> Self::Output {
         neg(self)
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn square(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -692,7 +701,7 @@ pub fn square(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Square, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
     let device = x.device();
     let dtype = x.dtype(); // todo: promote to f64?
@@ -701,7 +710,7 @@ pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
     Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn sin(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -710,7 +719,7 @@ pub fn sin(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Sin, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn cos(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -719,7 +728,7 @@ pub fn cos(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Cos, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn tanh(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -728,7 +737,7 @@ pub fn tanh(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Tanh, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let device = lhs.device();
     let dtype = lhs.dtype();
@@ -765,7 +774,7 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
     let dim0 = x.dim(dim0);
     let dim1 = x.dim(dim1);
@@ -776,7 +785,7 @@ pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
     Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -792,7 +801,7 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn broadcast_to_unchecked(x: &Tensor, shape: impl Shape) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -800,13 +809,13 @@ pub fn broadcast_to_unchecked(x: &Tensor, shape: impl Shape) -> Tensor {
     Tensor::new(device, dtype, &shape, Broadcast::new(&shape), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
     let out_shape = x.shape_expand_left(&shape);
     x.broadcast_to_unchecked(out_shape)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
     let out_shape = x.shape_expand_right(&shape);
     let mut x = x.clone();
@@ -816,7 +825,7 @@ pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
     x.broadcast_to_unchecked(out_shape)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     if x.shape_eq(&shape) {
         return x.clone();
@@ -838,7 +847,7 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn sqrt(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -847,7 +856,7 @@ pub fn sqrt(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Sqrt, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn rsqrt(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -856,7 +865,7 @@ pub fn rsqrt(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Rsqrt, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn sign(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -865,7 +874,7 @@ pub fn sign(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Sign, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn abs(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -874,7 +883,7 @@ pub fn abs(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Abs, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn exp(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -883,7 +892,7 @@ pub fn exp(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Exp, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn log(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -892,7 +901,7 @@ pub fn log(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Log, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn log2(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -901,7 +910,7 @@ pub fn log2(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Log2, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn log10(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -932,14 +941,14 @@ impl ClampBound for &Tensor {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn clamp(x: &Tensor, min: impl ClampBound, max: impl ClampBound) -> Tensor {
     let min = min.bound(x);
     let max = max.bound(x);
     x.maximum(min).minimum(max)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     let dtype = dtype.dtype();
     if x.dtype() == dtype {
@@ -952,7 +961,7 @@ pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
     let device = device.device();
     if x.device() == device {
@@ -1042,7 +1051,7 @@ where
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1058,7 +1067,7 @@ pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1074,7 +1083,7 @@ pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1090,7 +1099,7 @@ pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn mean<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let elem_count = x.size_of(args.dims()) as f64;
     x.sum(args) / elem_count
@@ -1102,7 +1111,7 @@ pub trait VarArgs: ReduceArgs {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
     let elem_count = x.size_of(args.dims());
     let m = x.mean((args.dims(), args.keep_dim()));
@@ -1110,7 +1119,7 @@ pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
     s / (elem_count - args.ddof()) as f32
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1120,7 +1129,7 @@ pub fn softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
     Tensor::new(device, dtype, shape, Softmax::new(dim), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1130,7 +1139,7 @@ pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
     Tensor::new(device, dtype, shape, LogSoftmax::new(dim), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn erf(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1139,37 +1148,37 @@ pub fn erf(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Erf, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn relu(x: &Tensor) -> Tensor {
     x.maximum(x.zeros_like())
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn relu2(x: &Tensor) -> Tensor {
     x.maximum(x.zeros_like()).sqrt()
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn relu6(x: &Tensor) -> Tensor {
     x.clamp(0.0f32, 6.0f32)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn gelu(x: &Tensor) -> Tensor {
     x * 0.5f32 * (1.0f32 + (x / 2.0f32.sqrt()).erf())
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn new_gelu(x: &Tensor) -> Tensor {
     0.5f32 * x * (1.0f32 + ((2.0f32 / PI).sqrt() * (x + 0.044715f32 * x.powf(3.0))).tanh())
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn silu(x: &Tensor) -> Tensor {
     x / (x.neg().exp() + 1.0f32)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let dim = x.dim(dim);
     assert_eq!(x.ndim(), index.ndim());
@@ -1185,7 +1194,7 @@ pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Gather::new(dim), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
     let dim = x.dim(dim);
     let device = x.device();
@@ -1198,7 +1207,7 @@ pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> 
     Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let dim = x.dim(dim);
     let device = x.device();
@@ -1367,7 +1376,7 @@ impl FlattenArgs for RangeInclusive<i32> {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
     if x.ndim() == 0 {
         return x.reshape([1]);
@@ -1386,7 +1395,7 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
     let dims = x.dims(dims).to_vec();
     let mut out_shape = Vec::new();
@@ -1398,7 +1407,7 @@ pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
     x.reshape(out_shape)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
     let is_negative = d.is_negative();
     let dim = x.dim(d);
@@ -1411,7 +1420,7 @@ pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
     x.reshape(shape)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn permute(x: &Tensor, d: impl Dims) -> Tensor {
     let dims = x.dims(d);
     assert_eq!(dims.len(), x.ndim());
@@ -1422,7 +1431,7 @@ pub fn permute(x: &Tensor, d: impl Dims) -> Tensor {
     Tensor::new(device, dtype, shape, Permute::new(dims), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
     let inputs: Vec<Tensor> = tensors.iter().map(AsRef::as_ref).cloned().collect();
     let t1 = &inputs[0].clone();
@@ -1438,7 +1447,7 @@ pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
     Tensor::new(device, dtype, shape, Concatenate::new(dim), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
     let dim = x.dim(dim);
     let device = x.device();
@@ -1449,7 +1458,7 @@ pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
     Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
     let dim = x.dim(dim);
     let size = x.shape_at(dim);
@@ -1474,7 +1483,7 @@ pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn where_cond(x: &Tensor, input: &Tensor, other: &Tensor) -> Tensor {
     assert_eq!(input.dtype(), other.dtype());
     let device = x.device();
@@ -1507,7 +1516,7 @@ impl<T: Dim> ArgReduceArgs for (T, bool) {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let device = x.device();
     let dtype = U32;
@@ -1523,7 +1532,7 @@ pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
     let device = x.device();
     let dtype = U32;
@@ -1539,7 +1548,7 @@ pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn to_contiguous(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
@@ -1548,7 +1557,7 @@ pub fn to_contiguous(x: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, ToContiguous, inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn scatter_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
     let dim = x.dim(dim);
     let device = x.device();
@@ -1633,7 +1642,7 @@ impl<'a> FlashAttentionOpts for (f32, usize, usize, &'a Tensor) {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn flash_attention(
     q: &Tensor,
     k: &Tensor,
@@ -1658,7 +1667,7 @@ pub fn flash_attention(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 fn conv1d_single_group(
     input: &Tensor,
     kernel: &Tensor,
@@ -1679,7 +1688,7 @@ fn conv1d_single_group(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn conv1d(
     input: &Tensor,
     kernel: &Tensor,
@@ -1705,7 +1714,7 @@ pub fn conv1d(
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 fn conv2d_single_group(
     input: &Tensor,
     kernel: &Tensor,
@@ -1726,7 +1735,7 @@ fn conv2d_single_group(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn conv2d(
     input: &Tensor,
     kernel: &Tensor,
@@ -1752,7 +1761,7 @@ pub fn conv2d(
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 fn conv_transpose1d_single_group(
     input: &Tensor,
     kernel: &Tensor,
@@ -1774,7 +1783,7 @@ fn conv_transpose1d_single_group(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn conv_transpose1d(
     input: &Tensor,
     kernel: &Tensor,
@@ -1807,7 +1816,7 @@ pub fn conv_transpose1d(
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 fn conv_transpose2d_single_group(
     input: &Tensor,
     kernel: &Tensor,
@@ -1829,7 +1838,7 @@ fn conv_transpose2d_single_group(
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn conv_transpose2d(
     input: &Tensor,
     kernel: &Tensor,
@@ -1923,7 +1932,7 @@ impl MaxPool1dArgs for (usize, usize, usize, usize) {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
     let kernel_size = args.kernel_size();
     let stride = args.stride();
@@ -2055,7 +2064,7 @@ where
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
     let kernel_size = args.kernel_size();
     let stride = args.stride();
@@ -2138,7 +2147,7 @@ where
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn avg_pool2d(input: &Tensor, args: impl AvgPool2dArgs) -> Tensor {
     let kernel_size = args.kernel_size();
     let stride = args.stride();
@@ -2197,7 +2206,7 @@ impl AvgPool1dArgs for (usize, usize, usize) {
     }
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn avg_pool1d(input: &Tensor, args: impl AvgPool1dArgs) -> Tensor {
     let kernel_size = args.kernel_size();
     let stride = args.stride();
@@ -2215,7 +2224,7 @@ pub fn avg_pool1d(input: &Tensor, args: impl AvgPool1dArgs) -> Tensor {
     )
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn upsample_nearest1d(input: &Tensor, size: usize) -> Tensor {
     let device = input.device();
     let dtype = input.dtype();
@@ -2224,7 +2233,7 @@ pub fn upsample_nearest1d(input: &Tensor, size: usize) -> Tensor {
     Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
     let device = input.device();
     let dtype = input.dtype();
@@ -2234,7 +2243,7 @@ pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
     Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs)
 }
 
-#[tracing::instrument(ret(level = Level::TRACE))]
+#[track_caller]
 pub fn dropout(input: &Tensor, p: f32) -> Tensor {
     assert!((0.0..1.0).contains(&p));
     let r = input.rand_like();

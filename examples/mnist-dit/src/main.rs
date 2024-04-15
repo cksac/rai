@@ -128,16 +128,13 @@ impl DiTBlock {
         let mut v = self.wv.forward(&y); // (batch,seq_len,nhead*emb_size)
         q = q
             .reshape([q.shape_at(0), q.shape_at(1), self.nhead, self.emb_size])
-            .permute([0, 2, 1, 3])
-            .to_contiguous(); // (batch,nhead,seq_len,emb_size)
+            .permute([0, 2, 1, 3]); // (batch,nhead,seq_len,emb_size)
         k = k
             .reshape([k.shape_at(0), k.shape_at(1), self.nhead, self.emb_size])
-            .permute([0, 2, 3, 1])
-            .to_contiguous(); // (batch,nhead,seq_len,emb_size)
+            .permute([0, 2, 3, 1]); // (batch,nhead,seq_len,emb_size)
         v = v
             .reshape([v.shape_at(0), v.shape_at(1), self.nhead, self.emb_size])
-            .permute([0, 2, 1, 3])
-            .to_contiguous(); // (batch,nhead,seq_len,emb_size)
+            .permute([0, 2, 1, 3]); // (batch,nhead,seq_len,emb_size)
 
         let attn = (q.matmul(k) / (q.shape_at(2) as f32).sqrt()).softmax(-1); // (batch,nhead,seq_len,seq_len)
         y = attn.matmul(v); // (batch,nhead,seq_len,emb_size)
@@ -383,9 +380,7 @@ fn train(
     let mut optimizer = SDG::new(model.params(), learning_rate);
     let dataset = mnist::load(device).expect("mnist dataset");
     let train_images = dataset.train_images;
-    let train_images = train_images
-        .reshape([train_images.shape_at(0), 1, 28, 28])
-        .to_contiguous();
+    let train_images = train_images.reshape([train_images.shape_at(0), 1, 28, 28]);
     let train_labels = &dataset.train_labels;
 
     let vg_fn = value_and_grad(loss_fn);
@@ -404,7 +399,6 @@ fn train(
             let x = images * 2.0 - 1.0; // 图像的像素范围从[0,1]转换到[-1,1],和噪音高斯分布范围对应
             let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32); // 为每张图片生成随机t时刻
             let (xs, noise) = scheduler.add_noise(&x, &t);
-            let xs = xs.to_contiguous();
             let (loss, (grads, ..)) = vg_fn.apply((model, &xs, &t, labels, &noise));
             let mut params = optimizer.step(&grads);
             //dprint(&params);

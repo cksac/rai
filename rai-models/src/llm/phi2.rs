@@ -241,13 +241,12 @@ impl Attention {
         self.kv_cache
             .replace(Some((key_states.clone(), value_states.clone())));
         // Repeat kv.
-        let key_states = self.repeat_kv(key_states).to_contiguous();
-        let value_states = self.repeat_kv(value_states).to_contiguous();
+        let key_states = self.repeat_kv(key_states);
+        let value_states = self.repeat_kv(value_states);
 
         // Queries and keys upcast to fp32 is required by Phi-2 to avoid overflow
         let attn_weights = query_states
             .to_dtype(F32)
-            .to_contiguous()
             .matmul(key_states.to_dtype(F32).t() * self.softmax_scale);
         let attn_weights = match mask {
             None => attn_weights,

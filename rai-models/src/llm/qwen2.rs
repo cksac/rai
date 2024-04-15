@@ -201,8 +201,8 @@ impl Attention {
         drop(kv_cache);
         self.kv_cache
             .replace(Some((key_states.clone(), value_states.clone())));
-        let key_states = self.repeat_kv(key_states).to_contiguous();
-        let value_states = self.repeat_kv(value_states).to_contiguous();
+        let key_states = self.repeat_kv(key_states);
+        let value_states = self.repeat_kv(value_states);
         let attn_output = {
             let scale = 1f64 / f64::sqrt(self.head_dim as f64);
             let attn_weights = query_states.matmul(&key_states.transpose(2, 3)) * scale;
