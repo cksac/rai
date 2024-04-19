@@ -68,7 +68,6 @@ pub mod rai_mnist {
 
     pub fn training(num_epochs: usize, learning_rate: f64, batch_size: usize, gpu_id: usize) {
         println!("rai mnist training...");
-        let start = Instant::now();
         let num_classes = 10;
         let device: Box<dyn Device> = device::cuda_if_available(gpu_id);
         let device = device.as_ref();
@@ -87,6 +86,7 @@ pub mod rai_mnist {
         let n_batches = train_images.shape_at(0) / batch_size;
         let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
         let vg_fn = value_and_grad(loss_fn);
+        let start = Instant::now();
         for i in 0..num_epochs {
             let start = Instant::now();
             batch_idxs.shuffle(&mut thread_rng());
@@ -113,7 +113,7 @@ pub mod rai_mnist {
             let test_accuracy = sum_ok / test_labels.size() as f32;
             let elapsed = start.elapsed();
             println!(
-                "Epoch {i:04}: train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
+                "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
                 avg_loss,
                 test_accuracy * 100.0,
                 elapsed,
@@ -187,7 +187,6 @@ pub mod candle_mnist {
         gpu_id: usize,
     ) -> anyhow::Result<()> {
         println!("candle mnist training...");
-        let start = Instant::now();
         let num_classes = 10;
 
         let device = &candle_core::Device::cuda_if_available(gpu_id)?;
@@ -210,6 +209,7 @@ pub mod candle_mnist {
 
         let n_batches = train_images.dim(0)? / batch_size;
         let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
+        let start = Instant::now();
         for i in 0..num_epochs {
             let start = Instant::now();
             batch_idxs.shuffle(&mut thread_rng());
@@ -234,7 +234,7 @@ pub mod candle_mnist {
             let test_accuracy = sum_ok / test_labels.dims1()? as f32;
             let elapsed = start.elapsed();
             println!(
-                "Epoch {i:04}: train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
+                "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
                 avg_loss,
                 test_accuracy * 100.0,
                 elapsed,

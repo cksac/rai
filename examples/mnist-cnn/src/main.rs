@@ -97,10 +97,10 @@ fn main() {
     let train_labels = &dataset.train_labels;
     let test_images = &dataset.test_images;
     let test_labels = &dataset.test_labels;
-
-    let start = Instant::now();
     let n_batches = train_images.shape_at(0) / batch_size;
     let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
+
+    let start = Instant::now();
     for i in 0..num_epochs {
         let start = Instant::now();
         batch_idxs.shuffle(&mut thread_rng());
@@ -124,7 +124,7 @@ fn main() {
         let test_accuracy = sum_ok / test_labels.size() as f32;
         let elapsed = start.elapsed();
         println!(
-            "Epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
+            "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
             avg_loss,
             test_accuracy * 100.0,
             elapsed,

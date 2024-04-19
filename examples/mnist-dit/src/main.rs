@@ -378,7 +378,6 @@ fn train(
     learning_rate: f64,
     device: impl AsDevice,
 ) {
-    let start = Instant::now();
     let device = device.device();
     let params = model.params();
     println!("params: {:?}", params.len());
@@ -387,12 +386,11 @@ fn train(
     let train_images = dataset.train_images;
     let train_images = train_images.reshape([train_images.shape_at(0), 1, 28, 28]);
     let train_labels = &dataset.train_labels;
-
     let vg_fn = value_and_grad(loss_fn);
-
     let n_batches = train_images.shape_at(0) / batch_size;
     let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
     let mut iter_cnt = 0;
+    let start = Instant::now();
     for i in 0..num_epochs {
         let start = Instant::now();
         batch_idxs.shuffle(&mut thread_rng());
