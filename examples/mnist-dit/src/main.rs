@@ -5,7 +5,8 @@ use rai::{
         losses,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Device, FloatElemType, Func, Module, Shape, Tensor, Type, F32, U32,
+    value_and_grad, AsDevice, Aux, Device, FloatElemType, Func, Module, Shape, Tensor, Type, F32,
+    U32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -19,8 +20,8 @@ struct TimeEmbedding {
 
 impl TimeEmbedding {
     pub fn new(emb_size: usize, dtype: impl Type, device: impl AsDevice) -> TimeEmbedding {
-        let size = (emb_size / 2) as f64;
-        let half_emb = (Tensor::arange(size, device) * (-1.0 * 10000f64.ln() / (size - 1.0)))
+        let size = (emb_size / 2) as f32;
+        let half_emb = (Tensor::arange(size, device) * (-1.0 * 10000f32.ln() / (size - 1.0)))
             .exp()
             .to_dtype(dtype);
         TimeEmbedding { half_emb }
@@ -186,8 +187,10 @@ impl DiT {
     ) -> DiT {
         let device = device.device();
         let patch_count = img_size / patch_size;
-        let mut conv_confg = Conv2dConfig::default();
-        conv_confg.stride = [patch_size, patch_size];
+        let conv_confg = Conv2dConfig {
+            stride: [patch_size, patch_size],
+            ..Default::default()
+        };
         let conv = Conv2d::new(
             channel,
             channel * patch_size * patch_size,
@@ -278,8 +281,10 @@ impl DiT {
             self.patch_size,
             self.patch_size,
         ]); //  (batch,patch_count,patch_count,channel,patch_size,patch_size)
-        x = x.permute([0, 3, 1, 2, 4, 5]); // (batch,channel,patch_count(H),patch_count(W),patch_size(H),patch_size(W))
-        x = x.permute([0, 1, 2, 4, 3, 5]); // (batch,channel,patch_count(H),patch_size(H),patch_count(W),patch_size(W))
+
+        //x = x.permute([0, 3, 1, 2, 4, 5]); // (batch,channel,patch_count(H),patch_count(W),patch_size(H),patch_size(W))
+        //x = x.permute([0, 1, 2, 4, 3, 5]); // (batch,channel,patch_count(H),patch_size(H),patch_count(W),patch_size(W))
+        x = x.permute([0, 3, 1, 4, 2, 5]); // (batch,channel,patch_count(H),patch_size(H),patch_count(W),patch_size(W))
         x = x.reshape([
             x.shape_at(0),
             self.channel,
@@ -312,15 +317,13 @@ fn test_dit_block() {
 }
 
 #[test]
-fn test_dit() {
+fn test_dit_model() {
     let dtype = F32;
     let device = rai::Cpu;
-    let dit = DiT::new(28, 4, 1, 64, 10, 3, 4, 1e4, dtype, device);
-
+    let dit = DiT::new(28, 4, 1, 64, 10, 1, 4, 1e4, dtype, device);
     let x = Tensor::rand([5, 1, 28, 28], dtype, device);
     let t = Tensor::rand_with(0f32, 1000.0, [5], device).to_dtype(U32);
     let y = Tensor::rand_with(0f32, 10.0, [5], device).to_dtype(U32);
-
     let output = dit.fwd(&x, &t, &y);
     println!("{}", output);
 }
@@ -337,11 +340,11 @@ impl DDIMScheduler {
         // alphas_cumprod_prev=torch.cat((torch.tensor([1.0]),alphas_cumprod[:-1]),dim=-1) # alpha_t-1累乘 (T,),  [1,a1,a1*a2,a1*a2*a3,.....]
         // variance=(1-alphas)*(1-alphas_cumprod_prev)/(1-alphas_cumprod)  # denoise用的方差   (T,)
 
-        let betas = f64::linspace(0.0001, 0.02, 1000);
+        let betas = f32::linspace(0.0001, 0.02, 1000);
         let mut alphas_cumprod = Vec::with_capacity(betas.len());
         for &beta in betas.iter() {
             let alpha = 1.0 - beta;
-            alphas_cumprod.push(alpha * *alphas_cumprod.last().unwrap_or(&1f64))
+            alphas_cumprod.push(alpha * *alphas_cumprod.last().unwrap_or(&1f32))
         }
         let alphas_cumprod = Tensor::from_array(alphas_cumprod, [1000], device);
         Self { alphas_cumprod }
@@ -356,14 +359,15 @@ impl DDIMScheduler {
         let noise = Tensor::randn_like(x);
         let batch_alphas_cumprod = self.alphas_cumprod.index_select(0, t).to_dtype(x);
         let batch_alphas_cumprod = batch_alphas_cumprod.reshape([x.shape_at(0), 1, 1, 1]);
-        let x = batch_alphas_cumprod.sqrt() * x + (1.0f64 - batch_alphas_cumprod).sqrt() * &noise;
+        let x = batch_alphas_cumprod.sqrt() * x + (1.0f32 - batch_alphas_cumprod).sqrt() * &noise;
         (x, noise)
     }
 }
 
-fn loss_fn(model: &DiT, x: &Tensor, t: &Tensor, y: &Tensor, noise: &Tensor) -> Tensor {
-    let pred_noise = model.fwd(x, t, y);
-    losses::l1_loss(&pred_noise, noise).mean(..)
+// model, Aux<(x, t, y, noise)>
+fn loss_fn(model: &DiT, inputs: Aux<(&Tensor, &Tensor, &Tensor, &Tensor)>) -> Tensor {
+    let pred_noise = model.fwd(inputs.0 .0, inputs.0 .1, inputs.0 .2);
+    losses::l1_loss(&pred_noise, inputs.0 .3).mean(..)
 }
 
 fn train(
@@ -372,12 +376,13 @@ fn train(
     num_epochs: usize,
     batch_size: usize,
     learning_rate: f64,
-    dtype: impl Type,
     device: impl AsDevice,
 ) {
     let start = Instant::now();
     let device = device.device();
-    let mut optimizer = SDG::new(model.params(), learning_rate);
+    let params = model.params();
+    println!("params: {:?}", params.len());
+    let mut optimizer = SDG::new(params, learning_rate);
     let dataset = mnist::load(device).expect("mnist dataset");
     let train_images = dataset.train_images;
     let train_images = train_images.reshape([train_images.shape_at(0), 1, 28, 28]);
@@ -387,42 +392,35 @@ fn train(
 
     let n_batches = train_images.shape_at(0) / batch_size;
     let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
+    let mut iter_cnt = 0;
     for i in 0..num_epochs {
         let start = Instant::now();
         batch_idxs.shuffle(&mut thread_rng());
-        let mut sum_loss = 0f32;
         for batch_idx in &batch_idxs {
-            let start = Instant::now();
             let images = &train_images.narrow(0, batch_idx * batch_size, batch_size);
             let labels = &train_labels.narrow(0, batch_idx * batch_size, batch_size);
-
-            let x = images * 2.0 - 1.0; // 图像的像素范围从[0,1]转换到[-1,1],和噪音高斯分布范围对应
-            let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32); // 为每张图片生成随机t时刻
+            let x = images * 2.0 - 1.0; // convert image range from [0,1] to [-1,1], align with noise range
+            let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32);
             let (xs, noise) = scheduler.add_noise(&x, &t);
-            let (loss, (grads, ..)) = vg_fn.apply((model, &xs, &t, labels, &noise));
+            let (loss, (grads, ..)) = vg_fn.apply((model, Aux((&xs, &t, labels, &noise))));
             let mut params = optimizer.step(&grads);
-            //dprint(&params);
             eval(&params);
             model.update_params(&mut params);
-            let loss = loss.as_scalar(F32);
-            sum_loss += loss;
-            let elapsed = start.elapsed();
-            println!(
-                "batch_idx: {}, loss: {}, time: {:?}",
-                batch_idx, loss, elapsed
-            );
-            break;
+            iter_cnt += 1;
+            if iter_cnt % 1000 == 0 && iter_cnt > 0 {
+                println!(
+                    "epoch: {i:04}, iter: {iter_cnt}, loss: {:10.5}",
+                    loss.as_scalar(F32)
+                );
+            }
         }
-        let avg_loss = sum_loss / n_batches as f32;
         let elapsed = start.elapsed();
-        println!(
-            "Epoch {i:04}: train loss: {:10.5}, time: {:?}",
-            avg_loss, elapsed,
-        );
+        println!("epoch: {i:04}, time: {elapsed:?}");
     }
     let elapsed = start.elapsed();
     let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
     println!("elapsed: {:?}, avg: {:.2} sec/epoch", elapsed, avg_elapsed);
+    model.to_safetensors("mnist-dit.safetensors");
 }
 
 fn main() {
@@ -435,7 +433,7 @@ fn main() {
     let device = device.as_ref();
     println!("device: {:?}", device);
 
-    let model = DiT::new(28, 4, 1, 64, 10, 2, 4, 1e4, dtype, device);
+    let model = DiT::new(28, 4, 1, 64, 10, 3, 4, 1e4, dtype, device);
     let scheduler = DDIMScheduler::new(dtype, device);
 
     train(
@@ -444,7 +442,8 @@ fn main() {
         num_epochs,
         batch_size,
         learning_rate,
-        dtype,
         device,
     );
+
+    rai::ops::clear_cache();
 }

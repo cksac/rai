@@ -1,5 +1,5 @@
 use crate::Value;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 pub trait Func<InKind, In, Out> {
     fn apply(&self, input: In) -> Out;
@@ -69,22 +69,44 @@ where
     let output_tensors = output.tensors();
     let vjps_fn = move |cotangents: OUT::Gradient| {
         let mut cotangent_cache = HashMap::new();
-        let mut grads_sum = HashMap::new();
-        for i in input_tensors.tensor_iter() {
-            grads_sum.insert(i.id(), i.zeros_like());
-        }
         OUT::grad_map(&output_tensors, cotangents, &mut cotangent_cache);
-        for t in output_tensors.tensor_iter() {
-            let cotangent = cotangent_cache
-                .get(&t.id())
-                .cloned()
-                .unwrap_or_else(|| t.ones_like());
-            t.vjp(&cotangent, &mut grads_sum);
+        let mut tape = BTreeSet::new();
+        let mut stack = Vec::new();
+        // use iterative instead of recursive to avoid stack overflow
+        // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
+        for output in output_tensors.tensor_iter() {
+            stack.push(output.clone());
         }
+        while let Some(t) = stack.pop() {
+            if tape.contains(&t) || t.inputs().is_empty() {
+                continue;
+            }
+            tape.insert(t.clone());
+            for input in t.inputs().iter() {
+                stack.push(input.clone());
+            }
+        }
+        // run the tape backwards
+        for t in tape.iter().rev() {
+            let primals = &*t.inputs();
+            let cotangent = cotangent_cache
+                .entry(t.id())
+                .or_insert_with(|| t.ones_like());
+            let cotangents = t.primitive().vjp(t, primals, cotangent);
+            for (primal, cotan) in primals.iter().zip(cotangents.into_iter()) {
+                let id = primal.id();
+                if let Some(sum) = cotangent_cache.get(&id) {
+                    cotangent_cache.insert(id, sum + cotan);
+                } else {
+                    cotangent_cache.insert(id, cotan);
+                }
+            }
+        }
+        // collect the final cotangents for inputs
         let mut vjps = HashMap::new();
         for t in input_tensors.tensor_iter() {
             let id = t.id();
-            let c = grads_sum.get(&id).unwrap().clone();
+            let c = cotangent_cache.get(&id).unwrap().clone();
             vjps.insert(id, c);
         }
         IN::grad(&input_tensors, &vjps)

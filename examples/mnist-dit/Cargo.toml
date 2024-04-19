@@ -14,4 +14,7 @@ rand = { workspace = true }
 backtrace = "0.3.40"
 
 [features]
+default = []
 cuda = ["rai/cuda"]
+cudnn = ["rai/cudnn"]
+debug-location =["rai/debug-location"]

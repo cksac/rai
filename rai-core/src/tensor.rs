@@ -9,6 +9,8 @@ use crate::{
     AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, Primitive, Shape, Type,
 };
 use safetensors::tensor::TensorView;
+#[cfg(feature = "debug-location")]
+use std::panic::Location;
 use std::{
     any::Any,
     borrow::Cow,
@@ -39,7 +41,7 @@ struct TensorImpl {
     primitive: Box<dyn Primitive>,
     inputs: RefCell<Vec<Tensor>>,
     data: RefCell<Option<Box<dyn TensorLike>>>,
-    #[cfg(feature = "debug_location")]
+    #[cfg(feature = "debug-location")]
     location: &'static Location<'static>,
 }
 
@@ -62,7 +64,7 @@ impl Tensor {
             primitive: primitive.into(),
             inputs: RefCell::new(inputs.into()),
             data: RefCell::new(None),
-            #[cfg(feature = "debug_location")]
+            #[cfg(feature = "debug-location")]
             location: Location::caller(),
         };
         Tensor(Rc::new(inner))
@@ -716,7 +718,7 @@ impl Tensor {
         ops::scatter_add(self, dim, index.as_ref(), source.as_ref())
     }
 
-    pub fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
+    pub(crate) fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
         if let Some(tangent) = tangent_cache.get(&self.id()) {
             return tangent.clone();
         }
@@ -728,21 +730,6 @@ impl Tensor {
         let tangent = self.primitive().jvp(self, primals, &tangents);
         tangent_cache.insert(self.id(), tangent.clone());
         tangent
-    }
-
-    pub fn vjp(&self, cotangent: &Tensor, grads_sum: &mut HashMap<usize, Tensor>) {
-        let primals = &*self.inputs();
-        if primals.is_empty() {
-            return;
-        }
-        let cotangents = self.primitive().vjp(self, primals, cotangent);
-        for (primal, cotan) in primals.iter().zip(cotangents.iter()) {
-            let id = primal.id();
-            if let Some(sum) = grads_sum.get(&id) {
-                grads_sum.insert(id, sum + cotan);
-            }
-            primal.vjp(cotan, grads_sum);
-        }
     }
 
     #[inline]
@@ -885,7 +872,7 @@ impl PartialEq for Tensor {
 
 impl Eq for Tensor {}
 
-#[cfg(not(feature = "debug_location"))]
+#[cfg(not(feature = "debug-location"))]
 impl Debug for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Tensor")
@@ -902,7 +889,7 @@ impl Debug for Tensor {
     }
 }
 
-#[cfg(feature = "debug_location")]
+#[cfg(feature = "debug-location")]
 impl Debug for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Tensor")
@@ -920,7 +907,7 @@ impl Debug for Tensor {
     }
 }
 
-#[cfg(not(feature = "debug_location"))]
+#[cfg(not(feature = "debug-location"))]
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if !self.is_evaluated() {
@@ -942,7 +929,7 @@ impl Display for Tensor {
     }
 }
 
-#[cfg(feature = "debug_location")]
+#[cfg(feature = "debug-location")]
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if !self.is_evaluated() {

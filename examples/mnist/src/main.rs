@@ -108,7 +108,7 @@ fn main() {
         let test_accuracy = sum_ok / test_labels.size() as f32;
         let elapsed = start.elapsed();
         println!(
-            "Epoch {i:04}: train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
+            "Epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
             loss,
             test_accuracy * 100.0,
             elapsed,
