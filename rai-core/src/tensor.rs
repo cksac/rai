@@ -95,6 +95,12 @@ impl Tensor {
         Ref::map(self.0.inputs.borrow(), |v| v.as_slice())
     }
 
+    #[cfg(feature = "debug-location")]
+    #[inline]
+    pub fn location(&self) -> &'static Location<'static> {
+        self.0.location
+    }
+
     #[inline]
     #[track_caller]
     pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
@@ -744,15 +750,15 @@ impl Tensor {
 
     #[inline]
     pub fn replace_data(&self, rhs: Tensor) {
-        assert!(
+        debug_assert!(
             self.shape_eq(&rhs),
             "{:?} not align with rhs shape: {:?}\n{}",
             self,
             rhs.shape(),
             dot_graph([self, &rhs])
         );
-        assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
-        assert!(
+        debug_assert!(self.dtype() == rhs.dtype(), "dtype must be equal");
+        debug_assert!(
             self.device() == rhs.device(),
             "lhs device {:?} not equal rhs device {:?}",
             self.device(),

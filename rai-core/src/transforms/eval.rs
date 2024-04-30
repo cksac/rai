@@ -48,8 +48,6 @@ pub fn eval<T: EvalArgs>(args: T) {
             stack.push(input.clone());
         }
     }
-
-    //dbg!(tape.len());
     // Process the sorted tensors in the tape
     for t in tape.into_iter() {
         {

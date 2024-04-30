@@ -174,6 +174,7 @@ thread_local! {
 
 pub fn clear_cache() {
     CONST_CACHE.with(|cache| {
+        //dbg!(cache.borrow().len());
         cache.borrow_mut().clear();
     });
 }
@@ -370,7 +371,6 @@ pub fn ones_like(x: &Tensor) -> Tensor {
 /// A `Tensor` filled with random values from a normal distribution.
 #[track_caller]
 pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
-    let dtype = T::boxed_dtype();
     let inputs = vec![];
     Tensor::new(
         device,
@@ -422,7 +422,6 @@ pub fn randn_like(x: &Tensor) -> Tensor {
 /// A `Tensor` filled with random values from a uniform distribution.
 #[track_caller]
 pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
-    let dtype = T::boxed_dtype();
     let inputs = vec![];
     Tensor::new(
         device,

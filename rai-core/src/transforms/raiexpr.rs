@@ -35,6 +35,35 @@ where
         )
     }
 
+    #[cfg(not(feature = "debug-location"))]
+    fn expr(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {
+        format!(
+            "\t{} = {} {}",
+            decl(id_map, id_seq, t),
+            t.primitive().dot_label(),
+            t.inputs()
+                .iter()
+                .map(|v| decl(id_map, id_seq, v))
+                .collect::<Vec<_>>()
+                .join(" ")
+        )
+    }
+
+    #[cfg(feature = "debug-location")]
+    fn expr(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {
+        format!(
+            "\t{} = {} {} // {}",
+            decl(id_map, id_seq, t),
+            t.primitive().dot_label(),
+            t.inputs()
+                .iter()
+                .map(|v| decl(id_map, id_seq, v))
+                .collect::<Vec<_>>()
+                .join(" "),
+            t.location()
+        )
+    }
+
     // use iterative instead of recursive to avoid stack overflow
     // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
     let input_set = in_tensors.tensor_iter().cloned().collect::<BTreeSet<_>>();
@@ -68,18 +97,7 @@ where
 
     let body = tape
         .iter()
-        .map(|t| {
-            format!(
-                "\t{} = {} {}",
-                decl(&mut id_map, &mut id_seq, t),
-                t.primitive().dot_label(),
-                t.inputs()
-                    .iter()
-                    .map(|v| decl(&mut id_map, &mut id_seq, v))
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            )
-        })
+        .map(|t| expr(&mut id_map, &mut id_seq, t))
         .collect::<Vec<String>>()
         .join("\n");
 

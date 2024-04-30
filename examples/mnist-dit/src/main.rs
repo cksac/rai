@@ -5,8 +5,7 @@ use rai::{
         losses,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Aux, Device, FloatElemType, Func, Module, Shape, Tensor, Type, F32,
-    U32,
+    value_and_grad, AsDevice, Device, FloatElemType, Func, Module, Shape, Tensor, Type, F32, U32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -364,10 +363,9 @@ impl DDIMScheduler {
     }
 }
 
-// model, Aux<(x, t, y, noise)>
-fn loss_fn(model: &DiT, inputs: Aux<(&Tensor, &Tensor, &Tensor, &Tensor)>) -> Tensor {
-    let pred_noise = model.fwd(inputs.0 .0, inputs.0 .1, inputs.0 .2);
-    losses::l1_loss(&pred_noise, inputs.0 .3).mean(..)
+fn loss_fn(model: &DiT, x: &Tensor, t: &Tensor, y: &Tensor, noise: &Tensor) -> Tensor {
+    let pred_noise = model.fwd(x, t, y);
+    losses::l1_loss(&pred_noise, noise).mean(..)
 }
 
 fn train(
@@ -400,7 +398,7 @@ fn train(
             let x = images * 2.0 - 1.0; // convert image range from [0,1] to [-1,1], align with noise range
             let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32);
             let (xs, noise) = scheduler.add_noise(&x, &t);
-            let (loss, (grads, ..)) = vg_fn.apply((model, Aux((&xs, &t, labels, &noise))));
+            let (loss, (grads, ..)) = vg_fn.apply((model, &xs, &t, labels, &noise));
             let mut params = optimizer.step(&grads);
             eval(&params);
             model.update_params(&mut params);

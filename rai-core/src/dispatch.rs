@@ -215,6 +215,7 @@ where
     );
 }
 
+#[inline(always)]
 pub fn eval_rule(device: &dyn Device, primitive: &dyn Primitive) -> Option<DynBackend> {
     let dispatcher = EVAL_DISPATCHER.read().unwrap();
     dispatcher
