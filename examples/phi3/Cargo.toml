@@ -1,0 +1,20 @@
+[package]
+name = "phi3"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+rai = { workspace = true }
+rai-models = { workspace = true }
+tokenizers = { workspace = true }
+clap = { workspace = true }
+hf-hub = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+cuda = ["rai/cuda"]
