@@ -118,5 +118,4 @@ fn main() {
     let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
     println!("elapsed: {:?}, avg: {:.2} sec/epoch", elapsed, avg_elapsed);
     model.to_safetensors("mnist.safetensors");
-    rai::ops::clear_cache();
 }

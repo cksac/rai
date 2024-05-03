@@ -440,6 +440,4 @@ fn main() {
         learning_rate,
         device,
     );
-
-    rai::ops::clear_cache();
 }

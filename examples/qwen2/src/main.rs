@@ -102,5 +102,4 @@ fn main() {
         "\n{generated_tokens} tokens generated ({:.2} token/s)",
         generated_tokens as f64 / dt.as_secs_f64(),
     );
-    rai::ops::clear_cache();
 }

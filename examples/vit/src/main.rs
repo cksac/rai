@@ -76,5 +76,4 @@ fn main() {
             100. * pr
         );
     }
-    rai::ops::clear_cache();
 }

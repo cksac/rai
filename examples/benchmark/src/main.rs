@@ -281,5 +281,4 @@ fn main() {
                 .unwrap();
         }
     }
-    rai::ops::clear_cache();
 }

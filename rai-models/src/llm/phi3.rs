@@ -87,8 +87,8 @@ impl MLP {
         let device = device.device();
         let hidden_size = cfg.hidden_size;
         let i_size = cfg.intermediate_size;
-        let gate_up_proj = Linear::new(hidden_size, 2 * i_size, true, dtype, device);
-        let down_proj = Linear::new(i_size, hidden_size, true, dtype, device);
+        let gate_up_proj = Linear::new(hidden_size, 2 * i_size, false, dtype, device);
+        let down_proj = Linear::new(i_size, hidden_size, false, dtype, device);
         Self {
             gate_up_proj,
             down_proj,
@@ -133,8 +133,8 @@ impl Attention {
         let head_dim = cfg.head_dim();
 
         let op_size = num_heads * head_dim + 2 * num_kv_heads * head_dim;
-        let qkv_proj = Linear::new(cfg.hidden_size, op_size, true, dtype, device);
-        let o_proj = Linear::new(num_heads * head_dim, cfg.hidden_size, true, dtype, device);
+        let qkv_proj = Linear::new(cfg.hidden_size, op_size, false, dtype, device);
+        let o_proj = Linear::new(num_heads * head_dim, cfg.hidden_size, false, dtype, device);
         let rotary_emb = RotaryEmbedding::new(cfg, dtype, device);
         Self {
             qkv_proj,
@@ -273,7 +273,7 @@ impl Model {
             .map(|_| DecoderLayer::new(cfg, dtype, device))
             .collect();
         let norm = RmsNorm::new(cfg.hidden_size, cfg.rms_norm_eps, dtype, device);
-        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, true, dtype, device);
+        let lm_head = Linear::new(cfg.hidden_size, cfg.vocab_size, false, dtype, device);
         Self {
             embed_tokens,
             layers,

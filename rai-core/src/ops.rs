@@ -11,6 +11,7 @@ use crate::{
     shape::Dims,
     AsDType, AsDevice, Dim, ElemType, FloatElemType, Shape, Tensor, Type, F16, F32, F64, U32, U8,
 };
+use core::panic;
 use half::{bf16, f16};
 use safetensors::tensor::TensorView;
 use std::{
@@ -168,17 +169,6 @@ macro_rules! broadcast_binary_op {
     };
 }
 
-thread_local! {
-    static CONST_CACHE: RefCell<HashMap<(TypeId, TypeId, String), Tensor>> = RefCell::new(HashMap::new());
-}
-
-pub fn clear_cache() {
-    CONST_CACHE.with(|cache| {
-        //dbg!(cache.borrow().len());
-        cache.borrow_mut().clear();
-    });
-}
-
 /// Creates a `Tensor` filled with a specified value.
 ///
 /// # Arguments
@@ -192,26 +182,15 @@ pub fn clear_cache() {
 /// A `Tensor` filled with the specified value.
 #[track_caller]
 pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
-    CONST_CACHE.with(|cache| {
-        let key = (
-            TypeId::of::<T::DType>(),
-            device.device().as_any().type_id(),
-            format!("{:?}{:?}", val, shape.shape()),
-        );
-        if let Some(tensor) = cache.borrow().get(&key) {
-            return tensor.clone();
-        }
-        let inputs = vec![];
-        let tensor = Tensor::new(
-            device,
-            T::DType::boxed_dtype(),
-            shape,
-            Full::<T::DType>::new(val),
-            inputs,
-        );
-        cache.borrow_mut().insert(key, tensor.clone());
-        tensor
-    })
+    let inputs = vec![];
+    let tensor = Tensor::new(
+        device,
+        T::DType::boxed_dtype(),
+        shape,
+        Full::<T::DType>::new(val),
+        inputs,
+    );
+    tensor
 }
 
 /// Creates a `Tensor` filled with ones.
@@ -229,20 +208,9 @@ pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Te
 pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
     let device = device.device();
-    CONST_CACHE.with(|cache| {
-        let key = (
-            dtype.as_any().type_id(),
-            device.as_any().type_id(),
-            format!("1{:?}", shape.shape()),
-        );
-        if let Some(tensor) = cache.borrow().get(&key) {
-            return tensor.clone();
-        }
-        let primitive = dtype.primitive_full_one();
-        let tensor = Tensor::new(device, dtype, shape, primitive, vec![]);
-        cache.borrow_mut().insert(key, tensor.clone());
-        tensor
-    })
+    let primitive = dtype.primitive_full_one();
+    let tensor = Tensor::new(device, dtype, shape, primitive, vec![]);
+    tensor
 }
 
 /// Creates a `Tensor` filled with zeros.
@@ -260,20 +228,9 @@ pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Te
 pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
     let device = device.device();
-    CONST_CACHE.with(|cache| {
-        let key = (
-            dtype.as_any().type_id(),
-            device.as_any().type_id(),
-            format!("0{:?}", shape.shape()),
-        );
-        if let Some(tensor) = cache.borrow().get(&key) {
-            return tensor.clone();
-        }
-        let primitive = dtype.primitive_full_zero();
-        let tensor = Tensor::new(device, dtype, shape, primitive, vec![]);
-        cache.borrow_mut().insert(key, tensor.clone());
-        tensor
-    })
+    let primitive = dtype.primitive_full_zero();
+    let tensor = Tensor::new(device, dtype, shape, primitive, vec![]);
+    tensor
 }
 
 /// Creates a `Tensor` filled with a specified value, with the same shape, data type and device as another `Tensor`.
@@ -310,21 +267,10 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
     let dtype = x.dtype();
     let shape = x.shape();
     let device = x.device();
-    CONST_CACHE.with(|cache| {
-        let key = (
-            dtype.as_any().type_id(),
-            device.as_any().type_id(),
-            format!("0{:?}", shape),
-        );
-        if let Some(tensor) = cache.borrow().get(&key) {
-            return tensor.clone();
-        }
-        let primitive = dtype.primitive_full_zero();
-        let inputs = vec![];
-        let tensor = Tensor::new(device, dtype, shape, primitive, inputs);
-        cache.borrow_mut().insert(key, tensor.clone());
-        tensor
-    })
+    let primitive = dtype.primitive_full_zero();
+    let inputs = vec![];
+    let tensor = Tensor::new(device, dtype, shape, primitive, inputs);
+    tensor
 }
 
 /// Creates a `Tensor` filled with ones, with the same shape, data type and device as another `Tensor`.
@@ -341,21 +287,10 @@ pub fn ones_like(x: &Tensor) -> Tensor {
     let dtype = x.dtype();
     let device = x.device();
     let shape = x.shape();
-    CONST_CACHE.with(|cache| {
-        let key = (
-            dtype.as_any().type_id(),
-            device.as_any().type_id(),
-            format!("1{:?}", shape),
-        );
-        if let Some(tensor) = cache.borrow().get(&key) {
-            return tensor.clone();
-        }
-        let primitive = dtype.primitive_full_one();
-        let inputs = vec![];
-        let tensor = Tensor::new(device, dtype, shape, primitive, inputs);
-        cache.borrow_mut().insert(key, tensor.clone());
-        tensor
-    })
+    let primitive = dtype.primitive_full_one();
+    let inputs = vec![];
+    let tensor = Tensor::new(device, dtype, shape, primitive, inputs);
+    tensor
 }
 
 /// Creates a `Tensor` filled with random values from a normal distribution with mean 0 and variance 1.

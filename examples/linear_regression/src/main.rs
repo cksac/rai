@@ -45,5 +45,4 @@ fn main() {
         "loss: {}, elapsed: {:?}, throughput: {:.2} iters/sec",
         loss, elapsed, throughput
     );
-    rai::ops::clear_cache();
 }

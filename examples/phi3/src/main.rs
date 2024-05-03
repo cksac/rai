@@ -1,6 +1,9 @@
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use rai::{device, ext, nn::Module, AsDevice, Device, Tensor, Type, F32};
-use rai_models::llm::phi3::{Config, Model};
+use rai_models::llm::{
+    phi3::{Config, Model},
+    utils::TokenOutputStream,
+};
 use std::{io::Write, time::Instant};
 use tokenizers::Tokenizer;
 
@@ -58,14 +61,17 @@ fn main() {
     let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
     println!("{prompt}");
     std::io::stdout().flush().unwrap();
-
-    let tokens = tokenizer.encode(prompt, true).unwrap();
-    let mut tokens = tokens.get_ids().to_vec();
-    let mut generated_tokens = 0usize;
     let eos_token = match tokenizer.get_vocab(true).get("<|endoftext|>") {
         Some(token) => *token,
         None => panic!("cannot find the endoftext token"),
     };
+
+    let mut output_stream = TokenOutputStream::new(tokenizer);
+    output_stream.prompt(prompt);
+
+    // let tokens = tokenizer.encode(prompt, true).unwrap();
+    // let mut tokens = tokens.get_ids().to_vec();
+    let mut generated_tokens = 0usize;
 
     let start_gen = std::time::Instant::now();
     let sample_len: usize = 5000;
@@ -74,25 +80,30 @@ fn main() {
 
     let mut pos = 0;
     for index in 0..sample_len {
-        let context_size = if index > 0 { 1 } else { tokens.len() };
-        let ctx = &tokens[tokens.len().saturating_sub(context_size)..];
+        let context_size = if index > 0 { 1 } else { output_stream.len() };
+        let ctx = &output_stream.tokens()[output_stream.len().saturating_sub(context_size)..];
         let input = Tensor::from_array(ctx, [ctx.len()], device).unsqueeze(0);
-        let logits = model.fwd(&input, pos);
+        let logits = model.fwd(&input, pos).narrow(1, 0, 1).squeeze(1);
         let logits = logits.squeeze(0);
         let mut logits = logits.as_vec(dtype);
         if repeat_penalty >= 1. {
-            let start_at = tokens.len().saturating_sub(repeat_last_n);
-            apply_repeat_penalty(&mut logits, repeat_penalty, &tokens[start_at..])
+            let start_at = output_stream.len().saturating_sub(repeat_last_n);
+            apply_repeat_penalty(
+                &mut logits,
+                repeat_penalty,
+                &output_stream.tokens()[start_at..],
+            )
         };
         let next_token = sample_argmax(&logits);
-        tokens.push(next_token);
         generated_tokens += 1;
         if next_token == eos_token {
             break;
         }
-        let token = tokenizer.decode(&[next_token], true).unwrap();
-        print!("{token}");
-        std::io::stdout().flush().unwrap();
+
+        if let Some(t) = output_stream.next_token(next_token) {
+            print!("{t}");
+            std::io::stdout().flush().unwrap();
+        }
         pos += context_size;
     }
     let dt = start_gen.elapsed();
@@ -100,5 +111,4 @@ fn main() {
         "\n{generated_tokens} tokens generated ({:.2} token/s)",
         generated_tokens as f64 / dt.as_secs_f64(),
     );
-    rai::ops::clear_cache();
 }

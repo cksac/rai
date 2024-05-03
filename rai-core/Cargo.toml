@@ -26,7 +26,7 @@ colored = { workspace = true }
 
 
 [features]
-default = ["candle-backend"]
+default = ["candle-backend", "debug-location"]
 candle-backend = ["candle-core"]
 candle-backend-fa = ["candle-core", "cuda", "candle-flash-attn"]
 cuda = ["candle-core?/cuda"]
