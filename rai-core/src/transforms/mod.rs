@@ -2,7 +2,7 @@ use crate::Value;
 use std::collections::{BTreeSet, HashMap};
 
 pub trait Func<InKind, In, Out> {
-    fn apply(&self, input: In) -> Out;
+    fn invoke(&self, input: In) -> Out;
 }
 
 mod tensor_iter;
@@ -25,7 +25,7 @@ where
     let input_tensors = input.tensors();
     let mut grads = HashMap::new();
     IN::grad_map(&input_tensors, tangents, &mut grads);
-    let output = func.apply(input);
+    let output = func.invoke(input);
     let output_tensors = output.tensors();
     let mut jvps = HashMap::new();
     for t in output_tensors.tensor_iter() {
@@ -44,7 +44,7 @@ where
     OUT: Value,
 {
     let input_tensors = input.tensors();
-    let output = func.apply(input);
+    let output = func.invoke(input);
     let output_tensors = output.tensors();
     let jvp_fn = move |tangents: IN::Gradient| {
         let mut grads = HashMap::new();
@@ -65,7 +65,7 @@ where
     OUT: Value,
 {
     let input_tensors = input.tensors();
-    let output = func.apply(input);
+    let output = func.invoke(input);
     let output_tensors = output.tensors();
     let vjps_fn = move |cotangents: OUT::Gradient| {
         let mut cotangent_cache = HashMap::new();
@@ -141,7 +141,7 @@ where
     IN: Value,
     OUT: Value,
 {
-    fn apply(&self, input: IN) -> IN::Gradient {
+    fn invoke(&self, input: IN) -> IN::Gradient {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
         let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();
@@ -188,7 +188,7 @@ where
     IN: Value,
     OUT: Value,
 {
-    fn apply(&self, input: IN) -> (OUT, IN::Gradient) {
+    fn invoke(&self, input: IN) -> (OUT, IN::Gradient) {
         let (output, vjp_fn) = vjp(self.func.clone(), input);
         let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();

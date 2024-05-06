@@ -4,7 +4,7 @@ impl<I, O, F> Func<ty_kind::Basic, I, O> for F
 where
     F: Fn(I) -> O,
 {
-    fn apply(&self, input: I) -> O {
+    fn invoke(&self, input: I) -> O {
         self(input)
     }
 }
@@ -14,7 +14,7 @@ where
     F: Fn(I) -> O,
     I: Module,
 {
-    fn apply(&self, input: I) -> O {
+    fn invoke(&self, input: I) -> O {
         self(input)
     }
 }
@@ -26,7 +26,7 @@ macro_rules! impl_tuple_arg_fn {
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {
-                fn apply(&self, input: ($($T,)*)) -> OUT {
+                fn invoke(&self, input: ($($T,)*)) -> OUT {
                     let ($([<$T:lower 1>],)*) = input;
                     self($([<$T:lower 1>],)*)
                 }
@@ -55,7 +55,7 @@ macro_rules! impl_array_arg_fn {
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {
-                fn apply(&self, input: [I; $S]) -> OUT {
+                fn invoke(&self, input: [I; $S]) -> OUT {
                     let [$([<i $N>],)* ..] = input;
                     self($([<i $N>],)*)
                 }

@@ -91,8 +91,8 @@ where
     let input = input.as_ref();
     let tangent = tangent.as_ref();
     let delta = &(tangent * eps);
-    let f_pos = func.apply(&(input + delta));
-    let f_neg = func.apply(&(input - delta));
+    let f_pos = func.invoke(&(input + delta));
+    let f_neg = func.invoke(&(input - delta));
     (f_pos - f_neg) * (0.5 / eps)
 }
 

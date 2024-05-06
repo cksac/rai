@@ -12,7 +12,7 @@ where
     let mut id_map: HashMap<usize, usize> = HashMap::new();
 
     let in_tensors = input.tensors();
-    let output = func.apply(input);
+    let output = func.invoke(input);
     let out_tensors = output.tensors();
 
     fn id(id_map: &mut HashMap<usize, usize>, id_seq: &mut usize, t: &Tensor) -> String {

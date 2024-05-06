@@ -33,7 +33,7 @@ fn main() {
 
     let start = Instant::now();
     for _ in 0..num_iters {
-        let grad = grad_fn.apply((w,));
+        let grad = grad_fn.invoke((w,));
         let new_w = w - grad * learning_rate;
         eval(&new_w);
         w.replace_data(new_w);

@@ -64,7 +64,7 @@ fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>
     labels: &Tensor,
 ) -> (Tensor, Tensor) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((loss, Aux(logits)), (grads, ..)) = vg_fn.apply((model, images, labels));
+    let ((loss, Aux(logits)), (grads, ..)) = vg_fn.invoke((model, images, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update_params(&mut params);

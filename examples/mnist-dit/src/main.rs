@@ -398,7 +398,7 @@ fn train(
             let x = images * 2.0 - 1.0; // convert image range from [0,1] to [-1,1], align with noise range
             let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32);
             let (xs, noise) = scheduler.add_noise(&x, &t);
-            let (loss, (grads, ..)) = vg_fn.apply((model, &xs, &t, labels, &noise));
+            let (loss, (grads, ..)) = vg_fn.invoke((model, &xs, &t, labels, &noise));
             let mut params = optimizer.step(&grads);
             eval(&params);
             model.update_params(&mut params);

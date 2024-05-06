@@ -17,7 +17,7 @@ fn test_linear_batch_input() {
     let input = Tensor::randn([batch_size, in_size], F32, device);
 
     let vg_fn = value_and_grad(loss_fn);
-    let ((loss, Aux(output)), (grads, ..)) = vg_fn.apply((&linear, &input));
+    let ((loss, Aux(output)), (grads, ..)) = vg_fn.invoke((&linear, &input));
     println!("loss = {:?}", &loss);
     println!("output = {:?}", &output);
     println!("grads = {:?}", &grads);
