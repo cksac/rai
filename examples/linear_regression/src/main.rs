@@ -1,4 +1,4 @@
-use rai::{eval, grad, Cpu, Func, Tensor, F32};
+use rai::{eval, grad, Cpu, Tensor, F32};
 use std::time::Instant;
 
 fn main() {
@@ -33,7 +33,7 @@ fn main() {
 
     let start = Instant::now();
     for _ in 0..num_iters {
-        let grad = grad_fn.invoke((w,));
+        let grad = grad_fn(w);
         let new_w = w - grad * learning_rate;
         eval(&new_w);
         w.replace_data(new_w);

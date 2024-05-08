@@ -1,4 +1,4 @@
-use rai_core::{nn::Module, utils::dot_graph, value_and_grad, Aux, Cpu, Func, Tensor, F32};
+use rai_core::{nn::Module, utils::dot_graph, value_and_grad, Aux, Cpu, Tensor, F32};
 use rai_nn::{Embedding, Linear};
 
 fn loss_fn(model: &Linear, x: &Tensor) -> (Tensor, Aux<Tensor>) {
@@ -17,7 +17,7 @@ fn test_linear_batch_input() {
     let input = Tensor::randn([batch_size, in_size], F32, device);
 
     let vg_fn = value_and_grad(loss_fn);
-    let ((loss, Aux(output)), (grads, ..)) = vg_fn.invoke((&linear, &input));
+    let ((loss, Aux(output)), (grads, ..)) = vg_fn((&linear, &input));
     println!("loss = {:?}", &loss);
     println!("output = {:?}", &output);
     println!("grads = {:?}", &grads);

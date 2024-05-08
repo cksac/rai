@@ -421,7 +421,7 @@ impl<D: Device + MatMulCheck> Eval<D, primitives::MatMul> for CandleBackend {
         );
         // set a contiguous tensor to lhs and rhs?
         let t = match (l_stride_ok, r_stride_ok) {
-            (true, true) => t1_ref.matmul(&t2_ref).unwrap(),
+            (true, true) => t1_ref.matmul(t2_ref).unwrap(),
             (true, false) => {
                 let t2_c = t2_ref.contiguous().unwrap();
                 drop(t2);

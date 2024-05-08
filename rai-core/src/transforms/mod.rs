@@ -35,11 +35,12 @@ where
     (output, grad)
 }
 
-pub type BoxedFunc<IN, OUT> = Box<dyn Fn(IN) -> OUT>;
-
-pub fn linearize<K, IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<IN::Gradient, OUT::Gradient>)
+pub fn linearize<'a, K, IN, OUT, F>(
+    func: F,
+    input: IN,
+) -> (OUT, impl Fn(IN::Gradient) -> OUT::Gradient + Clone + 'a)
 where
-    F: Func<K, IN, OUT>,
+    F: Func<K, IN, OUT> + Clone + 'a,
     IN: Value,
     OUT: Value,
 {
@@ -55,12 +56,15 @@ where
         }
         OUT::grad(&output_tensors, &jvps)
     };
-    (output, Box::new(jvp_fn))
+    (output, jvp_fn)
 }
 
-pub fn vjp<K, IN, OUT, F>(func: F, input: IN) -> (OUT, BoxedFunc<OUT::Gradient, IN::Gradient>)
+pub fn vjp<'a, K, IN, OUT, F>(
+    func: F,
+    input: IN,
+) -> (OUT, impl Fn(OUT::Gradient) -> IN::Gradient + Clone + 'a)
 where
-    F: Func<K, IN, OUT>,
+    F: Func<K, IN, OUT> + Clone + 'a,
     IN: Value,
     OUT: Value,
 {
@@ -111,38 +115,17 @@ where
         }
         IN::grad(&input_tensors, &vjps)
     };
-    (output, Box::new(vjps_fn))
+    (output, vjps_fn)
 }
 
-#[derive(Clone)]
-pub struct GradFunc<K, IN, OUT, F>
+pub fn grad<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> IN::Gradient + Clone + 'a
 where
-    F: Func<K, IN, OUT> + Clone,
-{
-    func: F,
-    phantom: std::marker::PhantomData<(K, IN, OUT)>,
-}
-
-impl<K, IN, OUT, F> GradFunc<K, IN, OUT, F>
-where
-    F: Func<K, IN, OUT> + Clone,
-{
-    pub fn new(func: F) -> Self {
-        Self {
-            func,
-            phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<K, IN, OUT, F> Func<K, IN, IN::Gradient> for GradFunc<K, IN, OUT, F>
-where
-    F: Func<K, IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone + 'a,
     IN: Value,
     OUT: Value,
 {
-    fn invoke(&self, input: IN) -> IN::Gradient {
-        let (output, vjp_fn) = vjp(self.func.clone(), input);
+    move |input: IN| {
+        let (output, vjp_fn) = vjp(func.clone(), input);
         let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();
         for t in output_tensors.tensor_iter() {
@@ -152,44 +135,14 @@ where
     }
 }
 
-pub fn grad<K, IN, OUT, F>(func: F) -> GradFunc<K, IN, OUT, F>
+pub fn value_and_grad<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> (OUT, IN::Gradient) + Clone + 'a
 where
-    F: Func<K, IN, OUT> + Clone,
+    F: Func<K, IN, OUT> + Clone + 'a,
     IN: Value,
     OUT: Value,
 {
-    GradFunc::new(func)
-}
-
-#[derive(Clone)]
-pub struct ValueAndGradFunc<K, IN, OUT, F>
-where
-    F: Func<K, IN, OUT> + Clone,
-{
-    func: F,
-    phantom: std::marker::PhantomData<(K, IN, OUT)>,
-}
-
-impl<K, IN, OUT, F> ValueAndGradFunc<K, IN, OUT, F>
-where
-    F: Func<K, IN, OUT> + Clone,
-{
-    pub fn new(func: F) -> Self {
-        Self {
-            func,
-            phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<K, IN, OUT, F> Func<K, IN, (OUT, IN::Gradient)> for ValueAndGradFunc<K, IN, OUT, F>
-where
-    F: Func<K, IN, OUT> + Clone,
-    IN: Value,
-    OUT: Value,
-{
-    fn invoke(&self, input: IN) -> (OUT, IN::Gradient) {
-        let (output, vjp_fn) = vjp(self.func.clone(), input);
+    move |input: IN| {
+        let (output, vjp_fn) = vjp(func.clone(), input);
         let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();
         for t in output_tensors.tensor_iter() {
@@ -197,13 +150,4 @@ where
         }
         (output, vjp_fn(OUT::grad(&output_tensors, &cotangents)))
     }
-}
-
-pub fn value_and_grad<K, IN, OUT, F>(func: F) -> ValueAndGradFunc<K, IN, OUT, F>
-where
-    F: Func<K, IN, OUT> + Clone,
-    IN: Value,
-    OUT: Value,
-{
-    ValueAndGradFunc::new(func)
 }

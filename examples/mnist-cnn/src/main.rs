@@ -5,7 +5,7 @@ use rai::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Aux, Device, Func, Module, Shape, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Device, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -71,7 +71,7 @@ fn train_step<M: TrainableModule<Input = (Tensor, bool), Output = Tensor>, O: Op
     labels: &Tensor,
 ) -> (Tensor, Tensor) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((loss, Aux(logits)), (grads, ..)) = vg_fn.invoke((model, images, true, labels));
+    let ((loss, Aux(logits)), (grads, ..)) = vg_fn((model, images, true, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update_params(&mut params);

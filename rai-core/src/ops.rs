@@ -15,9 +15,6 @@ use core::panic;
 use half::{bf16, f16};
 use safetensors::tensor::TensorView;
 use std::{
-    any::TypeId,
-    cell::RefCell,
-    collections::HashMap,
     f32::consts::PI,
     fmt::Debug,
     ops::{Neg, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
@@ -183,14 +180,13 @@ macro_rules! broadcast_binary_op {
 #[track_caller]
 pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
     let inputs = vec![];
-    let tensor = Tensor::new(
+    Tensor::new(
         device,
         T::DType::boxed_dtype(),
         shape,
         Full::<T::DType>::new(val),
         inputs,
-    );
-    tensor
+    )
 }
 
 /// Creates a `Tensor` filled with ones.
@@ -209,8 +205,7 @@ pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Te
     let dtype = dtype.dtype();
     let device = device.device();
     let primitive = dtype.primitive_full_one();
-    let tensor = Tensor::new(device, dtype, shape, primitive, vec![]);
-    tensor
+    Tensor::new(device, dtype, shape, primitive, vec![])
 }
 
 /// Creates a `Tensor` filled with zeros.
@@ -229,8 +224,7 @@ pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> T
     let dtype = dtype.dtype();
     let device = device.device();
     let primitive = dtype.primitive_full_zero();
-    let tensor = Tensor::new(device, dtype, shape, primitive, vec![]);
-    tensor
+    Tensor::new(device, dtype, shape, primitive, vec![])
 }
 
 /// Creates a `Tensor` filled with a specified value, with the same shape, data type and device as another `Tensor`.
@@ -269,8 +263,7 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let primitive = dtype.primitive_full_zero();
     let inputs = vec![];
-    let tensor = Tensor::new(device, dtype, shape, primitive, inputs);
-    tensor
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
 /// Creates a `Tensor` filled with ones, with the same shape, data type and device as another `Tensor`.
@@ -289,8 +282,7 @@ pub fn ones_like(x: &Tensor) -> Tensor {
     let shape = x.shape();
     let primitive = dtype.primitive_full_one();
     let inputs = vec![];
-    let tensor = Tensor::new(device, dtype, shape, primitive, inputs);
-    tensor
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }
 
 /// Creates a `Tensor` filled with random values from a normal distribution with mean 0 and variance 1.

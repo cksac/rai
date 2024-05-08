@@ -5,7 +5,7 @@ use rai::{
         losses,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Device, FloatElemType, Func, Module, Shape, Tensor, Type, F32, U32,
+    value_and_grad, AsDevice, Device, FloatElemType, Module, Shape, Tensor, Type, F32, U32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -172,6 +172,7 @@ struct DiT {
 }
 
 impl DiT {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         img_size: usize,
         patch_size: usize,
@@ -332,7 +333,7 @@ struct DDIMScheduler {
 }
 
 impl DDIMScheduler {
-    pub fn new(dtype: impl Type, device: impl AsDevice) -> DDIMScheduler {
+    pub fn new(_dtype: impl Type, device: impl AsDevice) -> DDIMScheduler {
         // betas=torch.linspace(0.0001,0.02,T) # (T,)
         // alphas=1-betas  # (T,)
         // alphas_cumprod=torch.cumprod(alphas,dim=-1) # alpha_t累乘 (T,)    [a1,a2,a3,....] ->  [a1,a1*a2,a1*a2*a3,.....]
@@ -398,7 +399,7 @@ fn train(
             let x = images * 2.0 - 1.0; // convert image range from [0,1] to [-1,1], align with noise range
             let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32);
             let (xs, noise) = scheduler.add_noise(&x, &t);
-            let (loss, (grads, ..)) = vg_fn.invoke((model, &xs, &t, labels, &noise));
+            let (loss, (grads, ..)) = vg_fn((model, &xs, &t, labels, &noise));
             let mut params = optimizer.step(&grads);
             eval(&params);
             model.update_params(&mut params);

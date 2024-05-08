@@ -5,7 +5,7 @@ use ty_kind::Basic;
 
 pub trait ValueSpec {
     type Kind;
-    type Tensors: TensorIter + 'static;
+    type Tensors: Clone + TensorIter + 'static;
     type Gradient;
 }
 

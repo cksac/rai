@@ -5,7 +5,7 @@ pub mod rai_mnist {
         device, eval,
         nn::{Conv2d, Conv2dConfig, Dropout, Linear, Module, TrainableModule},
         opt::optimizers::{Optimizer, SDG},
-        value_and_grad, AsDevice, Device, Func, Module, Shape, Tensor, Type, F32,
+        value_and_grad, AsDevice, Device, Module, Shape, Tensor, Type, F32,
     };
     use rai_datasets::image::mnist;
     use rand::{seq::SliceRandom, thread_rng};
@@ -94,7 +94,7 @@ pub mod rai_mnist {
             for batch_idx in &batch_idxs {
                 let train_images = &train_images.narrow(0, batch_idx * batch_size, batch_size);
                 let train_labels = &train_labels.narrow(0, batch_idx * batch_size, batch_size);
-                let (loss, (grads, ..)) = vg_fn.invoke((model, train_images, train_labels));
+                let (loss, (grads, ..)) = vg_fn((model, train_images, train_labels));
                 let mut params = optimizer.step(&grads);
                 eval(&params);
                 model.update_params(&mut params);
