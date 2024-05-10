@@ -5,7 +5,7 @@
 [![Latest Version](https://img.shields.io/crates/v/rai.svg)](https://crates.io/crates/rai)
 [![Discord](https://img.shields.io/discord/1202429682474287144.svg?color=7289da&&logo=discord)](https://discord.gg/J7X8rNZeMC)
 
-ML framework with ergonomic APIs in Rust. Lazy computation and composable transformations.
+ML framework with ergonomic APIs in Rust. Lazy computation and composable transformations like JAX.
 ---
 
 ## Installation
@@ -16,7 +16,7 @@ cargo add rai
 ## Code snippets
 ### Function transformations (jvp, vjp, grad, value_and_grad)
 ```rust
-use rai::{grad, Cpu, Func, Tensor, F32};
+use rai::{grad, Cpu, Tensor, F32};
 
 fn f(x: &Tensor) -> Tensor {
     x.sin()
@@ -25,7 +25,7 @@ fn f(x: &Tensor) -> Tensor {
 fn main() {
     let grad_fn = grad(grad(f));
     let x = &Tensor::ones([1], F32, &Cpu);
-    let grad = grad_fn.apply(x);
+    let grad = grad_fn(x);
     println!("{}", grad.dot_graph());
     println!("{}", grad);
 }
@@ -50,7 +50,7 @@ fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>
     labels: &Tensor,
 ) {
     let vg_fn = value_and_grad(loss_fn);
-    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn.apply((model, input, labels));
+    let ((_loss, Aux(_logits)), (grads, ..)) = vg_fn((model, input, labels));
     let mut params = optimizer.step(&grads);
     eval(&params);
     model.update_params(&mut params);
@@ -69,6 +69,9 @@ fn train_step<M: TrainableModule<Input = Tensor, Output = Tensor>, O: Optimizer>
 - [phi2](https://github.com/cksac/rai/blob/main/examples/phi2/src/main.rs)
     - `cargo run --bin phi2 --release`
     - `cargo run --bin phi2 --release --features=cuda`
+- [phi3](https://github.com/cksac/rai/blob/main/examples/phi3/src/main.rs)
+    - `cargo run --bin phi3 --release`
+    - `cargo run --bin phi3 --release --features=cuda`
 - [qwen2](https://github.com/cksac/rai/blob/main/examples/qwen2/src/main.rs)
     - `cargo run --bin qwen2 --release`
     - `cargo run --bin qwen2 --release --features=cuda`

@@ -1,5 +1,5 @@
 use crate::optimizers::Optimizer;
-use rai_core::{Tensor, TensorIter};
+use rai_core::{non_differentiable, ty_kind::Basic, Tensor, TensorIter};
 use std::collections::HashMap;
 
 pub struct SDG {
@@ -11,6 +11,7 @@ pub struct SDG {
     nesterov: Option<f64>,
     state: HashMap<usize, Tensor>,
 }
+non_differentiable!(Basic; SDG);
 
 impl SDG {
     pub fn new(params: impl TensorIter, lr: f64) -> Self {

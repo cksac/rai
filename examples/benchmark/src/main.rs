@@ -75,7 +75,7 @@ pub mod rai_mnist {
         let dtype = F32;
 
         let model = &ConvNet::new(num_classes, dtype, device);
-        let mut optimizer = SDG::new(model.params(), learning_rate);
+        let optimizer = &mut SDG::new(model.params(), learning_rate);
 
         let dataset = mnist::load(device).expect("mnist dataset");
         let train_images = &dataset.train_images;
@@ -86,6 +86,12 @@ pub mod rai_mnist {
         let n_batches = train_images.shape_at(0) / batch_size;
         let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
         let vg_fn = value_and_grad(loss_fn);
+        let step_fn = |model, optimizer: &mut SDG, train_images, train_labels| {
+            let (loss, (grads, ..)) = vg_fn((model, train_images, train_labels));
+            let params = optimizer.step(&grads);
+            (loss, params)
+        };
+        let step_fn = rai::optimize(step_fn);
         let start = Instant::now();
         for i in 0..num_epochs {
             let start = Instant::now();
@@ -94,8 +100,7 @@ pub mod rai_mnist {
             for batch_idx in &batch_idxs {
                 let train_images = &train_images.narrow(0, batch_idx * batch_size, batch_size);
                 let train_labels = &train_labels.narrow(0, batch_idx * batch_size, batch_size);
-                let (loss, (grads, ..)) = vg_fn((model, train_images, train_labels));
-                let mut params = optimizer.step(&grads);
+                let (loss, mut params) = step_fn((model, optimizer, train_images, train_labels));
                 eval(&params);
                 model.update_params(&mut params);
                 let loss = loss.as_scalar(F32);

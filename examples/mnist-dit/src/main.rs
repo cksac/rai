@@ -386,6 +386,13 @@ fn train(
     let train_images = train_images.reshape([train_images.shape_at(0), 1, 28, 28]);
     let train_labels = &dataset.train_labels;
     let vg_fn = value_and_grad(loss_fn);
+    let step_fn = |model, optimizer: &mut SDG, x, t, y, noise| {
+        let (loss, (grads, ..)) = vg_fn((model, x, t, y, noise));
+        let params = optimizer.step(&grads);
+        (loss, params)
+    };
+    let step_fn = rai::optimize(step_fn);
+
     let n_batches = train_images.shape_at(0) / batch_size;
     let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
     let mut iter_cnt = 0;
@@ -399,8 +406,7 @@ fn train(
             let x = images * 2.0 - 1.0; // convert image range from [0,1] to [-1,1], align with noise range
             let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32);
             let (xs, noise) = scheduler.add_noise(&x, &t);
-            let (loss, (grads, ..)) = vg_fn((model, &xs, &t, labels, &noise));
-            let mut params = optimizer.step(&grads);
+            let (loss, mut params) = step_fn((model, &mut optimizer, &xs, &t, labels, &noise));
             eval(&params);
             model.update_params(&mut params);
             iter_cnt += 1;

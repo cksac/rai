@@ -18,7 +18,19 @@ where
     type Gradient = T::Gradient;
 }
 
+impl<'a, T> ValueSpec for &'a mut T
+where
+    T: ValueSpec,
+{
+    type Kind = T::Kind;
+    type Tensors = T::Tensors;
+    type Gradient = T::Gradient;
+}
+
 pub trait Value: ValueSpec {
+    fn to_tensor_vec(&self) -> Vec<Tensor> {
+        self.tensors().tensor_iter().cloned().collect()
+    }
     fn tensors(&self) -> Self::Tensors;
     fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient;
     fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>);
@@ -53,6 +65,26 @@ where
 }
 
 impl<'a, T, G, X> GenericValue<ty_kind::Basic, T, G> for &'a X
+where
+    X: GenericValue<ty_kind::Basic, T, G>,
+{
+    #[inline]
+    fn gv_tensors(&self) -> T {
+        (*self).gv_tensors()
+    }
+
+    #[inline]
+    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad(tensors, grad_map)
+    }
+
+    #[inline]
+    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad_map(tensors, grad, out)
+    }
+}
+
+impl<'a, T, G, X> GenericValue<ty_kind::Basic, T, G> for &'a mut X
 where
     X: GenericValue<ty_kind::Basic, T, G>,
 {

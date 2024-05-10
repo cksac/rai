@@ -95,6 +95,11 @@ impl Tensor {
         Ref::map(self.0.inputs.borrow(), |v| v.as_slice())
     }
 
+    #[inline]
+    pub fn set_inputs(&self, inputs: Vec<Tensor>) {
+        self.0.inputs.replace(inputs);
+    }
+
     #[cfg(feature = "debug-location")]
     #[inline]
     pub fn location(&self) -> &'static Location<'static> {

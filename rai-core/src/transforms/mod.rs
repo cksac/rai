@@ -13,6 +13,9 @@ pub use eval::eval;
 
 mod fn_impls;
 
+mod optimize;
+pub use optimize::optimize;
+
 mod raiexpr;
 pub use raiexpr::raiexpr;
 
