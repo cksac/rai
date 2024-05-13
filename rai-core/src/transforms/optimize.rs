@@ -1,12 +1,10 @@
 use crate::{
     primitives::{Full, ToDType, ToDevice},
-    Cpu, Cuda, Func, Metal, Shape, Tensor, TensorIter, Value, F32, F64,
+    Cpu, Cuda, Func, Metal, Shape, Tensor, TensorIter, Value, BF16, F16, F32, F64, I64, U32, U8,
 };
 use std::{
-    any::{self, TypeId},
-    cell::RefCell,
+    any::TypeId,
     collections::{BTreeSet, HashMap},
-    panic::Location,
 };
 
 fn is_full(t: &Tensor) -> Option<String> {
@@ -14,9 +12,29 @@ fn is_full(t: &Tensor) -> Option<String> {
         Some(format!("{:?}", f.val))
     } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<F64>>() {
         Some(format!("{:?}", f.val))
+    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<BF16>>() {
+        Some(format!("{:?}", f.val))
+    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<F16>>() {
+        Some(format!("{:?}", f.val))
+    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<U32>>() {
+        Some(format!("{:?}", f.val))
+    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<U8>>() {
+        Some(format!("{:?}", f.val))
+    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<I64>>() {
+        Some(format!("{:?}", f.val))
     } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<F32>>() {
         is_full(t.inputs().first().unwrap())
     } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<F64>>() {
+        is_full(t.inputs().first().unwrap())
+    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<BF16>>() {
+        is_full(t.inputs().first().unwrap())
+    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<F16>>() {
+        is_full(t.inputs().first().unwrap())
+    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<U32>>() {
+        is_full(t.inputs().first().unwrap())
+    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<U8>>() {
+        is_full(t.inputs().first().unwrap())
+    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<I64>>() {
         is_full(t.inputs().first().unwrap())
     } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDevice<Cpu>>() {
         is_full(t.inputs().first().unwrap())
@@ -29,84 +47,15 @@ fn is_full(t: &Tensor) -> Option<String> {
     }
 }
 
-// #[derive(Debug, Default)]
-// struct OptimizeCache {
-//     cache: HashMap<String, CacheEntry>,
-// }
-// impl OptimizeCache {
-//     fn get(&self, key: &str) -> Option<&CacheEntry> {
-//         self.cache.get(key)
-//     }
-
-//     fn insert(&mut self, key: String, entry: CacheEntry) {
-//         self.cache.insert(key, entry);
-//     }
-// }
-
-// #[derive(Debug, Default, Clone)]
-// struct CacheEntry {
-//     inputs: Vec<Tensor>,
-//     outputs: Vec<Tensor>,
-//     tape: BTreeSet<Tensor>,
-// }
-
-// thread_local! {
-//     static  OPTIMIZE_CACHE: RefCell<OptimizeCache> = Default::default();
-// }
-
-#[track_caller]
+// TODO: optimize cache
 pub fn optimize<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> OUT + 'a
 where
     F: Func<K, IN, OUT> + 'a,
     IN: Value,
     OUT: Value,
 {
-    //let fun_key = format!("{}@{}", any::type_name_of_val(&func), Location::caller());
     move |input| {
-        //let input_tensors = input.to_tensor_vec();
-        // stil need to constuct graph before optimize, can't use cached graph? due to OUT may contain non-tensor outputs...
         let output = func.invoke(input);
-        //let output_tensors = output.to_tensor_vec();
-        // let cached = OPTIMIZE_CACHE.with(|cache| cache.borrow().get(&fun_key).cloned());
-        // if let Some(g) = cached {
-        //     let inputs = g.inputs;
-        //     let outputs = g.outputs;
-        //     let real_inputs = inputs
-        //         .iter()
-        //         .zip(input_tensors)
-        //         .map(|(a, b)| (a.id(), b))
-        //         .collect::<HashMap<_, _>>();
-        //     let real_outputs = outputs
-        //         .iter()
-        //         .zip(output_tensors.iter())
-        //         .map(|(a, b)| (a.id(), b))
-        //         .collect::<HashMap<_, _>>();
-
-        //     let tape = g.tape;
-        //     for t in tape.iter() {
-        //         if !t.inputs().is_empty() {
-        //             // replace real inputs
-        //             let inputs = t
-        //                 .inputs()
-        //                 .iter()
-        //                 .map(|x| {
-        //                     if let Some(v) = real_inputs.get(&x.id()).cloned() {
-        //                         v
-        //                     } else {
-        //                         x.clone()
-        //                     }
-        //                 })
-        //                 .collect();
-        //             t.set_inputs(inputs);
-        //         }
-        //         if let Some(r) = real_outputs.get(&t.id()) {
-        //             dbg!(&r, &t);
-        //             // TODO: should replace primitive also
-        //             r.set_inputs(t.inputs().iter().cloned().collect());
-        //         }
-        //     }
-        //     return output;
-        // }
 
         let mut tape = BTreeSet::new();
         let mut stack = Vec::new();
@@ -163,12 +112,6 @@ where
             }
         }
 
-        // let entry = CacheEntry {
-        //     inputs: input_tensors,
-        //     outputs: output_tensors,
-        //     tape,
-        // };
-        // OPTIMIZE_CACHE.with(|cache| cache.borrow_mut().insert(fun_key.clone(), entry));
         output
     }
 }
