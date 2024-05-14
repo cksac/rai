@@ -70,7 +70,7 @@ where
 {
     #[inline]
     fn gv_tensors(&self) -> T {
-        (*self).gv_tensors()
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_tensors(*self)
     }
 
     #[inline]
@@ -90,7 +90,7 @@ where
 {
     #[inline]
     fn gv_tensors(&self) -> T {
-        (*self).gv_tensors()
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_tensors(*self)
     }
 
     #[inline]
@@ -110,7 +110,7 @@ where
 {
     #[inline]
     fn gv_tensors(&self) -> T {
-        (*self).gv_tensors()
+        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_tensors(*self)
     }
 
     #[inline]
@@ -130,7 +130,7 @@ where
 {
     #[inline]
     fn gv_tensors(&self) -> T {
-        (*self).gv_tensors()
+        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_tensors(*self)
     }
 
     #[inline]
