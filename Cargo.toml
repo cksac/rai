@@ -13,20 +13,20 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 categories = ["science"]
 
 [workspace.dependencies]
-rai = { path = "rai", version = "0.10.0" }
-rai-core = { path = "rai-core", version = "0.10.0" }
-rai-nn = { path = "rai-nn", version = "0.10.0" }
-rai-opt = { path = "rai-opt", version = "0.10.0" }
-rai-models = { path = "rai-models", version = "0.10.0" }
-rai-datasets = { path = "rai-datasets", version = "0.10.0" }
-rai-derive = { path = "rai-derive", version = "0.10.0" }
+rai = { path = "rai", version = "0.11.0" }
+rai-core = { path = "rai-core", version = "0.11.0" }
+rai-nn = { path = "rai-nn", version = "0.11.0" }
+rai-opt = { path = "rai-opt", version = "0.11.0" }
+rai-models = { path = "rai-models", version = "0.11.0" }
+rai-datasets = { path = "rai-datasets", version = "0.11.0" }
+rai-derive = { path = "rai-derive", version = "0.11.0" }
 safetensors = "0.4.1"
 candle-core = { version = "0.4.1" }
 candle-flash-attn = { version = "0.4.1" }
