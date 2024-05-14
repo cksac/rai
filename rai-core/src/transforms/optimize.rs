@@ -22,25 +22,48 @@ fn is_full(t: &Tensor) -> Option<String> {
         Some(format!("{:?}", f.val))
     } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<I64>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<F32>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<F64>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<BF16>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<F16>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<U32>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<U8>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDType<I64>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDevice<Cpu>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDevice<Cuda>>() {
-        is_full(t.inputs().first().unwrap())
-    } else if let Some(_) = t.primitive().as_any().downcast_ref::<ToDevice<Metal>>() {
+    } else if t
+        .primitive()
+        .as_any()
+        .downcast_ref::<ToDType<F32>>()
+        .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDType<F64>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDType<BF16>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDType<F16>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDType<U32>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDType<U8>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDType<I64>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDevice<Cpu>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDevice<Cuda>>()
+            .is_some()
+        || t.primitive()
+            .as_any()
+            .downcast_ref::<ToDevice<Metal>>()
+            .is_some()
+    {
         is_full(t.inputs().first().unwrap())
     } else {
         None
@@ -79,15 +102,13 @@ where
         // (device, dtype, val:shape) -> Tensor
         let mut constants = HashMap::<(TypeId, TypeId, String), Tensor>::new();
         for t in tape.iter() {
-            if let Some(val) = is_full(&t) {
+            if let Some(val) = is_full(t) {
                 let key = (
                     t.device().as_any().type_id(),
                     t.dtype().as_any().type_id(),
                     format!("{:?}{:?}", val, t.shape()),
                 );
-                if constants.get(&key).is_none() {
-                    constants.insert(key, t.clone());
-                }
+                constants.entry(key).or_insert_with(|| t.clone());
             }
 
             if !t.inputs().is_empty() {
