@@ -1,5 +1,5 @@
 use crate::{dispatch::eval_rule, Tensor, TensorIter};
-use std::collections::BTreeSet;
+use std::collections::{HashSet, VecDeque};
 
 pub trait EvalArgs {
     fn outputs(&self) -> impl Iterator<Item = &Tensor>;
@@ -30,24 +30,29 @@ where
     }
 }
 pub fn eval<T: EvalArgs>(args: T) {
-    let mut tape = BTreeSet::new();
+    let mut tape = VecDeque::new();
     let mut stack = Vec::new();
-
-    // use iterative instead of recursive to avoid stack overflow
-    // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
     for output in args.outputs() {
         stack.push(output.clone());
     }
-
     while let Some(t) = stack.pop() {
-        if t.is_evaluated() || tape.contains(&t) {
-            continue;
-        }
-        tape.insert(t.clone());
         for input in t.inputs().iter() {
             stack.push(input.clone());
         }
+        tape.push_back(t);
     }
+    let mut visited = HashSet::new();
+    tape = tape
+        .into_iter()
+        .rev()
+        .filter(|t| {
+            let v = visited.contains(&t.id());
+            if !v {
+                visited.insert(t.id());
+            }
+            !v && !t.is_evaluated()
+        })
+        .collect();
     // Process the sorted tensors in the tape
     for t in tape.into_iter() {
         {

@@ -1,5 +1,5 @@
 use crate::Value;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 pub trait Func<InKind, In, Out> {
     fn invoke(&self, input: In) -> Out;
@@ -77,24 +77,24 @@ where
     let vjps_fn = move |cotangents: OUT::Gradient| {
         let mut cotangent_cache = HashMap::new();
         OUT::grad_map(&output_tensors, cotangents, &mut cotangent_cache);
-        let mut tape = BTreeSet::new();
+        let mut visited = HashSet::new();
+        let mut tape = Vec::new();
         let mut stack = Vec::new();
-        // use iterative instead of recursive to avoid stack overflow
-        // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
         for output in output_tensors.tensor_iter() {
             stack.push(output.clone());
         }
         while let Some(t) = stack.pop() {
-            if tape.contains(&t) || t.inputs().is_empty() {
+            if visited.contains(&t.id()) || t.inputs().is_empty() {
                 continue;
             }
-            tape.insert(t.clone());
+            visited.insert(t.id());
+            tape.push(t.clone());
             for input in t.inputs().iter() {
                 stack.push(input.clone());
             }
         }
         // run the tape backwards
-        for t in tape.iter().rev() {
+        for t in tape.iter() {
             let primals = &*t.inputs();
             let cotangent = cotangent_cache
                 .entry(t.id())

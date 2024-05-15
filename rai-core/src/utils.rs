@@ -1,31 +1,30 @@
 use crate::{ty_kind, vjp, Func, Shape, Tensor, TensorIter, F64};
-use std::collections::{hash_map::RandomState, BTreeSet, HashSet};
+use std::collections::{hash_map::RandomState, HashSet};
 
 pub fn dprint<T: TensorIter>(args: T) {
     println!("{}", dot_graph(args));
 }
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
-    let mut tape = BTreeSet::new();
+    let mut visited = HashSet::new();
+    let mut tape = Vec::new();
     let mut stack = Vec::new();
-
-    // use iterative instead of recursive to avoid stack overflow
-    // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
     let mut output_set = HashSet::new();
     for output in args.tensor_iter() {
         stack.push(output.clone());
         output_set.insert(output.id());
     }
-
     while let Some(t) = stack.pop() {
-        if tape.contains(&t) {
+        if visited.contains(&t.id()) {
             continue;
         }
-        tape.insert(t.clone());
+        visited.insert(t.id());
+        tape.push(t.clone());
         for input in t.inputs().iter() {
             stack.push(input.clone());
         }
     }
+    tape.reverse();
 
     let nodes: HashSet<String, RandomState> = HashSet::from_iter(tape.iter().map(|tensor| {
         let color = if output_set.contains(&tensor.id()) {

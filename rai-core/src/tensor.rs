@@ -21,7 +21,6 @@ use std::{
     ops::Deref,
     path::Path,
     rc::Rc,
-    sync::atomic,
 };
 
 pub trait TensorLike: Debug + Display {
@@ -34,7 +33,6 @@ pub trait TensorLike: Debug + Display {
 }
 
 struct TensorImpl {
-    id: usize,
     device: Box<dyn Device>,
     dtype: Box<dyn DType>,
     shape: Vec<usize>,
@@ -54,10 +52,7 @@ impl Tensor {
         primitive: impl Into<Box<dyn Primitive>>,
         inputs: impl Into<Vec<Tensor>>,
     ) -> Self {
-        static COUNTER: atomic::AtomicUsize = atomic::AtomicUsize::new(1);
-        let id = COUNTER.fetch_add(1, atomic::Ordering::Relaxed);
         let inner = TensorImpl {
-            id,
             device: device.into_boxed_device(),
             dtype: dtype.into_boxed_dtype(),
             shape: shape.shape().to_vec(),
@@ -72,7 +67,7 @@ impl Tensor {
 
     #[inline]
     pub fn id(&self) -> usize {
-        self.0.id
+        Rc::as_ptr(&self.0) as usize
     }
 
     #[inline]
@@ -865,19 +860,19 @@ impl Hash for Tensor {
 
 impl PartialOrd for Tensor {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.0.id.cmp(&other.0.id))
+        Some(self.id().cmp(&other.id()))
     }
 }
 
 impl Ord for Tensor {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.id.cmp(&other.0.id)
+        self.id().cmp(&other.id())
     }
 }
 
 impl PartialEq for Tensor {
     fn eq(&self, other: &Self) -> bool {
-        self.0.id == other.0.id
+        self.id() == other.id()
     }
 }
 

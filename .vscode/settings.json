@@ -8,6 +8,7 @@
         "Conv",
         "Cuda",
         "ddof",
+        "dprint",
         "dtype",
         "embd",
         "endoftext",
@@ -42,6 +43,7 @@
         "softmax",
         "thiserror",
         "unsqueeze",
+        "upsample",
         "varmap",
         "vjps"
     ],

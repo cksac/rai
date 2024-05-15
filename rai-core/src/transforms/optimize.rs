@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{
     any::TypeId,
-    collections::{BTreeSet, HashMap},
+    collections::{HashMap, HashSet, VecDeque},
 };
 
 fn is_full(t: &Tensor) -> Option<String> {
@@ -79,26 +79,28 @@ where
 {
     move |input| {
         let output = func.invoke(input);
-
-        let mut tape = BTreeSet::new();
+        let mut tape = VecDeque::new();
         let mut stack = Vec::new();
-
-        // use iterative instead of recursive to avoid stack overflow
-        // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
         for output in output.tensors().tensor_iter() {
             stack.push(output.clone());
         }
-
         while let Some(t) = stack.pop() {
-            if tape.contains(&t) {
-                continue;
-            }
-            tape.insert(t.clone());
             for input in t.inputs().iter() {
                 stack.push(input.clone());
             }
+            tape.push_back(t);
         }
-
+        let mut visited = HashSet::new();
+        tape = tape
+            .into_iter().rev()
+            .filter(|t| {
+                let v = visited.contains(&t.id());
+                if !v {
+                    visited.insert(t.id());
+                }
+                !v
+            })
+            .collect();
         // (device, dtype, val:shape) -> Tensor
         let mut constants = HashMap::<(TypeId, TypeId, String), Tensor>::new();
         for t in tape.iter() {

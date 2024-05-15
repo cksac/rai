@@ -1,6 +1,6 @@
 use crate::{Func, Shape, Tensor, TensorIter, Value};
 use colored::*;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{HashSet, HashMap, VecDeque};
 
 pub fn raiexpr<K, IN, OUT, F>(func: &F, input: IN) -> String
 where
@@ -63,25 +63,30 @@ where
             t.location()
         )
     }
-
-    // use iterative instead of recursive to avoid stack overflow
-    // TODO: use proper topo sort algorithm, now sort by id in BTreeSet
-    let input_set = in_tensors.tensor_iter().cloned().collect::<BTreeSet<_>>();
-    let mut tape = BTreeSet::new();
+    let input_set: Vec<usize> = in_tensors.tensor_iter().map(Tensor::id).collect();
+    let mut tape = VecDeque::new();
     let mut stack = Vec::new();
     for output in out_tensors.tensor_iter() {
         stack.push(output.clone());
     }
-
     while let Some(t) = stack.pop() {
-        if tape.contains(&t) || input_set.contains(&t) {
-            continue;
-        }
-        tape.insert(t.clone());
         for input in t.inputs().iter() {
             stack.push(input.clone());
         }
+        tape.push_back(t);
     }
+    let mut visited = HashSet::new();
+    tape = tape
+        .into_iter()
+        .rev()
+        .filter(|t| {
+            let v = visited.contains(&t.id());
+            if !v {
+                visited.insert(t.id());
+            }
+            !v && !input_set.contains(&t.id())
+        })
+        .collect();
 
     let inputs = in_tensors
         .tensor_iter()

@@ -16,12 +16,13 @@ fn test_add2() {
     let device = Cpu;
 
     let a = &Tensor::ones([2, 3], F32, device);
-    let b = &Tensor::full(1.4f32, [2, 3], device);
-    let c = &Tensor::full(1.4f32, [2, 3], device);
+    let b = &Tensor::full(1.2f32, [2, 3], device);
+    let c = &Tensor::full(1.3f32, [2, 3], device);
     let d = &Tensor::full(1.4f32, [2, 3], device);
-    let e = &Tensor::full(1.4f32, [2, 3], device);
+    let e = &Tensor::full(1.5f32, [2, 3], device);
 
     let z = a + (a * b - 3.2f32) - c / d + e;
+    //println!("{}", z.dot_graph());
     println!("{}", z);
 }
 
@@ -36,9 +37,10 @@ fn test_eval() {
         let b = &Tensor::full(3.2f32, [2, 3], device);
         a + b
     };
-    println!("{}", d);
+    //println!("{}", d);
 
     let z = a / b + b * c - d;
+    println!("{}", z.dot_graph());
     println!("{}", z);
 
     println!("{}", d);
