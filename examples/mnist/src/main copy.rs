@@ -5,7 +5,8 @@ use rai::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Aux, Device, Module, Tensor, Type, F32,
+    utils::dot_graph,
+    value_and_grad, AsDevice, Aux, Device, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use std::{fmt::Debug, time::Instant};

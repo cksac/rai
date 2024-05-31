@@ -92,7 +92,8 @@ where
         }
         let mut visited = HashSet::new();
         tape = tape
-            .into_iter().rev()
+            .into_iter()
+            .rev()
             .filter(|t| {
                 let v = visited.contains(&t.id());
                 if !v {

@@ -1,6 +1,6 @@
 use crate::{Func, Shape, Tensor, TensorIter, Value};
 use colored::*;
-use std::collections::{HashSet, HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub fn raiexpr<K, IN, OUT, F>(func: &F, input: IN) -> String
 where
