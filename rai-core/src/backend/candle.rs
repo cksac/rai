@@ -1,6 +1,6 @@
 use crate::{
-    device::Metal, primitives, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Shape,
-    Tensor, Type, BF16, F16, F32, F64, I64, U32, U8,
+    device::Metal, ops, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Shape, Tensor,
+    Type, BF16, F16, F32, F64, I64, U32, U8,
 };
 use half::{bf16, f16};
 use once_cell::sync::Lazy;
@@ -194,13 +194,13 @@ impl WithDevice for Metal {
     }
 }
 
-impl<D, T> Eval<D, primitives::Full<T>> for CandleBackend
+impl<D, T> Eval<D, ops::Full<T>> for CandleBackend
 where
     D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::WithDType,
 {
-    fn eval(&self, device: &D, primitive: &primitives::Full<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, primitive: &ops::Full<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
             let t = candle_core::Tensor::full(primitive.val, output.shape(), dev).unwrap();
             output.set_data(t);
@@ -208,13 +208,13 @@ where
     }
 }
 
-impl<D, T> Eval<D, primitives::Normal<T>> for CandleBackend
+impl<D, T> Eval<D, ops::Normal<T>> for CandleBackend
 where
     D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::FloatDType,
 {
-    fn eval(&self, device: &D, primitive: &primitives::Normal<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, primitive: &ops::Normal<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
             let t = candle_core::Tensor::randn(primitive.mean, primitive.std, output.shape(), dev);
             let t = t.unwrap();
@@ -223,13 +223,13 @@ where
     }
 }
 
-impl<D, T> Eval<D, primitives::Random<T>> for CandleBackend
+impl<D, T> Eval<D, ops::Random<T>> for CandleBackend
 where
     D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::FloatDType,
 {
-    fn eval(&self, device: &D, primitive: &primitives::Random<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, primitive: &ops::Random<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
             let t = candle_core::Tensor::rand(primitive.from, primitive.to, output.shape(), dev);
             let t = t.unwrap();
@@ -238,13 +238,13 @@ where
     }
 }
 
-impl<D, T> Eval<D, primitives::Arange<T>> for CandleBackend
+impl<D, T> Eval<D, ops::Arange<T>> for CandleBackend
 where
     D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::WithDType,
 {
-    fn eval(&self, device: &D, primitive: &primitives::Arange<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, primitive: &ops::Arange<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
             let start = primitive.start;
             let end = primitive.stop;
@@ -255,19 +255,13 @@ where
     }
 }
 
-impl<D, T> Eval<D, primitives::FromArray<T>> for CandleBackend
+impl<D, T> Eval<D, ops::FromArray<T>> for CandleBackend
 where
     D: Device + WithDevice,
     T: Type,
     T::Repr: candle_core::WithDType,
 {
-    fn eval(
-        &self,
-        device: &D,
-        primitive: &primitives::FromArray<T>,
-        _: &[Tensor],
-        output: &Tensor,
-    ) {
+    fn eval(&self, device: &D, primitive: &ops::FromArray<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
             let t = candle_core::Tensor::new(primitive.data.as_slice(), dev)
                 .unwrap()
@@ -278,8 +272,8 @@ where
     }
 }
 
-impl<D: Device> Eval<D, primitives::Add> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Add, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Add> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Add, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -291,8 +285,8 @@ impl<D: Device> Eval<D, primitives::Add> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Sub> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Sub, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Sub> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Sub, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -304,8 +298,8 @@ impl<D: Device> Eval<D, primitives::Sub> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Mul> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Mul, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Mul> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Mul, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -317,8 +311,8 @@ impl<D: Device> Eval<D, primitives::Mul> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Div> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Div, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Div> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Div, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -404,8 +398,8 @@ impl MatMulCheck for Metal {
     }
 }
 
-impl<D: Device + MatMulCheck> Eval<D, primitives::MatMul> for CandleBackend {
-    fn eval(&self, device: &D, _: &primitives::MatMul, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device + MatMulCheck> Eval<D, ops::MatMul> for CandleBackend {
+    fn eval(&self, device: &D, _: &ops::MatMul, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -448,8 +442,8 @@ impl<D: Device + MatMulCheck> Eval<D, primitives::MatMul> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Sin> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Sin, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Sin> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Sin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -458,8 +452,8 @@ impl<D: Device> Eval<D, primitives::Sin> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Cos> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Cos, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Cos> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Cos, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -468,8 +462,8 @@ impl<D: Device> Eval<D, primitives::Cos> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Negative> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Negative, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Negative> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Negative, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -478,8 +472,8 @@ impl<D: Device> Eval<D, primitives::Negative> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ReduceSum> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::ReduceSum, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ReduceSum> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ReduceSum, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -493,8 +487,8 @@ impl<D: Device> Eval<D, primitives::ReduceSum> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ReduceMax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::ReduceMax, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ReduceMax> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ReduceMax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -512,8 +506,8 @@ impl<D: Device> Eval<D, primitives::ReduceMax> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ReduceMin> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::ReduceMin, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ReduceMin> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ReduceMin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -528,8 +522,8 @@ impl<D: Device> Eval<D, primitives::ReduceMin> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Square> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Square, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Square> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Square, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -538,8 +532,8 @@ impl<D: Device> Eval<D, primitives::Square> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Sqrt> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Sqrt, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Sqrt> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Sqrt, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -548,8 +542,8 @@ impl<D: Device> Eval<D, primitives::Sqrt> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Rsqrt> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Rsqrt, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Rsqrt> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Rsqrt, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -558,8 +552,8 @@ impl<D: Device> Eval<D, primitives::Rsqrt> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Transpose> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Transpose, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Transpose> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Transpose, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -568,8 +562,8 @@ impl<D: Device> Eval<D, primitives::Transpose> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Reshape> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Reshape, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Reshape> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Reshape, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -578,8 +572,8 @@ impl<D: Device> Eval<D, primitives::Reshape> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Broadcast> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Broadcast, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Broadcast> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Broadcast, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -588,8 +582,8 @@ impl<D: Device> Eval<D, primitives::Broadcast> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Permute> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Permute, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Permute> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Permute, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -598,8 +592,8 @@ impl<D: Device> Eval<D, primitives::Permute> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Sign> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Sign, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Sign> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Sign, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -611,8 +605,8 @@ impl<D: Device> Eval<D, primitives::Sign> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Abs> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Abs, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Abs> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Abs, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -621,8 +615,8 @@ impl<D: Device> Eval<D, primitives::Abs> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Exp> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Exp, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Exp> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Exp, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -631,8 +625,8 @@ impl<D: Device> Eval<D, primitives::Exp> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Log> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Log, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Log> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Log, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -641,8 +635,8 @@ impl<D: Device> Eval<D, primitives::Log> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Log2> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Log2, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Log2> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Log2, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -651,8 +645,8 @@ impl<D: Device> Eval<D, primitives::Log2> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Log10> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Log10, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Log10> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Log10, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -661,8 +655,8 @@ impl<D: Device> Eval<D, primitives::Log10> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Equal> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Equal, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Equal> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Equal, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -674,8 +668,8 @@ impl<D: Device> Eval<D, primitives::Equal> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::NotEqual> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::NotEqual, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::NotEqual> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::NotEqual, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -687,8 +681,8 @@ impl<D: Device> Eval<D, primitives::NotEqual> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Greater> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Greater, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Greater> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Greater, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -700,8 +694,8 @@ impl<D: Device> Eval<D, primitives::Greater> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::GreaterEqual> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::GreaterEqual, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::GreaterEqual> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::GreaterEqual, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -713,8 +707,8 @@ impl<D: Device> Eval<D, primitives::GreaterEqual> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Less> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Less, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Less> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Less, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -726,8 +720,8 @@ impl<D: Device> Eval<D, primitives::Less> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::LessEqual> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::LessEqual, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::LessEqual> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::LessEqual, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -739,8 +733,8 @@ impl<D: Device> Eval<D, primitives::LessEqual> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Maximum> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Maximum, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Maximum> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Maximum, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -752,8 +746,8 @@ impl<D: Device> Eval<D, primitives::Maximum> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Minimum> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Minimum, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Minimum> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Minimum, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -765,12 +759,12 @@ impl<D: Device> Eval<D, primitives::Minimum> for CandleBackend {
     }
 }
 
-impl<D, T> Eval<D, primitives::ToDType<T>> for CandleBackend
+impl<D, T> Eval<D, ops::ToDType<T>> for CandleBackend
 where
     D: Device,
     T: Type + Into<candle_core::DType>,
 {
-    fn eval(&self, _: &D, primitive: &primitives::ToDType<T>, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, primitive: &ops::ToDType<T>, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -779,18 +773,12 @@ where
     }
 }
 
-impl<D1, D2> Eval<D1, primitives::ToDevice<D2>> for CandleBackend
+impl<D1, D2> Eval<D1, ops::ToDevice<D2>> for CandleBackend
 where
     D1: Device,
     D2: Device + Clone + WithDevice,
 {
-    fn eval(
-        &self,
-        _: &D1,
-        primitive: &primitives::ToDevice<D2>,
-        inputs: &[Tensor],
-        output: &Tensor,
-    ) {
+    fn eval(&self, _: &D1, primitive: &ops::ToDevice<D2>, inputs: &[Tensor], output: &Tensor) {
         primitive.device.with_device(|dev| {
             let x = &inputs[0];
             let t = x.get_data::<Data>().unwrap();
@@ -827,8 +815,8 @@ fn log_softmax<D: candle_core::shape::Dim>(
     Ok(log_sm)
 }
 
-impl<D: Device> Eval<D, primitives::Softmax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Softmax, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Softmax> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Softmax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -837,8 +825,8 @@ impl<D: Device> Eval<D, primitives::Softmax> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::LogSoftmax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::LogSoftmax, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::LogSoftmax> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::LogSoftmax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -847,8 +835,8 @@ impl<D: Device> Eval<D, primitives::LogSoftmax> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Gather> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Gather, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Gather> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Gather, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -860,8 +848,8 @@ impl<D: Device> Eval<D, primitives::Gather> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::IndexAdd> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::IndexAdd, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::IndexAdd> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::IndexAdd, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let source = &inputs[1];
         let index = &inputs[2];
@@ -876,8 +864,8 @@ impl<D: Device> Eval<D, primitives::IndexAdd> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::IndexSelect> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::IndexSelect, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::IndexSelect> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::IndexSelect, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
@@ -889,8 +877,8 @@ impl<D: Device> Eval<D, primitives::IndexSelect> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Concatenate> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Concatenate, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Concatenate> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Concatenate, inputs: &[Tensor], output: &Tensor) {
         let tensors: Vec<_> = inputs
             .iter()
             .map(|t| t.get_data::<Data>().unwrap().clone())
@@ -900,8 +888,8 @@ impl<D: Device> Eval<D, primitives::Concatenate> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Narrow> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Narrow, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Narrow> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Narrow, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -912,8 +900,8 @@ impl<D: Device> Eval<D, primitives::Narrow> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Where> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Where, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Where> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Where, inputs: &[Tensor], output: &Tensor) {
         let on_true = &inputs[0];
         let on_false = &inputs[1];
         let cond = &inputs[2];
@@ -928,8 +916,8 @@ impl<D: Device> Eval<D, primitives::Where> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ArgMax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::ArgMax, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ArgMax> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ArgMax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -943,8 +931,8 @@ impl<D: Device> Eval<D, primitives::ArgMax> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ArgMin> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::ArgMin, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ArgMin> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ArgMin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -958,8 +946,8 @@ impl<D: Device> Eval<D, primitives::ArgMin> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Erf> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Erf, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Erf> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Erf, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -968,8 +956,8 @@ impl<D: Device> Eval<D, primitives::Erf> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Tanh> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::Tanh, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Tanh> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::Tanh, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -978,8 +966,8 @@ impl<D: Device> Eval<D, primitives::Tanh> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::PowerFloat> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::PowerFloat, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::PowerFloat> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::PowerFloat, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -988,8 +976,8 @@ impl<D: Device> Eval<D, primitives::PowerFloat> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ToContiguous> for CandleBackend {
-    fn eval(&self, _: &D, _: &primitives::ToContiguous, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ToContiguous> for CandleBackend {
+    fn eval(&self, _: &D, _: &ops::ToContiguous, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
@@ -998,8 +986,8 @@ impl<D: Device> Eval<D, primitives::ToContiguous> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ScatterAdd> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::ScatterAdd, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::ScatterAdd> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ScatterAdd, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let updates = &inputs[1];
         let indices = &inputs[2];
@@ -1014,8 +1002,8 @@ impl<D: Device> Eval<D, primitives::ScatterAdd> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Conv1d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Conv1d, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Conv1d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Conv1d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -1035,8 +1023,8 @@ impl<D: Device> Eval<D, primitives::Conv1d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::Conv2d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &primitives::Conv2d, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::Conv2d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::Conv2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -1059,14 +1047,8 @@ impl<D: Device> Eval<D, primitives::Conv2d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ConvTranspose1d> for CandleBackend {
-    fn eval(
-        &self,
-        _: &D,
-        primitive: &primitives::ConvTranspose1d,
-        inputs: &[Tensor],
-        output: &Tensor,
-    ) {
+impl<D: Device> Eval<D, ops::ConvTranspose1d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ConvTranspose1d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -1087,14 +1069,8 @@ impl<D: Device> Eval<D, primitives::ConvTranspose1d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::ConvTranspose2d> for CandleBackend {
-    fn eval(
-        &self,
-        _: &D,
-        primitive: &primitives::ConvTranspose2d,
-        inputs: &[Tensor],
-        output: &Tensor,
-    ) {
+impl<D: Device> Eval<D, ops::ConvTranspose2d> for CandleBackend {
+    fn eval(&self, _: &D, primitive: &ops::ConvTranspose2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -1122,14 +1098,14 @@ impl<D: Device> Eval<D, primitives::ConvTranspose2d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::MaxPool1d> for CandleBackend {
-    fn eval(&self, _: &D, _p: &primitives::MaxPool1d, _inputs: &[Tensor], _output: &Tensor) {
+impl<D: Device> Eval<D, ops::MaxPool1d> for CandleBackend {
+    fn eval(&self, _: &D, _p: &ops::MaxPool1d, _inputs: &[Tensor], _output: &Tensor) {
         unimplemented!("Candle max_pool1d is not implemented")
     }
 }
 
-impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
-    fn eval(&self, _: &D, p: &primitives::MaxPool2d, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::MaxPool2d> for CandleBackend {
+    fn eval(&self, _: &D, p: &ops::MaxPool2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let t1 = x.get_data::<Data>().unwrap();
         let t1 = t1.deref();
@@ -1142,14 +1118,14 @@ impl<D: Device> Eval<D, primitives::MaxPool2d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::AvgPool1d> for CandleBackend {
-    fn eval(&self, _: &D, _p: &primitives::AvgPool1d, _inputs: &[Tensor], _output: &Tensor) {
+impl<D: Device> Eval<D, ops::AvgPool1d> for CandleBackend {
+    fn eval(&self, _: &D, _p: &ops::AvgPool1d, _inputs: &[Tensor], _output: &Tensor) {
         unimplemented!("Candle avg_pool1d is not implemented")
     }
 }
 
-impl<D: Device> Eval<D, primitives::AvgPool2d> for CandleBackend {
-    fn eval(&self, _: &D, p: &primitives::AvgPool2d, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::AvgPool2d> for CandleBackend {
+    fn eval(&self, _: &D, p: &ops::AvgPool2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let t1 = x.get_data::<Data>().unwrap();
         let t1 = t1.deref();
@@ -1160,8 +1136,8 @@ impl<D: Device> Eval<D, primitives::AvgPool2d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::UpsampleNearest1d> for CandleBackend {
-    fn eval(&self, _: &D, p: &primitives::UpsampleNearest1d, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::UpsampleNearest1d> for CandleBackend {
+    fn eval(&self, _: &D, p: &ops::UpsampleNearest1d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let t1 = x.get_data::<Data>().unwrap();
         let t1 = t1.deref();
@@ -1170,8 +1146,8 @@ impl<D: Device> Eval<D, primitives::UpsampleNearest1d> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, primitives::UpsampleNearest2d> for CandleBackend {
-    fn eval(&self, _: &D, p: &primitives::UpsampleNearest2d, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device> Eval<D, ops::UpsampleNearest2d> for CandleBackend {
+    fn eval(&self, _: &D, p: &ops::UpsampleNearest2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let t1 = x.get_data::<Data>().unwrap();
         let t1 = t1.deref();
@@ -1185,14 +1161,8 @@ impl<D: Device> Eval<D, primitives::UpsampleNearest2d> for CandleBackend {
     feature = "cuda",
     feature = "candle-flash-attn"
 ))]
-impl Eval<Cuda, primitives::FlashAttention> for CandleBackend {
-    fn eval(
-        &self,
-        _: &Cuda,
-        primitive: &primitives::FlashAttention,
-        inputs: &[Tensor],
-        output: &Tensor,
-    ) {
+impl Eval<Cuda, ops::FlashAttention> for CandleBackend {
+    fn eval(&self, _: &Cuda, primitive: &ops::FlashAttention, inputs: &[Tensor], output: &Tensor) {
         let q = &inputs[0];
         let k = &inputs[1];
         let v = &inputs[2];

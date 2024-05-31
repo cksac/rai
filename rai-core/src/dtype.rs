@@ -1,6 +1,6 @@
 use crate::{
-    primitives::{Full, Normal, Random, ToDType},
-    Primitive, Tensor,
+    ops::{Full, Normal, Random, ToDType},
+    Op, Tensor,
 };
 use half::{bf16, f16};
 use num_traits::Float;
@@ -73,11 +73,11 @@ pub trait DType: Debug {
     fn as_any(&self) -> &dyn Any;
     fn clone_boxed(&self) -> Box<dyn DType>;
     fn equal(&self, rhs: &dyn DType) -> bool;
-    fn primitive_full_zero(&self) -> Box<dyn Primitive>;
-    fn primitive_full_one(&self) -> Box<dyn Primitive>;
-    fn primitive_rand(&self) -> Box<dyn Primitive>;
-    fn primitive_randn(&self) -> Box<dyn Primitive>;
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive>;
+    fn primitive_full_zero(&self) -> Box<dyn Op>;
+    fn primitive_full_one(&self) -> Box<dyn Op>;
+    fn primitive_rand(&self) -> Box<dyn Op>;
+    fn primitive_randn(&self) -> Box<dyn Op>;
+    fn primitive_as_dtype(&self) -> Box<dyn Op>;
     fn size_of_elem(&self) -> usize;
     fn safetensor_dtype(&self) -> safetensors::Dtype;
 }
@@ -97,23 +97,23 @@ impl<D: Type> DType for D {
             .map_or(false, |other| self == other)
     }
 
-    fn primitive_full_zero(&self) -> Box<dyn Primitive> {
+    fn primitive_full_zero(&self) -> Box<dyn Op> {
         Box::new(Self::primitive_full_zero())
     }
 
-    fn primitive_full_one(&self) -> Box<dyn Primitive> {
+    fn primitive_full_one(&self) -> Box<dyn Op> {
         Box::new(Self::primitive_full_one())
     }
 
-    fn primitive_rand(&self) -> Box<dyn Primitive> {
+    fn primitive_rand(&self) -> Box<dyn Op> {
         Box::new(Self::primitive_rand())
     }
 
-    fn primitive_randn(&self) -> Box<dyn Primitive> {
+    fn primitive_randn(&self) -> Box<dyn Op> {
         Box::new(Self::primitive_randn())
     }
 
-    fn primitive_as_dtype(&self) -> Box<dyn Primitive> {
+    fn primitive_as_dtype(&self) -> Box<dyn Op> {
         Box::new(self.primitive_as_type())
     }
 

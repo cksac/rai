@@ -1,7 +1,5 @@
 pub mod ops;
-pub mod primitives;
-
-pub use primitives::Primitive;
+pub use ops::Op;
 
 mod shape;
 pub use shape::{Dim, Dims, Shape};

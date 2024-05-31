@@ -6,7 +6,7 @@ use crate::{
         MaxPool1dArgs, MaxPool2dArgs, ReduceArgs, ToPair, VarArgs,
     },
     utils::{self, dot_graph},
-    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, Primitive, Shape, Type,
+    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, Op, Shape, Type,
 };
 use safetensors::tensor::TensorView;
 #[cfg(feature = "debug-location")]
@@ -36,7 +36,7 @@ struct TensorImpl {
     device: Box<dyn Device>,
     dtype: Box<dyn DType>,
     shape: Vec<usize>,
-    primitive: Box<dyn Primitive>,
+    primitive: Box<dyn Op>,
     inputs: RefCell<Vec<Tensor>>,
     data: RefCell<Option<Box<dyn TensorLike>>>,
     #[cfg(feature = "debug-location")]
@@ -49,7 +49,7 @@ impl Tensor {
         device: impl AsDevice,
         dtype: impl AsDType,
         shape: impl Shape,
-        primitive: impl Into<Box<dyn Primitive>>,
+        primitive: impl Into<Box<dyn Op>>,
         inputs: impl Into<Vec<Tensor>>,
     ) -> Self {
         let inner = TensorImpl {
@@ -81,7 +81,7 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn primitive(&self) -> &dyn Primitive {
+    pub fn primitive(&self) -> &dyn Op {
         self.0.primitive.as_ref()
     }
 

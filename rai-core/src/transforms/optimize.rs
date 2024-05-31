@@ -1,5 +1,5 @@
 use crate::{
-    primitives::{Full, ToDType, ToDevice},
+    ops::{Full, ToDType, ToDevice},
     Cpu, Cuda, Func, Metal, Shape, Tensor, TensorIter, Value, BF16, F16, F32, F64, I64, U32, U8,
 };
 use std::{
