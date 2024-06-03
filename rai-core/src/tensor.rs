@@ -1,9 +1,10 @@
 use crate::{
     eval,
+    hlops::{self, ClampBound, FlattenArgs, VarArgs},
     nn::{ApplyModule, Module},
     ops::{
-        self, ArangeArgs, ArgReduceArgs, AvgPool1dArgs, AvgPool2dArgs, ClampBound, FlattenArgs,
-        MaxPool1dArgs, MaxPool2dArgs, ReduceArgs, ToPair, VarArgs,
+        self, ArangeArgs, ArgReduceArgs, AvgPool1dArgs, AvgPool2dArgs, MaxPool1dArgs,
+        MaxPool2dArgs, ReduceArgs, ToPair,
     },
     utils::{self, dot_graph},
     AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, Op, Shape, Type,
@@ -214,7 +215,7 @@ impl Tensor {
     #[inline]
     #[track_caller]
     pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
-        ops::from_safetensor(view, device)
+        hlops::from_safetensor(view, device)
     }
 
     #[inline]
@@ -442,13 +443,13 @@ impl Tensor {
     #[inline]
     #[track_caller]
     pub fn mean<T: ReduceArgs>(&self, args: T) -> Tensor {
-        ops::mean(self, args)
+        hlops::mean(self, args)
     }
 
     #[inline]
     #[track_caller]
     pub fn var<T: VarArgs>(&self, args: T) -> Tensor {
-        ops::var(self, args)
+        hlops::var(self, args)
     }
 
     #[inline]
@@ -514,55 +515,55 @@ impl Tensor {
     #[inline]
     #[track_caller]
     pub fn clamp(&self, min: impl ClampBound, max: impl ClampBound) -> Tensor {
-        ops::clamp(self, min, max)
+        hlops::clamp(self, min, max)
     }
 
     #[inline]
     #[track_caller]
     pub fn relu(&self) -> Tensor {
-        ops::relu(self)
+        hlops::relu(self)
     }
 
     #[inline]
     #[track_caller]
     pub fn relu2(&self) -> Tensor {
-        ops::relu2(self)
+        hlops::relu2(self)
     }
 
     #[inline]
     #[track_caller]
     pub fn relu6(&self) -> Tensor {
-        ops::relu6(self)
+        hlops::relu6(self)
     }
 
     #[inline]
     #[track_caller]
     pub fn gelu(&self) -> Tensor {
-        ops::gelu(self)
+        hlops::gelu(self)
     }
 
     #[inline]
     #[track_caller]
     pub fn silu(&self) -> Tensor {
-        ops::silu(self)
+        hlops::silu(self)
     }
 
     #[inline]
     #[track_caller]
     pub fn new_gelu(&self) -> Tensor {
-        ops::new_gelu(self)
+        hlops::new_gelu(self)
     }
 
     #[inline]
     #[track_caller]
     pub fn dropout(&self, p: f32) -> Tensor {
-        ops::dropout(self, p)
+        hlops::dropout(self, p)
     }
 
     #[inline]
     #[track_caller]
     pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
-        ops::flatten(self, args)
+        hlops::flatten(self, args)
     }
 
     #[inline]
@@ -574,13 +575,13 @@ impl Tensor {
     #[inline]
     #[track_caller]
     pub fn squeeze(&self, d: impl Dims) -> Tensor {
-        ops::squeeze(self, d)
+        hlops::squeeze(self, d)
     }
 
     #[inline]
     #[track_caller]
     pub fn unsqueeze(&self, d: impl Dim) -> Tensor {
-        ops::unsqueeze(self, d)
+        hlops::unsqueeze(self, d)
     }
 
     #[inline]
@@ -598,7 +599,7 @@ impl Tensor {
     #[inline]
     #[track_caller]
     pub fn chunk(&self, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
-        ops::chunk(self, chunks, dim)
+        hlops::chunk(self, chunks, dim)
     }
 
     #[inline]

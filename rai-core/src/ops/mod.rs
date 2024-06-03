@@ -1,12 +1,8 @@
-use crate::{shape::Dims, AsDevice, Dim, ElemType, Shape, Tensor};
+use crate::{shape::Dims, AsDevice, Dim, Shape, Tensor};
 use half::{bf16, f16};
 use safetensors::tensor::TensorView;
+use std::slice::from_raw_parts;
 use std::{any::Any, fmt::Debug};
-use std::{
-    f32::consts::PI,
-    ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
-    slice::from_raw_parts,
-};
 
 mod full;
 pub use full::*;
@@ -351,122 +347,6 @@ macro_rules! broadcast_binary_op {
     };
 }
 
-// Note: modified from candle candle_core::safetensors::convert_slice
-/// Converts a byte slice to a typed slice.
-///
-/// # Arguments
-///
-/// * `data` - The byte slice to convert.
-///
-/// # Returns
-///
-/// A typed slice converted from the byte slice.
-fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
-    let size_in_bytes = std::mem::size_of::<T>();
-    let elem_count = data.len() / size_in_bytes;
-    if (data.as_ptr() as usize) % size_in_bytes == 0 {
-        // SAFETY: This is safe because we just checked that this
-        // was correctly aligned.
-        let data: &[T] = unsafe { from_raw_parts(data.as_ptr() as *const T, elem_count) };
-        data.to_vec()
-    } else {
-        // XXX: We need to specify `T` here, otherwise the compiler will infer u8 because of the following cast
-        // Making this vector too small to fit a full f16/f32/f64 weights, resulting in out-of-bounds access
-        let mut c: Vec<T> = Vec::with_capacity(elem_count);
-        // SAFETY: We just created c, so the allocated memory is necessarily
-        // contiguous and non-overlapping with the view's data.
-        // We're downgrading the `c` pointer from T to u8, which removes alignment
-        // constraints.
-        unsafe {
-            std::ptr::copy_nonoverlapping(data.as_ptr(), c.as_mut_ptr() as *mut u8, data.len());
-            c.set_len(elem_count)
-        }
-        c
-    }
-}
-
-/// Creates a `Tensor` from a `safetensors::TensorView`.
-///
-/// # Arguments
-///
-/// * `view` - The `safetensors::TensorView` to create the `Tensor` from.
-/// * `device` - The device to place the `Tensor` on.
-///
-/// # Returns
-///
-/// A `Tensor` created from the `safetensors::TensorView`.
-#[track_caller]
-pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
-    let shape = view.shape();
-    let data = view.data();
-    match view.dtype() {
-        safetensors::Dtype::BOOL => todo!(),
-        safetensors::Dtype::U8 => {
-            let data = convert_slice::<u8>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::I8 => todo!(),
-        safetensors::Dtype::I16 => todo!(),
-        safetensors::Dtype::U16 => todo!(),
-        safetensors::Dtype::F16 => {
-            let data = convert_slice::<f16>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::BF16 => {
-            let data = convert_slice::<bf16>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::I32 => todo!(),
-        safetensors::Dtype::U32 => {
-            let data = convert_slice::<u32>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::F32 => {
-            let data = convert_slice::<f32>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::F64 => {
-            let data = convert_slice::<f64>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::I64 => {
-            let data = convert_slice::<i64>(data);
-            from_array(data, shape, device)
-        }
-        safetensors::Dtype::U64 => todo!(),
-        _ => todo!(),
-    }
-}
-
-pub trait ClampBound: Debug {
-    fn bound(&self, input: &Tensor) -> Tensor;
-}
-
-impl<T: ElemType> ClampBound for T {
-    fn bound(&self, input: &Tensor) -> Tensor {
-        input.full_like(*self).to_dtype(input)
-    }
-}
-
-impl ClampBound for Tensor {
-    fn bound(&self, input: &Tensor) -> Tensor {
-        self.to_dtype(input)
-    }
-}
-
-impl ClampBound for &Tensor {
-    fn bound(&self, input: &Tensor) -> Tensor {
-        (*self).to_dtype(input)
-    }
-}
-
-#[track_caller]
-pub fn clamp(x: &Tensor, min: impl ClampBound, max: impl ClampBound) -> Tensor {
-    let min = min.bound(x);
-    let max = max.bound(x);
-    x.maximum(min).minimum(max)
-}
-
 pub trait ReduceArgs: Debug {
     fn dims(&self) -> &impl Dims;
     fn keep_dim(&self) -> bool {
@@ -486,8 +366,6 @@ where
     }
 }
 
-impl<T> VarArgs for T where T: Dims {}
-
 impl<T> ReduceArgs for (T, bool)
 where
     T: Dims,
@@ -499,8 +377,6 @@ where
         self.1
     }
 }
-
-impl<T> VarArgs for (T, bool) where T: Dims {}
 
 impl<T> ReduceArgs for (T, usize)
 where
@@ -514,15 +390,6 @@ where
     }
 }
 
-impl<T> VarArgs for (T, usize)
-where
-    T: Dims,
-{
-    fn ddof(&self) -> usize {
-        self.1
-    }
-}
-
 impl<T> ReduceArgs for (T, bool, usize)
 where
     T: Dims,
@@ -532,291 +399,6 @@ where
     }
     fn keep_dim(&self) -> bool {
         self.1
-    }
-}
-
-impl<T> VarArgs for (T, bool, usize)
-where
-    T: Dims,
-{
-    fn ddof(&self) -> usize {
-        self.2
-    }
-}
-
-#[track_caller]
-pub fn mean<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
-    let elem_count = x.size_of(args.dims()) as f64;
-    x.sum(args) / elem_count
-}
-
-pub trait VarArgs: ReduceArgs {
-    fn ddof(&self) -> usize {
-        0
-    }
-}
-
-#[track_caller]
-pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
-    let elem_count = x.size_of(args.dims());
-    let m = x.mean((args.dims(), args.keep_dim()));
-    let s = (x - m).square().sum((args.dims(), args.keep_dim()));
-    s / (elem_count - args.ddof()) as f32
-}
-
-#[track_caller]
-pub fn relu(x: &Tensor) -> Tensor {
-    x.maximum(x.zeros_like())
-}
-
-#[track_caller]
-pub fn relu2(x: &Tensor) -> Tensor {
-    x.maximum(x.zeros_like()).sqrt()
-}
-
-#[track_caller]
-pub fn relu6(x: &Tensor) -> Tensor {
-    x.clamp(0.0f32, 6.0f32)
-}
-
-#[track_caller]
-pub fn gelu(x: &Tensor) -> Tensor {
-    x * 0.5f32 * (1.0f32 + (x / 2.0f32.sqrt()).erf())
-}
-
-#[track_caller]
-pub fn new_gelu(x: &Tensor) -> Tensor {
-    0.5f32 * x * (1.0f32 + ((2.0f32 / PI).sqrt() * (x + 0.044715f32 * x.powf(3.0))).tanh())
-}
-
-#[track_caller]
-pub fn silu(x: &Tensor) -> Tensor {
-    x / (x.neg().exp() + 1.0f32)
-}
-
-pub trait FlattenArgs: Debug {
-    fn start_dim(&self) -> impl Dim {
-        0
-    }
-    fn end_dim(&self) -> impl Dim {
-        -1
-    }
-}
-
-impl FlattenArgs for usize {
-    fn start_dim(&self) -> impl Dim {
-        self
-    }
-}
-
-impl FlattenArgs for isize {
-    fn start_dim(&self) -> impl Dim {
-        self
-    }
-}
-
-impl FlattenArgs for i32 {
-    fn start_dim(&self) -> impl Dim {
-        self
-    }
-}
-
-impl<D: Dim> FlattenArgs for (D, D) {
-    fn start_dim(&self) -> impl Dim {
-        &self.0
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        &self.1
-    }
-}
-
-impl FlattenArgs for RangeFull {
-    fn end_dim(&self) -> impl Dim {
-        -1
-    }
-}
-
-impl FlattenArgs for RangeTo<usize> {
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeTo<isize> {
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeTo<i32> {
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeToInclusive<usize> {
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeToInclusive<isize> {
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeToInclusive<i32> {
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeFrom<usize> {
-    fn start_dim(&self) -> impl Dim {
-        self.start
-    }
-}
-
-impl FlattenArgs for RangeFrom<isize> {
-    fn start_dim(&self) -> impl Dim {
-        self.start
-    }
-}
-
-impl FlattenArgs for RangeFrom<i32> {
-    fn start_dim(&self) -> impl Dim {
-        self.start
-    }
-}
-
-impl FlattenArgs for Range<usize> {
-    fn start_dim(&self) -> impl Dim {
-        self.start
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for Range<isize> {
-    fn start_dim(&self) -> impl Dim {
-        self.start
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for Range<i32> {
-    fn start_dim(&self) -> impl Dim {
-        self.start
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        self.end
-    }
-}
-
-impl FlattenArgs for RangeInclusive<usize> {
-    fn start_dim(&self) -> impl Dim {
-        self.start()
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        self.end()
-    }
-}
-
-impl FlattenArgs for RangeInclusive<isize> {
-    fn start_dim(&self) -> impl Dim {
-        self.start()
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        self.end()
-    }
-}
-
-impl FlattenArgs for RangeInclusive<i32> {
-    fn start_dim(&self) -> impl Dim {
-        self.start()
-    }
-
-    fn end_dim(&self) -> impl Dim {
-        self.end()
-    }
-}
-
-#[track_caller]
-pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
-    if x.ndim() == 0 {
-        return x.reshape([1]);
-    }
-    let start_dim = x.dim(args.start_dim());
-    let end_dim = x.dim(args.end_dim());
-    if start_dim < end_dim {
-        let mut dst_dim = x.shape_of(..start_dim);
-        dst_dim.push(x.size_of(start_dim..=end_dim));
-        if end_dim + 1 < x.ndim() {
-            dst_dim.extend(x.shape_of(end_dim + 1..));
-        }
-        x.reshape(dst_dim)
-    } else {
-        x.clone()
-    }
-}
-
-#[track_caller]
-pub fn squeeze(x: &Tensor, dims: impl Dims) -> Tensor {
-    let dims = x.dims(dims).to_vec();
-    let mut out_shape = Vec::new();
-    for (i, s) in x.shape().iter().enumerate() {
-        if !dims.contains(&i) || *s != 1 {
-            out_shape.push(*s);
-        }
-    }
-    x.reshape(out_shape)
-}
-
-#[track_caller]
-pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
-    let is_negative = d.is_negative();
-    let dim = x.dim(d);
-    let mut shape = x.shape().to_vec();
-    if is_negative {
-        shape.insert(dim + 1, 1);
-    } else {
-        shape.insert(dim, 1);
-    }
-    x.reshape(shape)
-}
-
-#[track_caller]
-pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
-    let dim = x.dim(dim);
-    let size = x.shape_at(dim);
-    if size < chunks {
-        (0..size).map(|i| x.narrow(dim, i, 1)).collect::<Vec<_>>()
-    } else {
-        let chunk_size = size / chunks;
-        let cnt_additional = size % chunks;
-        let mut tensors = vec![];
-        let mut sum_chunk_size = 0;
-        for i in 0..chunks {
-            let chunk_size = if i < cnt_additional {
-                chunk_size + 1
-            } else {
-                chunk_size
-            };
-            let tensor = x.narrow(dim, sum_chunk_size, chunk_size);
-            tensors.push(tensor);
-            sum_chunk_size += chunk_size
-        }
-        tensors
     }
 }
 
@@ -862,15 +444,6 @@ impl ToPair<usize> for (usize, usize) {
     fn to_pair(&self) -> (usize, usize) {
         *self
     }
-}
-
-#[track_caller]
-pub fn dropout(input: &Tensor, p: f32) -> Tensor {
-    assert!((0.0..1.0).contains(&p));
-    let r = input.rand_like();
-    let scale = 1.0 / (1.0 - p);
-    let mask = r.ge(r.full_like(p)).to_dtype(r) * scale;
-    input * mask
 }
 
 pub trait Op: Debug {

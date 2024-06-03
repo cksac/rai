@@ -1,6 +1,8 @@
 pub mod ops;
 pub use ops::Op;
 
+pub mod hlops;
+
 mod shape;
 pub use shape::{Dim, Dims, Shape};
 
