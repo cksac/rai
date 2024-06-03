@@ -1,5 +1,5 @@
-use crate::{Op, Tensor};
-use std::any::Any;
+use crate::{Op, Shape, Tensor};
+use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -72,4 +72,104 @@ impl Op for FlashAttention {
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         todo!("vjp for FlashAttention")
     }
+}
+
+pub trait FlashAttentionOpts: Debug {
+    fn softmax_scale(&self) -> f32;
+    fn window_size_left(&self) -> Option<usize> {
+        None
+    }
+    fn window_size_right(&self) -> Option<usize> {
+        None
+    }
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        None
+    }
+}
+
+impl FlashAttentionOpts for f32 {
+    fn softmax_scale(&self) -> f32 {
+        *self
+    }
+}
+
+impl<'a> FlashAttentionOpts for (f32, &'a Tensor) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        Some(self.1)
+    }
+}
+
+impl<'a> FlashAttentionOpts for (f32, usize, &'a Tensor) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn window_size_right(&self) -> Option<usize> {
+        Some(self.1)
+    }
+
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        Some(self.2)
+    }
+}
+
+impl FlashAttentionOpts for (f32, usize, usize) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn window_size_right(&self) -> Option<usize> {
+        Some(self.1)
+    }
+
+    fn window_size_left(&self) -> Option<usize> {
+        Some(self.2)
+    }
+}
+
+impl<'a> FlashAttentionOpts for (f32, usize, usize, &'a Tensor) {
+    fn softmax_scale(&self) -> f32 {
+        self.0
+    }
+
+    fn window_size_right(&self) -> Option<usize> {
+        Some(self.1)
+    }
+
+    fn window_size_left(&self) -> Option<usize> {
+        Some(self.2)
+    }
+
+    fn alibi_slopes(&self) -> Option<&Tensor> {
+        Some(self.3)
+    }
+}
+
+#[track_caller]
+pub fn flash_attention(
+    q: &Tensor,
+    k: &Tensor,
+    v: &Tensor,
+    opts: impl FlashAttentionOpts,
+) -> Tensor {
+    let device = q.device();
+    let dtype = q.dtype();
+    let shape = q.shape();
+    let inputs = vec![q.clone(), k.clone(), v.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        FlashAttention::new(
+            opts.softmax_scale(),
+            opts.window_size_left(),
+            opts.window_size_right(),
+            opts.alibi_slopes().cloned(),
+        ),
+        inputs,
+    )
 }

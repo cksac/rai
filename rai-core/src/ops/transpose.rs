@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -46,4 +46,15 @@ impl Op for Transpose {
         let cotangent_x = cotangent.transpose(self.dim0, self.dim1);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
+    let dim0 = x.dim(dim0);
+    let dim1 = x.dim(dim1);
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape_transpose(dim0, dim1);
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs)
 }

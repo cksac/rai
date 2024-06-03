@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -27,4 +27,13 @@ impl Op for Rsqrt {
         let cotangent_x = -0.5 * cotangent * (x.rsqrt() / x);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn rsqrt(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Rsqrt, inputs)
 }

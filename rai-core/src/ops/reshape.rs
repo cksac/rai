@@ -44,3 +44,25 @@ impl Op for Reshape {
         vec![cotangent_x]
     }
 }
+
+#[track_caller]
+pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
+    if x.shape_eq(&shape) {
+        return x.clone();
+    }
+
+    if x.shape_size_eq(&shape) {
+        let device = x.device();
+        let dtype = x.dtype();
+        let inputs = vec![x.clone()];
+        Tensor::new(
+            device,
+            dtype,
+            shape.shape().to_owned(),
+            Reshape::new(shape),
+            inputs,
+        )
+    } else {
+        panic!("reshape({:?}, {:?}) with error", x, shape.shape());
+    }
+}

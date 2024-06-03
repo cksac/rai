@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,4 +45,17 @@ impl Op for IndexAdd {
         let cotangent_source = cotangent.index_select(self.dim, index);
         vec![cotangent_x, cotangent_source]
     }
+}
+
+#[track_caller]
+pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    // due to vjp only return by position
+    // x and source will have grads, therefore it comes first
+    let inputs = vec![x.clone(), source.clone(), index.clone()];
+    // TODO: asserts
+    Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs)
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -75,4 +75,15 @@ impl Op for Narrow {
         };
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
+    let dim = x.dim(dim);
+    let device = x.device();
+    let dtype = x.dtype();
+    let mut shape = x.shape().to_vec();
+    shape[dim] = len;
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs)
 }

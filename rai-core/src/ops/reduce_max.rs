@@ -2,6 +2,8 @@ use crate::{ops::reduce_chooser_jvp_rule, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
+use super::ReduceArgs;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReduceMax {
     pub dims: Vec<usize>,
@@ -59,4 +61,20 @@ impl Op for ReduceMax {
         };
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let dims = x.dims(args.dims());
+    let shape = x.shape_reduce(&dims, args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        ReduceMax::new(dims, args.keep_dim()),
+        inputs,
+    )
 }

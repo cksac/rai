@@ -1,5 +1,6 @@
+use super::ToPair;
 use crate::{Op, Shape, Tensor};
-use std::any::Any;
+use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -61,4 +62,114 @@ impl Op for MaxPool2d {
         let cotan_x = (cotangent * avg).upsample_nearest2d([h, w]) * mask;
         vec![cotan_x]
     }
+}
+
+pub trait MaxPool2dArgs: Debug {
+    fn kernel_size(&self) -> (usize, usize);
+    fn stride(&self) -> (usize, usize) {
+        self.kernel_size()
+    }
+    fn padding(&self) -> (usize, usize) {
+        (0, 0)
+    }
+    fn dilation(&self) -> (usize, usize) {
+        (1, 1)
+    }
+}
+
+impl MaxPool2dArgs for usize {
+    fn kernel_size(&self) -> (usize, usize) {
+        self.to_pair()
+    }
+}
+
+impl MaxPool2dArgs for [usize; 2] {
+    fn kernel_size(&self) -> (usize, usize) {
+        self.to_pair()
+    }
+}
+
+impl<A> MaxPool2dArgs for (A,)
+where
+    A: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+}
+
+impl<A, B> MaxPool2dArgs for (A, B)
+where
+    A: ToPair<usize>,
+    B: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+}
+
+impl<A, B, C> MaxPool2dArgs for (A, B, C)
+where
+    A: ToPair<usize>,
+    B: ToPair<usize>,
+    C: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+
+    fn padding(&self) -> (usize, usize) {
+        self.2.to_pair()
+    }
+}
+
+impl<A, B, C, D> MaxPool2dArgs for (A, B, C, D)
+where
+    A: ToPair<usize>,
+    B: ToPair<usize>,
+    C: ToPair<usize>,
+    D: ToPair<usize>,
+{
+    fn kernel_size(&self) -> (usize, usize) {
+        self.0.to_pair()
+    }
+
+    fn stride(&self) -> (usize, usize) {
+        self.1.to_pair()
+    }
+
+    fn padding(&self) -> (usize, usize) {
+        self.2.to_pair()
+    }
+
+    fn dilation(&self) -> (usize, usize) {
+        self.3.to_pair()
+    }
+}
+
+#[track_caller]
+pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
+    let kernel_size = args.kernel_size();
+    let stride = args.stride();
+    let padding = args.padding();
+    let dilation = args.dilation();
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_max_pool2d(&kernel_size, &stride, &padding, &dilation);
+    let inputs = vec![input.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        MaxPool2d::new(kernel_size, stride, padding, dilation),
+        inputs,
+    )
 }

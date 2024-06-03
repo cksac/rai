@@ -1,4 +1,4 @@
-use crate::{Op, Tensor, Type};
+use crate::{AsDevice, ElemType, Op, Shape, Tensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -38,4 +38,50 @@ impl<D: Type> Op for Random<D> {
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
     }
+}
+
+/// Creates a `Tensor` filled with random values from a uniform distribution on the interval [0, 1).
+///
+/// # Arguments
+///
+/// * `shape` - The shape of the `Tensor`.
+/// * `dtype` - The data type of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with random values from a uniform distribution.
+#[track_caller]
+pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+    let inputs = vec![];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Random::<T>::new(T::zero(), T::one()),
+        inputs,
+    )
+}
+
+#[track_caller]
+pub fn rand_with<T: ElemType>(from: T, to: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
+    let dtype = T::DType::boxed_dtype();
+    let inputs = vec![];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Random::<T::DType>::new(from, to),
+        inputs,
+    )
+}
+
+#[track_caller]
+pub fn rand_like(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let primitive = dtype.primitive_rand();
+    let inputs = vec![];
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }

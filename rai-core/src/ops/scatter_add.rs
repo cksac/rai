@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,4 +45,14 @@ impl Op for ScatterAdd {
         let cotangent_source = cotangent.gather(self.dim, index);
         vec![cotangent_x, cotangent_source]
     }
+}
+
+#[track_caller]
+pub fn scatter_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let inputs = vec![x.clone(), source.clone(), index.clone()];
+    Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs)
 }

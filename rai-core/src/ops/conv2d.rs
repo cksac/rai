@@ -80,3 +80,50 @@ impl Op for Conv2d {
         vec![cotan_input, cotan_kernel]
     }
 }
+
+#[track_caller]
+fn conv2d_single_group(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: [usize; 2],
+    stride: [usize; 2],
+    dilation: [usize; 2],
+) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_conv2d(kernel, &padding, &stride, &dilation);
+    let inputs = vec![input.clone(), kernel.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Conv2d::new(padding, stride, dilation),
+        inputs,
+    )
+}
+
+#[track_caller]
+pub fn conv2d(
+    input: &Tensor,
+    kernel: &Tensor,
+    padding: [usize; 2],
+    stride: [usize; 2],
+    dilation: [usize; 2],
+    groups: usize,
+) -> Tensor {
+    let c_in = input.shape_at(1);
+    let c_in_k = kernel.shape_at(1);
+    assert_eq!(c_in, c_in_k * groups);
+    if groups == 1 {
+        conv2d_single_group(input, kernel, padding, stride, dilation)
+    } else {
+        let blocks = input.chunk(groups, 1);
+        let kernels = kernel.chunk(groups, 0);
+        let outputs = blocks
+            .iter()
+            .zip(kernels.iter())
+            .map(|(block, kernel)| conv2d_single_group(block, kernel, padding, stride, dilation))
+            .collect::<Vec<_>>();
+        Tensor::cat(&outputs, 1)
+    }
+}

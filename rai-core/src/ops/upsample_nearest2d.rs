@@ -1,3 +1,4 @@
+use super::ToPair;
 use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
@@ -45,4 +46,14 @@ impl Op for UpsampleNearest2d {
         let cotan_x = cotangent.conv2d(kernel, [0, 0], [scale_h, scale_w], [1, 1], c);
         vec![cotan_x]
     }
+}
+
+#[track_caller]
+pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let size = size.to_pair();
+    let shape = input.shape_upsample_nearest2d(&size);
+    let inputs = vec![input.clone()];
+    Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs)
 }

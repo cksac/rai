@@ -1,5 +1,5 @@
-use crate::{Op, Tensor, Type};
-use std::any::Any;
+use crate::{AsDevice, ElemType, FloatElemType, Op, Shape, Tensor, Type};
+use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -46,4 +46,39 @@ where
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
     }
+}
+
+/// Creates a `Tensor` from an array of values.
+///
+/// # Arguments
+///
+/// * `data` - The array of values.
+/// * `shape` - The shape of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` created from the array of values.
+#[track_caller]
+pub fn from_array<T: ElemType>(
+    data: impl Into<Vec<T>> + Debug,
+    shape: impl Shape,
+    device: impl AsDevice,
+) -> Tensor {
+    let data = data.into();
+    assert!(data.len() == shape.size());
+    let inputs = vec![];
+    Tensor::new(
+        device,
+        T::DType::boxed_dtype(),
+        shape,
+        FromArray::<T::DType>::new(data),
+        inputs,
+    )
+}
+
+#[track_caller]
+pub fn linspace<T: FloatElemType>(start: T, end: T, steps: usize, device: impl AsDevice) -> Tensor {
+    let data = T::linspace(start, end, steps);
+    from_array(data, [steps], device)
 }

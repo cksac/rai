@@ -1,4 +1,4 @@
-use crate::{Device, Op, Tensor};
+use crate::{AsDevice, Device, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -42,4 +42,17 @@ impl<D: Device + Clone + 'static> Op for ToDevice<D> {
         let cotangent_x = cotangent.to_device(x);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
+    let device = device.device();
+    if x.device() == device {
+        return x.clone();
+    }
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let primitive = device.primitive_to_device();
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }

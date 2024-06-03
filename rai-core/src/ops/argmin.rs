@@ -1,6 +1,8 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor, U32};
 use std::any::Any;
 use tracing::Level;
+
+use super::ArgReduceArgs;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ArgMin {
@@ -40,4 +42,20 @@ impl Op for ArgMin {
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
     }
+}
+
+#[track_caller]
+pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
+    let device = x.device();
+    let dtype = U32;
+    let dim = x.dim(args.dim());
+    let shape = x.shape_reduce([dim], args.keep_dim());
+    let inputs = vec![x.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        ArgMin::new(dim, args.keep_dim()),
+        inputs,
+    )
 }

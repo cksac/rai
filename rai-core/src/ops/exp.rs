@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -27,4 +27,13 @@ impl Op for Exp {
         let cotangent_x = cotangent * x.exp();
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn exp(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Exp, inputs)
 }

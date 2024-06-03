@@ -52,3 +52,43 @@ impl Op for Broadcast {
         vec![cotangent_x]
     }
 }
+
+#[track_caller]
+pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let (out_shape, _, _) = x.shape_broadcast_to(&shape).unwrap_or_else(|e| {
+        panic!(
+            "{:?} broadcast_to shape {:?} with error {:?}",
+            x,
+            shape.shape(),
+            e
+        )
+    });
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs)
+}
+
+#[track_caller]
+pub fn broadcast_to_unchecked(x: &Tensor, shape: impl Shape) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, &shape, Broadcast::new(&shape), inputs)
+}
+
+#[track_caller]
+pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
+    let out_shape = x.shape_expand_left(&shape);
+    x.broadcast_to_unchecked(out_shape)
+}
+
+#[track_caller]
+pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
+    let out_shape = x.shape_expand_right(&shape);
+    let mut x = x.clone();
+    for _ in x.ndim()..out_shape.ndim() {
+        x = x.unsqueeze(-1);
+    }
+    x.broadcast_to_unchecked(out_shape)
+}

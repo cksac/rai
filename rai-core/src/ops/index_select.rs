@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,4 +45,16 @@ impl Op for IndexSelect {
         let cotangent_x = source.index_add(self.dim, index, cotangent);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    let device = x.device();
+    let dtype = x.dtype();
+    let mut shape = x.shape().to_vec();
+    shape[dim] = index.size();
+    let inputs = vec![x.clone(), index.clone()];
+    // TODO: asserts
+    Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs)
 }

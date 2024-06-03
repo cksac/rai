@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dims, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,4 +45,15 @@ impl Op for Permute {
         let cotangent_x = cotangent.permute(inv_dims);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn permute(x: &Tensor, d: impl Dims) -> Tensor {
+    let dims = x.dims(d);
+    assert_eq!(dims.len(), x.ndim());
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape_of(&dims);
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Permute::new(dims), inputs)
 }

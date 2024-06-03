@@ -45,3 +45,12 @@ impl Op for UpsampleNearest1d {
         vec![cotan_x]
     }
 }
+
+#[track_caller]
+pub fn upsample_nearest1d(input: &Tensor, size: usize) -> Tensor {
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_upsample_nearest1d(size);
+    let inputs = vec![input.clone()];
+    Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs)
+}

@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{broadcast_binary_op, impl_std_ops, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -32,3 +32,20 @@ impl Op for Mul {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+broadcast_binary_op!(
+    /// Multiplies two `Tensor` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `lhs` - The first `Tensor`.
+    /// * `rhs` - The second `Tensor`.
+    ///
+    /// # Returns
+    ///
+    /// The resulting `Tensor` after the multiplication.
+    Mul,
+    mul
+);
+
+impl_std_ops!(Mul, mul);

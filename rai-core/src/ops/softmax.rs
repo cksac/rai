@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -39,4 +39,14 @@ impl Op for Softmax {
         let cotangent_x = sv - output * sv.sum((self.dim, true));
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let dim = shape.dim(d);
+    Tensor::new(device, dtype, shape, Softmax::new(dim), inputs)
 }

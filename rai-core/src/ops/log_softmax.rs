@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -37,4 +37,14 @@ impl Op for LogSoftmax {
         let cotangent_x = cotangent - cotangent.sum((self.dim, true)) * output.exp();
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let dim = shape.dim(d);
+    Tensor::new(device, dtype, shape, LogSoftmax::new(dim), inputs)
 }

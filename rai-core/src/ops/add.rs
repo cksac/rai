@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{broadcast_binary_op, impl_std_ops, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -28,3 +28,20 @@ impl Op for Add {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+broadcast_binary_op!(
+    /// Adds two `Tensor` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `lhs` - The first `Tensor`.
+    /// * `rhs` - The second `Tensor`.
+    ///
+    /// # Returns
+    ///
+    /// The resulting `Tensor` after the addition.
+    Add,
+    add
+);
+
+impl_std_ops!(Add, add);

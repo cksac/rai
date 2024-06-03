@@ -1,4 +1,4 @@
-use crate::{Op, Tensor, Type};
+use crate::{AsDevice, ElemType, Op, Shape, Tensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -38,4 +38,55 @@ impl<D: Type> Op for Normal<D> {
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
     }
+}
+
+/// Creates a `Tensor` filled with random values from a normal distribution with mean 0 and variance 1.
+///
+/// # Arguments
+///
+/// * `shape` - The shape of the `Tensor`.
+/// * `dtype` - The data type of the `Tensor`.
+/// * `device` - The device to place the `Tensor` on.
+///
+/// # Returns
+///
+/// A `Tensor` filled with random values from a normal distribution.
+#[track_caller]
+pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+    let inputs = vec![];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Normal::<T>::new(T::zero(), T::one()),
+        inputs,
+    )
+}
+
+#[track_caller]
+pub fn randn_with<T: ElemType>(
+    mean: T,
+    std: T,
+    shape: impl Shape,
+    device: impl AsDevice,
+) -> Tensor {
+    let dtype = T::DType::boxed_dtype();
+    let inputs = vec![];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Normal::<T::DType>::new(mean, std),
+        inputs,
+    )
+}
+
+#[track_caller]
+pub fn randn_like(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let primitive = dtype.primitive_randn();
+    let inputs = vec![];
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }

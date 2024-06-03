@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -43,4 +43,13 @@ impl Op for PowerFloat {
         let cotangent_x = cotangent * x.powf(self.exponent - 1.0) * self.exponent;
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype(); // todo: promote to f64?
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs)
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Tensor, Type};
+use crate::{AsDType, Op, Shape, Tensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -38,4 +38,17 @@ impl<D: Type> Op for ToDType<D> {
         let cotangent_x = cotangent.to_dtype(x);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
+    let dtype = dtype.dtype();
+    if x.dtype() == dtype {
+        return x.clone();
+    }
+    let device = x.device();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    let primitive = dtype.primitive_as_dtype();
+    Tensor::new(device, dtype, shape, primitive, inputs)
 }

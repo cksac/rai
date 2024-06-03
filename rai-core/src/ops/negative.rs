@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -24,5 +24,32 @@ impl Op for Negative {
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let cotangent_x = -cotangent;
         vec![cotangent_x]
+    }
+}
+
+#[track_caller]
+pub fn neg(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Negative, inputs)
+}
+
+impl std::ops::Neg for Tensor {
+    type Output = Tensor;
+
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        neg(&self)
+    }
+}
+
+impl<'a> std::ops::Neg for &'a Tensor {
+    type Output = Tensor;
+
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        neg(self)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{broadcast_binary_op, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -36,3 +36,5 @@ impl Op for Maximum {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+broadcast_binary_op!(Maximum, maximum);

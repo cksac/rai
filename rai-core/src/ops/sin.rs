@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -26,4 +26,13 @@ impl Op for Sin {
         let cotangent_x = cotangent * x.cos();
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn sin(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Sin, inputs)
 }

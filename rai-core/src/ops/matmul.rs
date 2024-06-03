@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -26,5 +26,42 @@ impl Op for MatMul {
         let cotangent_lhs = cotangent.matmul(rhs.t());
         let cotangent_rhs = lhs.t().matmul(cotangent);
         vec![cotangent_lhs, cotangent_rhs]
+    }
+}
+
+#[track_caller]
+pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+    let device = lhs.device();
+    let dtype = lhs.dtype();
+    let lhs_in = lhs;
+    let rhs_in = rhs;
+    let mut lhs = lhs.clone();
+    let mut rhs = rhs.clone();
+    if lhs.ndim() == 1 {
+        lhs = lhs.reshape([&[1], lhs.shape()].concat());
+    }
+    if rhs.ndim() == 1 {
+        rhs = rhs.reshape([rhs.shape(), &[1]].concat());
+    }
+    let (mut shape, lhs_shape, rhs_shape, lhs_b, rhs_b) = lhs
+        .shape_broadcast_matmul(&rhs)
+        .unwrap_or_else(|e| panic!("matmul({:?}, {:?}) with error {:?}", lhs, rhs, e));
+    let inputs = match (lhs_b, rhs_b) {
+        (false, false) => vec![lhs.clone(), rhs.clone()],
+        (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&rhs_shape)],
+        (true, false) => vec![lhs.broadcast_to_unchecked(&lhs_shape), rhs.clone()],
+        (true, true) => vec![
+            lhs.broadcast_to_unchecked(&lhs_shape),
+            rhs.broadcast_to_unchecked(&rhs_shape),
+        ],
+    };
+    if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
+        let erase_start = shape.len() - if lhs_in.ndim() == 1 { 2 } else { 1 };
+        let erase_end = shape.len() - if rhs_in.ndim() == 1 { 0 } else { 1 };
+        let matml_out = Tensor::new(device, dtype, &shape, MatMul, inputs);
+        shape.drain(erase_start..erase_end);
+        matml_out.reshape(shape)
+    } else {
+        Tensor::new(device, dtype, shape, MatMul, inputs)
     }
 }

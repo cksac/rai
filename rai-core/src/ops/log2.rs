@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -27,4 +27,13 @@ impl Op for Log2 {
         let cotangent_x = cotangent / (x * f32::ln(2.0));
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn log2(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape().to_vec();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, Log2, inputs)
 }

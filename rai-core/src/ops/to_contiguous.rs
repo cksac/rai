@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -25,4 +25,13 @@ impl Op for ToContiguous {
         let cotangent_x = cotangent.clone();
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn to_contiguous(x: &Tensor) -> Tensor {
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = x.shape();
+    let inputs = vec![x.clone()];
+    Tensor::new(device, dtype, shape, ToContiguous, inputs)
 }

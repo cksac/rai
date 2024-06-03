@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{Dim, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,4 +45,20 @@ impl Op for Gather {
         let cotangent_x = source.scatter_add(self.dim, index, cotangent);
         vec![cotangent_x]
     }
+}
+
+#[track_caller]
+pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
+    let dim = x.dim(dim);
+    assert_eq!(x.ndim(), index.ndim());
+    let mut lhs_shape = x.shape().to_vec();
+    lhs_shape.remove(dim);
+    let mut idx_shape = index.shape().to_vec();
+    idx_shape.remove(dim);
+    assert_eq!(lhs_shape, idx_shape);
+    let device = x.device();
+    let dtype = x.dtype();
+    let shape = index.shape();
+    let inputs = vec![x.clone(), index.clone()];
+    Tensor::new(device, dtype, shape, Gather::new(dim), inputs)
 }

@@ -1,5 +1,5 @@
 use crate::{Op, Shape, Tensor};
-use std::any::Any;
+use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -56,4 +56,84 @@ impl Op for MaxPool1d {
         let cotan_x = (cotangent * avg).upsample_nearest1d(l) * mask;
         vec![cotan_x]
     }
+}
+
+pub trait MaxPool1dArgs: Debug {
+    fn kernel_size(&self) -> usize;
+    fn stride(&self) -> usize {
+        self.kernel_size()
+    }
+    fn padding(&self) -> usize {
+        0
+    }
+    fn dilation(&self) -> usize {
+        1
+    }
+}
+
+impl MaxPool1dArgs for usize {
+    fn kernel_size(&self) -> usize {
+        *self
+    }
+}
+
+impl MaxPool1dArgs for (usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+}
+
+impl MaxPool1dArgs for (usize, usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+
+    fn padding(&self) -> usize {
+        self.2
+    }
+}
+
+impl MaxPool1dArgs for (usize, usize, usize, usize) {
+    fn kernel_size(&self) -> usize {
+        self.0
+    }
+
+    fn stride(&self) -> usize {
+        self.1
+    }
+
+    fn padding(&self) -> usize {
+        self.2
+    }
+
+    fn dilation(&self) -> usize {
+        self.3
+    }
+}
+
+#[track_caller]
+pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
+    let kernel_size = args.kernel_size();
+    let stride = args.stride();
+    let padding = args.padding();
+    let dilation = args.dilation();
+    let device = input.device();
+    let dtype = input.dtype();
+    let shape = input.shape_max_pool1d(kernel_size, stride, padding, dilation);
+    let inputs = vec![input.clone()];
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        MaxPool1d::new(kernel_size, stride, padding, dilation),
+        inputs,
+    )
 }

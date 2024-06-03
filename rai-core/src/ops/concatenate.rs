@@ -1,5 +1,5 @@
-use crate::{Op, Shape, Tensor};
-use std::any::Any;
+use crate::{Dim, Op, Shape, Tensor};
+use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,4 +47,20 @@ impl Op for Concatenate {
         }
         cotangent_primals
     }
+}
+
+#[track_caller]
+pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
+    let inputs: Vec<Tensor> = tensors.iter().map(AsRef::as_ref).cloned().collect();
+    let t1 = &inputs[0].clone();
+    let dim = t1.dim(dim);
+    let device = t1.device();
+    let dtype = t1.dtype();
+    let mut shape = t1.shape().to_vec();
+    shape[dim] = 0;
+    for t in inputs.iter() {
+        // todo: check shape
+        shape[dim] += t.shape_at(dim);
+    }
+    Tensor::new(device, dtype, shape, Concatenate::new(dim), inputs)
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Tensor};
+use crate::{broadcast_binary_op, Op, Shape, Tensor, U8};
 use std::any::Any;
 use tracing::Level;
 
@@ -28,3 +28,5 @@ impl Op for Less {
         vec![cotangent_lhs, cotangent_rhs]
     }
 }
+
+broadcast_binary_op!(Less, lt, U8);
