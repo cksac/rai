@@ -23,7 +23,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 paste = { workspace = true }
 colored = { workspace = true }
-
+rustc-hash = { workspace = true }
 
 [features]
 default = ["candle-backend", "debug-location"]

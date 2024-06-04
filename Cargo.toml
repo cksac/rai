@@ -53,6 +53,7 @@ imageproc = { version = "0.23.0", default-features = false }
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 parquet = { version = "50.0.0" }
 rand = "0.8.5"
+rustc-hash = "1.1.0"
 
 [profile.release-with-debug]
 inherits = "release"

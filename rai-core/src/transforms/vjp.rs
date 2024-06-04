@@ -1,5 +1,5 @@
-use crate::{Func, TensorIter, Value};
-use std::collections::{HashMap, HashSet};
+use crate::{utils::topological_sort_with_pred, Func, TensorIter, Value};
+use std::collections::HashMap;
 
 pub fn vjp<'a, K, IN, OUT, F>(
     func: F,
@@ -16,24 +16,9 @@ where
     let vjps_fn = move |cotangents: OUT::Gradient| {
         let mut cotangent_cache = HashMap::new();
         OUT::grad_map(&output_tensors, cotangents, &mut cotangent_cache);
-        let mut visited = HashSet::new();
-        let mut tape = Vec::new();
-        let mut stack = Vec::new();
-        for output in output_tensors.tensor_iter() {
-            stack.push(output.clone());
-        }
-        while let Some(t) = stack.pop() {
-            if visited.contains(&t.id()) || t.inputs().is_empty() {
-                continue;
-            }
-            visited.insert(t.id());
-            tape.push(t.clone());
-            for input in t.inputs().iter() {
-                stack.push(input.clone());
-            }
-        }
+        let tape = topological_sort_with_pred(&output_tensors, |t| !t.is_evaluated());
         // run the tape backwards
-        for t in tape.iter() {
+        for t in tape.iter().rev() {
             let primals = &*t.inputs();
             let cotangent = cotangent_cache
                 .entry(t.id())

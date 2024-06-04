@@ -13,9 +13,6 @@ pub use grad::grad;
 mod value_and_grad;
 pub use value_and_grad::value_and_grad;
 
-mod eval;
-pub use eval::eval;
-
 mod optimize;
 pub use optimize::optimize;
 

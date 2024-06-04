@@ -1,11 +1,9 @@
 use crate::{
     ops::{Full, ToDType, ToDevice},
-    Cpu, Cuda, Func, Metal, Shape, Tensor, TensorIter, Value, BF16, F16, F32, F64, I64, U32, U8,
+    utils::topological_sort,
+    Cpu, Cuda, Func, Metal, Shape, Tensor, Value, BF16, F16, F32, F64, I64, U32, U8,
 };
-use std::{
-    any::TypeId,
-    collections::{HashMap, HashSet, VecDeque},
-};
+use std::{any::TypeId, collections::HashMap};
 
 fn is_full(t: &Tensor) -> Option<String> {
     if let Some(f) = t.primitive().as_any().downcast_ref::<Full<F32>>() {
@@ -79,29 +77,8 @@ where
 {
     move |input| {
         let output = func.invoke(input);
-        let mut tape = VecDeque::new();
-        let mut stack = Vec::new();
-        for output in output.tensors().tensor_iter() {
-            stack.push(output.clone());
-        }
-        while let Some(t) = stack.pop() {
-            for input in t.inputs().iter() {
-                stack.push(input.clone());
-            }
-            tape.push_back(t);
-        }
-        let mut visited = HashSet::new();
-        tape = tape
-            .into_iter()
-            .rev()
-            .filter(|t| {
-                let v = visited.contains(&t.id());
-                if !v {
-                    visited.insert(t.id());
-                }
-                !v
-            })
-            .collect();
+        let out_tensors = output.tensors();
+        let tape = topological_sort(&out_tensors);
         // (device, dtype, val:shape) -> Tensor
         let mut constants = HashMap::<(TypeId, TypeId, String), Tensor>::new();
         for t in tape.iter() {

@@ -1,6 +1,6 @@
-use crate::{Func, Shape, Tensor, TensorIter, Value};
+use crate::{utils::topological_sort_with_pred, Func, Shape, Tensor, TensorIter, Value};
 use colored::*;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 
 pub fn raiexpr<K, IN, OUT, F>(func: &F, input: IN) -> String
 where
@@ -64,29 +64,7 @@ where
         )
     }
     let input_set: Vec<usize> = in_tensors.tensor_iter().map(Tensor::id).collect();
-    let mut tape = VecDeque::new();
-    let mut stack = Vec::new();
-    for output in out_tensors.tensor_iter() {
-        stack.push(output.clone());
-    }
-    while let Some(t) = stack.pop() {
-        for input in t.inputs().iter() {
-            stack.push(input.clone());
-        }
-        tape.push_back(t);
-    }
-    let mut visited = HashSet::new();
-    tape = tape
-        .into_iter()
-        .rev()
-        .filter(|t| {
-            let v = visited.contains(&t.id());
-            if !v {
-                visited.insert(t.id());
-            }
-            !v && !input_set.contains(&t.id())
-        })
-        .collect();
+    let tape = topological_sort_with_pred(&out_tensors, |t| !input_set.contains(&t.id()));
 
     let inputs = in_tensors
         .tensor_iter()
