@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use rai::{
+    dim::Before,
     nn::{Activation, Conv2d, Conv2dConfig, LayerNorm, Linear, Module},
     AsDevice, Module, Shape, Tensor, Type,
 };
@@ -109,13 +110,13 @@ impl Embeddings {
         bool_masked_pos: Option<&Tensor>,
         interpolate_pos_encoding: bool,
     ) -> Tensor {
-        let [b_size, _num_channels, height, width] = pixel_values.shape_before::<4>();
+        let [b_size, _num_channels, height, width] = pixel_values.sizes(Before::<4>);
         let embeddings = self.patch_embeddings.forward(pixel_values);
         let embeddings = match (bool_masked_pos, &self.mask_token) {
             (None, _) => embeddings,
             (Some(_), None) => panic!("bool_masked_pos set without mask_token"),
             (Some(bool_masked_pos), Some(mask_tokens)) => {
-                let seq_len = embeddings.shape_at(1);
+                let seq_len = embeddings.size(1);
                 let mask_tokens = mask_tokens.broadcast_to([b_size, seq_len, self.hidden_size]);
                 let mask = &bool_masked_pos.unsqueeze(-1).to_dtype(&mask_tokens);
                 mask_tokens * mask - embeddings * (mask - 1.0)
@@ -162,7 +163,7 @@ impl SelfAttention {
     }
 
     fn transpose_for_scores(&self, xs: &Tensor) -> Tensor {
-        let [b_size, seq_len] = xs.shape_before::<2>();
+        let [b_size, seq_len] = xs.sizes(Before::<2>);
         xs.reshape([
             b_size,
             seq_len,

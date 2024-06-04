@@ -163,16 +163,16 @@ impl FlattenArgs for RangeInclusive<i32> {
 
 #[track_caller]
 pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
-    if x.ndim() == 0 {
+    if x.rank() == 0 {
         return x.reshape([1]);
     }
     let start_dim = x.dim(args.start_dim());
     let end_dim = x.dim(args.end_dim());
     if start_dim < end_dim {
-        let mut dst_dim = x.shape_of(..start_dim);
-        dst_dim.push(x.size_of(start_dim..=end_dim));
-        if end_dim + 1 < x.ndim() {
-            dst_dim.extend(x.shape_of(end_dim + 1..));
+        let mut dst_dim = x.sizes(..start_dim);
+        dst_dim.push(x.dims_elem_count(start_dim..=end_dim));
+        if end_dim + 1 < x.rank() {
+            dst_dim.extend(x.sizes(end_dim + 1..));
         }
         x.reshape(dst_dim)
     } else {

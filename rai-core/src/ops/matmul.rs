@@ -37,10 +37,10 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     let rhs_in = rhs;
     let mut lhs = lhs.clone();
     let mut rhs = rhs.clone();
-    if lhs.ndim() == 1 {
+    if lhs.rank() == 1 {
         lhs = lhs.reshape([&[1], lhs.shape()].concat());
     }
-    if rhs.ndim() == 1 {
+    if rhs.rank() == 1 {
         rhs = rhs.reshape([rhs.shape(), &[1]].concat());
     }
     let (mut shape, lhs_shape, rhs_shape, lhs_b, rhs_b) = lhs
@@ -55,9 +55,9 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
             rhs.broadcast_to_unchecked(&rhs_shape),
         ],
     };
-    if lhs_in.ndim() == 1 || rhs_in.ndim() == 1 {
-        let erase_start = shape.len() - if lhs_in.ndim() == 1 { 2 } else { 1 };
-        let erase_end = shape.len() - if rhs_in.ndim() == 1 { 0 } else { 1 };
+    if lhs_in.rank() == 1 || rhs_in.rank() == 1 {
+        let erase_start = shape.len() - if lhs_in.rank() == 1 { 2 } else { 1 };
+        let erase_end = shape.len() - if rhs_in.rank() == 1 { 0 } else { 1 };
         let matml_out = Tensor::new(device, dtype, &shape, MatMul, inputs);
         shape.drain(erase_start..erase_end);
         matml_out.reshape(shape)

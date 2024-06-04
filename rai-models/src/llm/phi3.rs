@@ -1,4 +1,5 @@
 use rai::{
+    dim::Before,
     nn::{self, Activation, Embedding, Linear, Module, RmsNorm},
     AsDevice, Module, Shape, Tensor, Type, F32,
 };
@@ -60,7 +61,7 @@ impl RotaryEmbedding {
     }
 
     pub fn fwd(&self, xs: &Tensor, seqlen_offset: usize) -> Tensor {
-        let [_b_size, _num_heads, seq_len, headdim] = xs.shape_before::<4>();
+        let [_b_size, _num_heads, seq_len, headdim] = xs.sizes(Before::<4>);
         let xs_rot = xs.narrow(3, 0, self.dim);
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
@@ -152,7 +153,7 @@ impl Attention {
         if n_rep == 1 {
             xs
         } else {
-            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.shape_before::<4>();
+            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.sizes(Before::<4>);
             xs.unsqueeze(2)
                 .broadcast_to([b_sz, num_kv_heads, n_rep, seq_len, head_dim])
                 .reshape([b_sz, num_kv_heads * n_rep, seq_len, head_dim])
@@ -160,7 +161,7 @@ impl Attention {
     }
 
     pub fn fwd(&self, xs: &Tensor, mask: Option<&Tensor>, seqlen_offset: usize) -> Tensor {
-        let [b_size, seq_len, _n_embd] = xs.shape_before::<3>();
+        let [b_size, seq_len, _n_embd] = xs.sizes(Before::<3>);
         let qkv = self.qkv_proj.fwd(xs);
         let query_pos = self.num_heads * self.head_dim;
         let query_states = qkv.narrow(-1, 0, query_pos);
@@ -305,7 +306,7 @@ impl Model {
     }
 
     pub fn fwd(&self, xs: &Tensor, seqlen_offset: usize) -> Tensor {
-        let [b_size, seq_len] = xs.shape_before::<2>();
+        let [b_size, seq_len] = xs.sizes(Before::<2>);
         let mask = if seq_len <= 1 {
             None
         } else {

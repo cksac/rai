@@ -3,7 +3,7 @@ use rai_core::Shape;
 #[test]
 fn test_dim() {
     let s = [0, 1, 2, 3, 4, 5];
-    let ndim = s.ndim();
+    let ndim = s.rank();
 
     assert!(s.dim(0) == 0);
     assert!(s.dim(1) == 1);
@@ -40,7 +40,7 @@ fn test_dims() {
     assert_eq!(s.dims(..=2), &[0usize, 1, 2]);
 
     assert_eq!(s.dims(0..), &[0usize, 1, 2, 3, 4, 5]);
-    assert_eq!(s.dims(1..), &[1, 2, 3, 4, 5]);
+    assert_eq!(s.dims(1..), &[1usize, 2, 3, 4, 5]);
     assert_eq!(s.dims(2..), &[2usize, 3, 4, 5]);
 
     assert_eq!(s.dims(..), &[0usize, 1, 2, 3, 4, 5]);
@@ -59,5 +59,5 @@ fn test_dims() {
 #[test]
 fn test_shape() {
     let s = [1, 2, 3, 4, 5, 6];
-    assert_eq!(s.shape_at(-1), 6);
+    assert_eq!(s.size(-1), 6);
 }

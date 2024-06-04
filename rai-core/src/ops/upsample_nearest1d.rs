@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{dim::Before, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -34,7 +34,7 @@ impl Op for UpsampleNearest1d {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let [_n, c, size] = x.shape_before::<3>();
+        let [_n, c, size] = x.sizes(Before::<3>);
         assert!(
             self.size % size != 0,
             "UpsampleNearest1d vjp not supported for non integer upscaling factors"

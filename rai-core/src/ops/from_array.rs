@@ -66,7 +66,7 @@ pub fn from_array<T: ElemType>(
     device: impl AsDevice,
 ) -> Tensor {
     let data = data.into();
-    assert!(data.len() == shape.size());
+    assert!(data.len() == shape.elem_count());
     let inputs = vec![];
     Tensor::new(
         device,

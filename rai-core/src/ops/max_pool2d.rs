@@ -1,5 +1,5 @@
 use super::ToPair;
-use crate::{Op, Shape, Tensor};
+use crate::{dim::Before, Op, Shape, Tensor};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -55,7 +55,7 @@ impl Op for MaxPool2d {
             "vjp not supported for maxpool2d if kernel_size != stride"
         );
         let x = &primals[0];
-        let [_n, _c, h, w] = x.shape_before::<4>();
+        let [_n, _c, h, w] = x.sizes(Before::<4>);
         let out_upsampled = &output.upsample_nearest2d([h, w]);
         let mask = x.eq(out_upsampled).to_dtype(x);
         let avg = mask.avg_pool2d((self.kernel_size, self.stride));

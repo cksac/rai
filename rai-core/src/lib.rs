@@ -9,8 +9,11 @@ pub use ops::Op;
 
 pub mod hlops;
 
+pub mod dim;
+pub use dim::{Dim, Dims};
+
 mod shape;
-pub use shape::{Dim, Dims, Shape};
+pub use shape::Shape;
 
 mod tensor;
 pub use tensor::Tensor;

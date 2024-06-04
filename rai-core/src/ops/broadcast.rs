@@ -41,10 +41,10 @@ impl Op for Broadcast {
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let shape = x.shape().to_vec();
-        let diff = cotangent.ndim() - shape.ndim();
+        let diff = cotangent.rank() - shape.rank();
         let mut dims = Vec::new();
-        for i in 0..cotangent.ndim() {
-            if i < diff || shape[i - diff] != cotangent.shape_at(i) {
+        for i in 0..cotangent.rank() {
+            if i < diff || shape[i - diff] != cotangent.size(i) {
                 dims.push(i);
             }
         }
@@ -87,7 +87,7 @@ pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
 pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
     let out_shape = x.shape_expand_right(&shape);
     let mut x = x.clone();
-    for _ in x.ndim()..out_shape.ndim() {
+    for _ in x.rank()..out_shape.rank() {
         x = x.unsqueeze(-1);
     }
     x.broadcast_to_unchecked(out_shape)

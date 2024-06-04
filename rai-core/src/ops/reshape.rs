@@ -47,11 +47,11 @@ impl Op for Reshape {
 
 #[track_caller]
 pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
-    if x.shape_eq(&shape) {
+    if x.shape() == shape.shape() {
         return x.clone();
     }
 
-    if x.shape_size_eq(&shape) {
+    if x.elem_count() == shape.elem_count() {
         let device = x.device();
         let dtype = x.dtype();
         let inputs = vec![x.clone()];

@@ -39,7 +39,7 @@ impl ConvNet {
     }
 
     pub fn fwd(&self, xs: &Tensor, train: bool) -> Tensor {
-        let b_sz = xs.shape_at(0);
+        let b_sz = xs.size(0);
         let xs = xs
             .reshape([b_sz, 1, 28, 28])
             .apply(&self.conv1)
@@ -97,7 +97,7 @@ fn main() {
     let train_labels = &dataset.train_labels;
     let test_images = &dataset.test_images;
     let test_labels = &dataset.test_labels;
-    let n_batches = train_images.shape_at(0) / batch_size;
+    let n_batches = train_images.size(0) / batch_size;
     let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
 
     let start = Instant::now();
@@ -121,7 +121,7 @@ fn main() {
             .to_dtype(F32)
             .sum(..)
             .as_scalar(F32);
-        let test_accuracy = sum_ok / test_labels.size() as f32;
+        let test_accuracy = sum_ok / test_labels.elem_count() as f32;
         let elapsed = start.elapsed();
         println!(
             "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",

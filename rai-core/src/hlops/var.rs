@@ -7,13 +7,13 @@ pub trait VarArgs: ReduceArgs {
     }
 }
 
-impl<T> VarArgs for T where T: Dims {}
+impl<T> VarArgs for T where T: Dims<Vec<usize>> {}
 
-impl<T> VarArgs for (T, bool) where T: Dims {}
+impl<T> VarArgs for (T, bool) where T: Dims<Vec<usize>> {}
 
 impl<T> VarArgs for (T, usize)
 where
-    T: Dims,
+    T: Dims<Vec<usize>>,
 {
     fn ddof(&self) -> usize {
         self.1
@@ -22,7 +22,7 @@ where
 
 impl<T> VarArgs for (T, bool, usize)
 where
-    T: Dims,
+    T: Dims<Vec<usize>>,
 {
     fn ddof(&self) -> usize {
         self.2
@@ -31,7 +31,7 @@ where
 
 #[track_caller]
 pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
-    let elem_count = x.size_of(args.dims());
+    let elem_count = x.dims_elem_count(args.dims());
     let m = x.mean((args.dims(), args.keep_dim()));
     let s = (x - m).square().sum((args.dims(), args.keep_dim()));
     s / (elem_count - args.ddof()) as f32

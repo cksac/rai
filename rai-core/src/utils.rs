@@ -1,4 +1,4 @@
-use crate::{ty_kind, vjp, Func, Shape, Tensor, TensorIter, F64};
+use crate::{vjp, Func, Shape, Tensor, TensorIter, F64};
 use std::collections::{hash_map::RandomState, HashSet};
 
 pub fn dprint<T: TensorIter>(args: T) {

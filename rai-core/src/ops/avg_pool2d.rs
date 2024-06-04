@@ -1,4 +1,5 @@
 use super::ToPair;
+use crate::dim::Before;
 use crate::{Op, Shape, Tensor};
 use std::any::Any;
 use std::fmt::Debug;
@@ -53,7 +54,7 @@ impl Op for AvgPool2d {
             "vjp not supported for avgPool2d if kernel_size != stride"
         );
         let x = &primals[0];
-        let [_n, _c, h, w] = x.shape_before::<4>();
+        let [_n, _c, h, w] = x.sizes(Before::<4>);
         let cotan_upsampled = cotangent.upsample_nearest2d([h, w]);
         let cotan_x = cotan_upsampled * (1.0f32 / (self.kernel_size.0 * self.kernel_size.1) as f32);
         vec![cotan_x]

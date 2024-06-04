@@ -83,7 +83,6 @@ fn main() {
         let start = Instant::now();
         let ((loss, Aux(_logits)), (grads, ..)) = vg_fn((&model, train_images, train_labels));
         let mut params = optimizer.step(&grads);
-        println!("epoch: {i:04}, step time: {:?}", start.elapsed());
         eval(((&loss, &params), true));
         model.update_params(&mut params);
         let loss = loss.as_scalar(F32);
@@ -95,7 +94,7 @@ fn main() {
             .to_dtype(F32)
             .sum(..)
             .as_scalar(F32);
-        let test_accuracy = sum_ok / test_labels.size() as f32;
+        let test_accuracy = sum_ok / test_labels.elem_count() as f32;
         let elapsed = start.elapsed();
         println!(
             "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",

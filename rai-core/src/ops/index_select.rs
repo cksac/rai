@@ -53,7 +53,7 @@ pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
     let mut shape = x.shape().to_vec();
-    shape[dim] = index.size();
+    shape[dim] = index.elem_count();
     let inputs = vec![x.clone(), index.clone()];
     // TODO: asserts
     Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs)

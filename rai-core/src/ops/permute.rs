@@ -48,12 +48,12 @@ impl Op for Permute {
 }
 
 #[track_caller]
-pub fn permute(x: &Tensor, d: impl Dims) -> Tensor {
+pub fn permute(x: &Tensor, d: impl Dims<Vec<usize>>) -> Tensor {
     let dims = x.dims(d);
-    assert_eq!(dims.len(), x.ndim());
+    assert_eq!(dims.len(), x.rank());
     let device = x.device();
     let dtype = x.dtype();
-    let shape = x.shape_of(&dims);
+    let shape = x.sizes(&dims);
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Permute::new(dims), inputs)
 }

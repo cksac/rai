@@ -1,5 +1,5 @@
 use super::ToPair;
-use crate::{Op, Shape, Tensor};
+use crate::{dim::Before, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -35,7 +35,7 @@ impl Op for UpsampleNearest2d {
     #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let [_n, c, h, w] = x.shape_before::<4>();
+        let [_n, c, h, w] = x.sizes(Before::<4>);
         assert!(
             self.size.0 % h != 0 || self.size.1 % w != 0,
             "UpsampleNearest2d vjp not supported for non integer upscaling factors"

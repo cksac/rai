@@ -3,7 +3,7 @@ use crate::{Dim, Shape, Tensor};
 #[track_caller]
 pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
     let dim = x.dim(dim);
-    let size = x.shape_at(dim);
+    let size = x.size(dim);
     if size < chunks {
         (0..size).map(|i| x.narrow(dim, i, 1)).collect::<Vec<_>>()
     } else {

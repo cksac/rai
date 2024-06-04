@@ -1,4 +1,5 @@
 use rai::{
+    dim::Before,
     nn::{Activation, Embedding, Linear, Module},
     AsDType, AsDevice, Module, Shape, Tensor, Type, BF16, F16, F32,
 };
@@ -45,7 +46,7 @@ impl RmsNorm {
         } else {
             x_dtype
         };
-        let hidden_size = x.shape_at(-1);
+        let hidden_size = x.size(-1);
         let x = x.to_dtype(internal_dtype);
         let norm_x = x.square().sum((-1, true)) / hidden_size as f64;
         let x_normed = x / ((norm_x + self.eps).sqrt());
@@ -61,7 +62,7 @@ struct RotaryEmbedding {
 }
 
 fn rotate_half(xs: &Tensor) -> Tensor {
-    let last_dim = xs.shape_at(-1);
+    let last_dim = xs.size(-1);
     let xs1 = xs.narrow(-1, 0, last_dim / 2);
     let xs2 = xs.narrow(-1, last_dim / 2, last_dim - last_dim / 2);
     Tensor::cat(&[&xs2.neg(), &xs1], -1)
@@ -90,7 +91,7 @@ impl RotaryEmbedding {
     }
 
     pub fn fwd(&self, q: &Tensor, k: &Tensor, seqlen_offset: usize) -> (Tensor, Tensor) {
-        let [_b_sz, _h, seq_len, _n_embd] = q.shape_before::<4>();
+        let [_b_sz, _h, seq_len, _n_embd] = q.sizes(Before::<4>);
         let cos = self.cos.narrow(0, seqlen_offset, seq_len);
         let sin = self.sin.narrow(0, seqlen_offset, seq_len);
         let cos = &cos.unsqueeze(0).unsqueeze(0); // (1, 1, seq_len, dim)
@@ -192,7 +193,7 @@ impl Attention {
         if n_rep == 1 {
             xs
         } else {
-            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.shape_before::<4>();
+            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.sizes(Before::<4>);
             xs.unsqueeze(2)
                 .broadcast_to([b_sz, num_kv_heads, n_rep, seq_len, head_dim])
                 .reshape([b_sz, num_kv_heads * n_rep, seq_len, head_dim])
@@ -205,7 +206,7 @@ impl Attention {
         attention_mask: Option<&Tensor>,
         seqlen_offset: usize,
     ) -> Tensor {
-        let [b_sz, q_len] = xs.shape_before::<2>();
+        let [b_sz, q_len] = xs.sizes(Before::<2>);
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);
         let value_states = self.v_proj.forward(xs);
@@ -361,7 +362,7 @@ impl Model {
     }
 
     pub fn fwd(&self, input: &Tensor, seqlen_offset: usize) -> Tensor {
-        let [b_size, seq_len] = input.shape_before::<2>();
+        let [b_size, seq_len] = input.sizes(Before::<2>);
         let attention_mask = if seq_len <= 1 {
             None
         } else {

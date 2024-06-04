@@ -40,7 +40,7 @@ impl Op for Concatenate {
         let mut start_idx = 0;
         let mut cotangent_primals = Vec::with_capacity(primals.len());
         for t in primals {
-            let len = t.shape_at(self.dim);
+            let len = t.size(self.dim);
             let cotangent_t = cotangent.narrow(self.dim, start_idx, len);
             cotangent_primals.push(cotangent_t);
             start_idx += len;
@@ -60,7 +60,7 @@ pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
     shape[dim] = 0;
     for t in inputs.iter() {
         // todo: check shape
-        shape[dim] += t.shape_at(dim);
+        shape[dim] += t.size(dim);
     }
     Tensor::new(device, dtype, shape, Concatenate::new(dim), inputs)
 }

@@ -44,11 +44,11 @@ impl Op for Conv1d {
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let input = &primals[0];
         let kernel = &primals[1];
-        let l_in = cotangent.shape_at(2);
-        let k_size = kernel.shape_at(2);
+        let l_in = cotangent.size(2);
+        let k_size = kernel.size(2);
         let out_size =
             (l_in - 1) * self.stride + self.dilation * (k_size - 1) + 1 - 2 * self.padding;
-        let out_padding = input.shape_at(2) - out_size;
+        let out_padding = input.size(2) - out_size;
         let cotan_input = cotangent.conv_transpose1d(
             kernel,
             self.padding,
@@ -67,7 +67,7 @@ impl Op for Conv1d {
                 1,
             )
             .transpose(0, 1);
-        let g_k_size = cotan_kernel.shape_at(2);
+        let g_k_size = cotan_kernel.size(2);
         let cotan_kernel = if g_k_size > k_size {
             cotan_kernel.narrow(2, 0, k_size)
         } else {
@@ -107,8 +107,8 @@ pub fn conv1d(
     dilation: usize,
     groups: usize,
 ) -> Tensor {
-    let c_in = input.shape_at(1);
-    let c_in_k = kernel.shape_at(1);
+    let c_in = input.size(1);
+    let c_in_k = kernel.size(1);
     assert_eq!(c_in, c_in_k * groups);
     if groups == 1 {
         conv1d_single_group(input, kernel, padding, stride, dilation)

@@ -27,12 +27,12 @@ impl TimeEmbedding {
     }
 
     pub fn fwd(&self, x: &Tensor) -> Tensor {
-        let l = x.shape_at(0);
+        let l = x.size(0);
         let x = x.reshape([l, 1]);
         let emb = self
             .half_emb
             .unsqueeze(0)
-            .broadcast_to([l, self.half_emb.shape_at(0)]);
+            .broadcast_to([l, self.half_emb.size(0)]);
         let t = emb * x.to_dtype(&self.half_emb);
         Tensor::cat(&[t.sin(), t.cos()], -1)
     }
@@ -127,16 +127,16 @@ impl DiTBlock {
         let mut k = self.wk.forward(&y); // (batch,seq_len,nhead*emb_size)
         let mut v = self.wv.forward(&y); // (batch,seq_len,nhead*emb_size)
         q = q
-            .reshape([q.shape_at(0), q.shape_at(1), self.nhead, self.emb_size])
+            .reshape([q.size(0), q.size(1), self.nhead, self.emb_size])
             .permute([0, 2, 1, 3]); // (batch,nhead,seq_len,emb_size)
         k = k
-            .reshape([k.shape_at(0), k.shape_at(1), self.nhead, self.emb_size])
+            .reshape([k.size(0), k.size(1), self.nhead, self.emb_size])
             .permute([0, 2, 3, 1]); // (batch,nhead,seq_len,emb_size)
         v = v
-            .reshape([v.shape_at(0), v.shape_at(1), self.nhead, self.emb_size])
+            .reshape([v.size(0), v.size(1), self.nhead, self.emb_size])
             .permute([0, 2, 1, 3]); // (batch,nhead,seq_len,emb_size)
 
-        let attn = (q.matmul(k) / (q.shape_at(2) as f32).sqrt()).softmax(-1); // (batch,nhead,seq_len,seq_len)
+        let attn = (q.matmul(k) / (q.size(2) as f32).sqrt()).softmax(-1); // (batch,nhead,seq_len,seq_len)
         y = attn.matmul(v); // (batch,nhead,seq_len,emb_size)
         y = y.permute([0, 2, 1, 3]).flatten(2..); // (batch,seq_len,nhead*emb_size)
         y = self.lv.forward(&y); // (batch,seq_len,emb_size)
@@ -259,11 +259,7 @@ impl DiT {
         // patch emb
         let mut x = self.conv.forward(x); // (batch,new_channel,patch_count,patch_count)
         x = x.permute([0, 2, 3, 1]); // (batch,patch_count,patch_count,new_channel)
-        x = x.reshape([
-            x.shape_at(0),
-            self.patch_count * self.patch_count,
-            x.shape_at(3),
-        ]); // (batch,patch_count**2,new_channel)
+        x = x.reshape([x.size(0), self.patch_count * self.patch_count, x.size(3)]); // (batch,patch_count**2,new_channel)
         x = x.apply(&self.patch_emb) + &self.patch_pos_emb; // (batch,patch_count**2,emb_size)
 
         for b in &self.dit_blocks {
@@ -274,7 +270,7 @@ impl DiT {
         x = x.apply(&self.linear); //  (batch,patch_count**2,channel*patch_size*patch_size)
 
         x = x.reshape([
-            x.shape_at(0),
+            x.size(0),
             self.patch_count,
             self.patch_count,
             self.channel,
@@ -286,7 +282,7 @@ impl DiT {
         //x = x.permute([0, 1, 2, 4, 3, 5]); // (batch,channel,patch_count(H),patch_size(H),patch_count(W),patch_size(W))
         x = x.permute([0, 3, 1, 4, 2, 5]); // (batch,channel,patch_count(H),patch_size(H),patch_count(W),patch_size(W))
         x = x.reshape([
-            x.shape_at(0),
+            x.size(0),
             self.channel,
             self.patch_count * self.patch_size,
             self.patch_count * self.patch_size,
@@ -358,7 +354,7 @@ impl DDIMScheduler {
 
         let noise = Tensor::randn_like(x);
         let batch_alphas_cumprod = self.alphas_cumprod.index_select(0, t).to_dtype(x);
-        let batch_alphas_cumprod = batch_alphas_cumprod.reshape([x.shape_at(0), 1, 1, 1]);
+        let batch_alphas_cumprod = batch_alphas_cumprod.reshape([x.size(0), 1, 1, 1]);
         let x = batch_alphas_cumprod.sqrt() * x + (1.0f32 - batch_alphas_cumprod).sqrt() * &noise;
         (x, noise)
     }
@@ -383,7 +379,7 @@ fn train(
     let mut optimizer = SDG::new(params, learning_rate);
     let dataset = mnist::load(device).expect("mnist dataset");
     let train_images = dataset.train_images;
-    let train_images = train_images.reshape([train_images.shape_at(0), 1, 28, 28]);
+    let train_images = train_images.reshape([train_images.size(0), 1, 28, 28]);
     let train_labels = &dataset.train_labels;
     let vg_fn = value_and_grad(loss_fn);
     let step_fn = |model, optimizer: &mut SDG, x, t, y, noise| {
@@ -393,7 +389,7 @@ fn train(
     };
     let step_fn = rai::optimize(step_fn);
 
-    let n_batches = train_images.shape_at(0) / batch_size;
+    let n_batches = train_images.size(0) / batch_size;
     let mut batch_idxs = (0..n_batches).collect::<Vec<usize>>();
     let mut iter_cnt = 0;
     let start = Instant::now();

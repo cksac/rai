@@ -50,7 +50,7 @@ impl Op for Gather {
 #[track_caller]
 pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let dim = x.dim(dim);
-    assert_eq!(x.ndim(), index.ndim());
+    assert_eq!(x.rank(), index.rank());
     let mut lhs_shape = x.shape().to_vec();
     lhs_shape.remove(dim);
     let mut idx_shape = index.shape().to_vec();

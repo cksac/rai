@@ -1,7 +1,4 @@
-use crate::{shape::Dims, AsDevice, Dim, Shape, Tensor};
-use half::{bf16, f16};
-use safetensors::tensor::TensorView;
-use std::slice::from_raw_parts;
+use crate::{Dim, Dims, Shape, Tensor};
 use std::{any::Any, fmt::Debug};
 
 mod full;
@@ -348,7 +345,7 @@ macro_rules! broadcast_binary_op {
 }
 
 pub trait ReduceArgs: Debug {
-    fn dims(&self) -> &impl Dims;
+    fn dims(&self) -> &impl Dims<Vec<usize>>;
     fn keep_dim(&self) -> bool {
         false
     }
@@ -356,9 +353,9 @@ pub trait ReduceArgs: Debug {
 
 impl<T> ReduceArgs for T
 where
-    T: Dims,
+    T: Dims<Vec<usize>>,
 {
-    fn dims(&self) -> &impl Dims {
+    fn dims(&self) -> &impl Dims<Vec<usize>> {
         self
     }
     fn keep_dim(&self) -> bool {
@@ -368,9 +365,9 @@ where
 
 impl<T> ReduceArgs for (T, bool)
 where
-    T: Dims,
+    T: Dims<Vec<usize>>,
 {
-    fn dims(&self) -> &impl Dims {
+    fn dims(&self) -> &impl Dims<Vec<usize>> {
         &self.0
     }
     fn keep_dim(&self) -> bool {
@@ -380,9 +377,9 @@ where
 
 impl<T> ReduceArgs for (T, usize)
 where
-    T: Dims,
+    T: Dims<Vec<usize>>,
 {
-    fn dims(&self) -> &impl Dims {
+    fn dims(&self) -> &impl Dims<Vec<usize>> {
         &self.0
     }
     fn keep_dim(&self) -> bool {
@@ -392,9 +389,9 @@ where
 
 impl<T> ReduceArgs for (T, bool, usize)
 where
-    T: Dims,
+    T: Dims<Vec<usize>>,
 {
-    fn dims(&self) -> &impl Dims {
+    fn dims(&self) -> &impl Dims<Vec<usize>> {
         &self.0
     }
     fn keep_dim(&self) -> bool {

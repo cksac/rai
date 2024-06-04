@@ -574,7 +574,7 @@ impl Tensor {
 
     #[inline]
     #[track_caller]
-    pub fn squeeze(&self, d: impl Dims) -> Tensor {
+    pub fn squeeze(&self, d: impl Dims<Vec<usize>>) -> Tensor {
         hlops::squeeze(self, d)
     }
 
@@ -586,7 +586,7 @@ impl Tensor {
 
     #[inline]
     #[track_caller]
-    pub fn permute(&self, d: impl Dims) -> Tensor {
+    pub fn permute(&self, d: impl Dims<Vec<usize>>) -> Tensor {
         ops::permute(self, d)
     }
 
@@ -752,7 +752,7 @@ impl Tensor {
     #[inline]
     pub fn replace_data(&self, rhs: Tensor) {
         debug_assert!(
-            self.shape_eq(&rhs),
+            self.shape() == rhs.shape(),
             "{:?} not align with rhs shape: {:?}\n{}",
             self,
             rhs.shape(),
@@ -775,7 +775,7 @@ impl Tensor {
     #[inline]
     pub fn set_data<T: TensorLike + 'static>(&self, data: T) {
         assert!(
-            self.shape_eq(&data.shape()),
+            self.shape() == data.shape(),
             "{:?} not align with data shape: {:?}",
             self,
             data.shape()
@@ -993,7 +993,7 @@ impl<'a> safetensors::View for &'a Tensor {
 
     fn data_len(&self) -> usize {
         // number of elements * byte size of element
-        self.0.shape.size() * self.0.dtype.size_of_elem()
+        self.0.shape.elem_count() * self.0.dtype.size_of_elem()
     }
 }
 

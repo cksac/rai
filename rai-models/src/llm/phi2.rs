@@ -1,4 +1,5 @@
 use rai::{
+    dim::Before,
     nn::{self, Activation, Embedding, LayerNorm, Linear, Module},
     AsDevice, Module, Shape, Tensor, Type, F32,
 };
@@ -63,7 +64,7 @@ impl RotaryEmbedding {
     }
 
     pub fn fwd(&self, xs: &Tensor, seqlen_offset: usize) -> Tensor {
-        let [_b_size, _num_heads, seq_len, headdim] = xs.shape_before::<4>();
+        let [_b_size, _num_heads, seq_len, headdim] = xs.sizes(Before::<4>);
         let xs_rot = xs.narrow(3, 0, self.dim);
         let xs_pass = xs.narrow(3, self.dim, headdim - self.dim);
         let xs12 = xs_rot.chunk(2, -1);
@@ -191,7 +192,7 @@ impl Attention {
         if n_rep == 1 {
             xs
         } else {
-            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.shape_before::<4>();
+            let [b_sz, num_kv_heads, seq_len, head_dim] = xs.sizes(Before::<4>);
             xs.unsqueeze(2)
                 .broadcast_to([b_sz, num_kv_heads, n_rep, seq_len, head_dim])
                 .reshape([b_sz, num_kv_heads * n_rep, seq_len, head_dim])
@@ -199,7 +200,7 @@ impl Attention {
     }
 
     pub fn fwd(&self, xs: &Tensor, mask: Option<&Tensor>) -> Tensor {
-        let [b_size, seq_len, _n_embd] = xs.shape_before::<3>();
+        let [b_size, seq_len, _n_embd] = xs.sizes(Before::<3>);
         let query_states = self.q_proj.forward(xs);
         let key_states = self.k_proj.forward(xs);
         let value_states = self.v_proj.forward(xs);
@@ -224,7 +225,7 @@ impl Attention {
         let kv_cache = self.kv_cache.borrow();
         let seqlen_offset = match &*kv_cache {
             None => 0,
-            Some((prev_k, _)) => prev_k.shape_at(2),
+            Some((prev_k, _)) => prev_k.size(2),
         };
         let query_states = self.rotary_emb.forward(&(query_states, seqlen_offset));
         let key_states = self.rotary_emb.forward(&(key_states, seqlen_offset));
@@ -258,7 +259,7 @@ impl Attention {
         };
         let attn_weights = attn_weights.softmax(-1).to_dtype(&value_states);
         let attn_output = attn_weights.matmul(&value_states).transpose(1, 2);
-        let attn_output = attn_output.reshape([b_size, seq_len, attn_output.size_of(2..)]);
+        let attn_output = attn_output.reshape([b_size, seq_len, attn_output.dims_elem_count(2..)]);
         self.dense.forward(&attn_output)
     }
 
@@ -331,7 +332,7 @@ impl Model {
     }
 
     pub fn fwd(&self, xs: &Tensor) -> Tensor {
-        let [_b_size, seq_len] = xs.shape_before::<2>();
+        let [_b_size, seq_len] = xs.sizes(Before::<2>);
         let mut xs = self.embed_tokens.forward(xs);
         let mask = if seq_len <= 1 {
             None

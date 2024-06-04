@@ -16,7 +16,7 @@ impl RmsNorm {
     }
 
     pub fn fwd(&self, x: &Tensor) -> Tensor {
-        let s = 1.0 / (x.shape_at(-1) as f64).sqrt();
+        let s = 1.0 / (x.size(-1) as f64).sqrt();
         let n = ((x * s).square().sum((-1, true)) + self.eps).rsqrt();
         &self.weight * x * n
     }

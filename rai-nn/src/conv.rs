@@ -80,7 +80,7 @@ impl Conv1d {
         );
         match &self.bias {
             Some(bias) => {
-                let bias = bias.reshape([1, bias.shape_at(0), 1, 1]);
+                let bias = bias.reshape([1, bias.size(0), 1, 1]);
                 x + bias
             }
             None => x,
@@ -194,7 +194,7 @@ impl Conv2d {
         );
         match &self.bias {
             Some(bias) => {
-                let bias = bias.reshape([1, bias.shape_at(0), 1, 1]);
+                let bias = bias.reshape([1, bias.size(0), 1, 1]);
                 x + bias
             }
             None => x,
@@ -282,7 +282,7 @@ impl ConvTranspose1d {
         );
         match &self.bias {
             Some(bias) => {
-                let bias = bias.reshape([1, bias.shape_at(0), 1, 1]);
+                let bias = bias.reshape([1, bias.size(0), 1, 1]);
                 x + bias
             }
             None => x,
@@ -375,7 +375,7 @@ impl ConvTranspose2d {
         );
         match &self.bias {
             Some(bias) => {
-                let bias = bias.reshape([1, bias.shape_at(0), 1, 1]);
+                let bias = bias.reshape([1, bias.size(0), 1, 1]);
                 x + bias
             }
             None => x,

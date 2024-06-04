@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{dim::Before, Op, Shape, Tensor};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -47,7 +47,7 @@ impl Op for AvgPool1d {
             "vjp not supported for avgPool1d if kernel_size != stride"
         );
         let x = &primals[0];
-        let [_n, _c, l] = x.shape_before::<3>();
+        let [_n, _c, l] = x.sizes(Before::<3>);
         let cotan_upsampled = cotangent.upsample_nearest1d(l);
         let cotan_x = cotan_upsampled * (1.0f32 / self.kernel_size as f32);
         vec![cotan_x]

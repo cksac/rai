@@ -24,7 +24,7 @@ impl Embedding {
 
     pub fn fwd(&self, x: &Tensor) -> Tensor {
         let mut out_dims = x.shape().to_vec();
-        out_dims.push(self.weight.shape_at(-1));
+        out_dims.push(self.weight.size(-1));
         let index = &x.flatten(..);
         self.weight.index_select(0, index).reshape(out_dims)
     }

@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{dim::Before, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -44,14 +44,14 @@ impl Op for Conv2d {
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let input = &primals[0];
         let kernel = &primals[1];
-        let [_, _, cotan_h, cotan_w] = cotangent.shape_before::<4>();
-        let [_, _, k_h, k_w] = kernel.shape_before::<4>();
+        let [_, _, cotan_h, cotan_w] = cotangent.sizes(Before::<4>);
+        let [_, _, k_h, k_w] = kernel.sizes(Before::<4>);
         let out_h =
             (cotan_h - 1) * self.stride[0] + self.dilation[0] * (k_h - 1) + 1 - 2 * self.padding[0];
         let out_w =
             (cotan_w - 1) * self.stride[1] + self.dilation[1] * (k_w - 1) + 1 - 2 * self.padding[1];
-        let out_padding_h = input.shape_at(2) - out_h;
-        let out_padding_w = input.shape_at(3) - out_w;
+        let out_padding_h = input.size(2) - out_h;
+        let out_padding_w = input.size(3) - out_w;
         let cotan_input = cotangent.conv_transpose2d(
             kernel,
             self.padding,
@@ -70,7 +70,7 @@ impl Op for Conv2d {
                 1,
             )
             .transpose(0, 1);
-        let [_, _, ck_h, ck_w] = cotan_kernel.shape_before::<4>();
+        let [_, _, ck_h, ck_w] = cotan_kernel.sizes(Before::<4>);
         let cotan_kernel = match (ck_h > k_h, ck_w > k_w) {
             (true, true) => cotan_kernel.narrow(2, 0, k_h).narrow(3, 0, k_w),
             (true, false) => cotan_kernel.narrow(2, 0, k_h),
@@ -111,8 +111,8 @@ pub fn conv2d(
     dilation: [usize; 2],
     groups: usize,
 ) -> Tensor {
-    let c_in = input.shape_at(1);
-    let c_in_k = kernel.shape_at(1);
+    let c_in = input.size(1);
+    let c_in_k = kernel.size(1);
     assert_eq!(c_in, c_in_k * groups);
     if groups == 1 {
         conv2d_single_group(input, kernel, padding, stride, dilation)

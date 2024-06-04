@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{dim::Before, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -62,8 +62,8 @@ impl Op for ConvTranspose2d {
                 1,
             )
             .transpose(0, 1);
-        let [_, _, k_h, k_w] = kernel.shape_before::<4>();
-        let [_, _, ck_h, ck_w] = cotan_kernel.shape_before::<4>();
+        let [_, _, k_h, k_w] = kernel.sizes(Before::<4>);
+        let [_, _, ck_h, ck_w] = cotan_kernel.sizes(Before::<4>);
         let cotan_kernel = match (ck_h > k_h, ck_w > k_w) {
             (true, true) => cotan_kernel.narrow(2, 0, k_h).narrow(3, 0, k_w),
             (true, false) => cotan_kernel.narrow(2, 0, k_h),
