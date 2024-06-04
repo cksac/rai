@@ -206,7 +206,7 @@ impl Attention {
         let value_states = self.repeat_kv(value_states);
         let attn_output = {
             let scale = 1f64 / f64::sqrt(self.head_dim as f64);
-            let attn_weights = query_states.matmul(&key_states.transpose(2, 3)) * scale;
+            let attn_weights = query_states.matmul(key_states.transpose(2, 3)) * scale;
             let attn_weights = match attention_mask {
                 None => attn_weights,
                 Some(mask) => attn_weights + mask,

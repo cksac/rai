@@ -55,7 +55,7 @@ impl Op for ConvTranspose2d {
         let cotan_kernel = cotangent
             .transpose(0, 1)
             .conv2d(
-                &input.transpose(0, 1),
+                input.transpose(0, 1),
                 self.padding,
                 self.stride,
                 self.dilation,
