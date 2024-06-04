@@ -6,55 +6,61 @@ pub fn topological_sort<T>(outputs: &T) -> Vec<Tensor>
 where
     T: TensorIter,
 {
-    let mut tape = Vec::with_capacity(outputs.count() * 3);
-    let mut stack = Vec::with_capacity(outputs.count() + 2);
-    for t in outputs.tensor_iter() {
-        stack.push(t.clone());
-    }
-    while let Some(t) = stack.pop() {
-        for input in t.inputs().iter() {
-            stack.push(input.clone());
-        }
-        tape.push(t);
-    }
+    let mut tape = Vec::new();
+    let mut stack = Vec::new();
     let mut visited = FxHashSet::default();
-    let mut topo_tape = Vec::with_capacity(tape.len());
-    topo_tape.extend(tape.into_iter().rev().filter(|t| {
-        let v = visited.contains(&t.id());
-        if !v {
-            visited.insert(t.id());
+    for o in outputs.tensor_iter() {
+        if visited.contains(&o.id()) {
+            continue;
         }
-        !v
-    }));
-    topo_tape
+        stack.push((o.clone(), false));
+        while let Some((t, visited_inputs)) = stack.pop() {
+            if visited.contains(&t.id()) {
+                continue;
+            }
+            if visited_inputs {
+                visited.insert(t.id());
+                tape.push(t);
+            } else {
+                stack.push((t.clone(), true));
+                for input in t.inputs().iter() {
+                    stack.push((input.clone(), false));
+                }
+            }
+        }
+    }
+    tape
 }
 
-pub fn topological_sort_with_pred<T, F>(outputs: &T, f: F) -> Vec<Tensor>
+pub fn topological_sort_filter<T, F>(outputs: &T, f: F) -> Vec<Tensor>
 where
     T: TensorIter,
     F: Fn(&Tensor) -> bool,
 {
-    let mut tape = Vec::with_capacity(outputs.count() * 3);
-    let mut stack = Vec::with_capacity(outputs.count() + 2);
-    for t in outputs.tensor_iter() {
-        stack.push(t.clone());
-    }
-    while let Some(t) = stack.pop() {
-        for input in t.inputs().iter() {
-            stack.push(input.clone());
-        }
-        tape.push(t);
-    }
+    let mut tape = Vec::new();
+    let mut stack = Vec::new();
     let mut visited = FxHashSet::default();
-    let mut topo_tape = Vec::with_capacity(tape.len());
-    topo_tape.extend(tape.into_iter().rev().filter(|t| {
-        let v = visited.contains(&t.id());
-        if !v {
-            visited.insert(t.id());
+    for o in outputs.tensor_iter() {
+        if visited.contains(&o.id()) || !f(o) {
+            continue;
         }
-        !v && f(t)
-    }));
-    topo_tape
+        stack.push((o.clone(), false));
+        while let Some((t, visited_inputs)) = stack.pop() {
+            if visited.contains(&t.id()) || !f(&t) {
+                continue;
+            }
+            if visited_inputs {
+                visited.insert(t.id());
+                tape.push(t);
+            } else {
+                stack.push((t.clone(), true));
+                for input in t.inputs().iter() {
+                    stack.push((input.clone(), false));
+                }
+            }
+        }
+    }
+    tape
 }
 
 pub fn dprint<T: TensorIter>(args: T) {

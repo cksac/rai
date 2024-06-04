@@ -1,4 +1,4 @@
-use crate::{dispatch::eval_rule, utils::topological_sort_with_pred, TensorIter};
+use crate::{dispatch::eval_rule, utils::topological_sort_filter, TensorIter};
 
 pub trait EvalArgs {
     fn outputs(&self) -> &impl TensorIter;
@@ -29,7 +29,7 @@ where
     }
 }
 pub fn eval<T: EvalArgs>(args: T) {
-    let tape = topological_sort_with_pred(args.outputs(), |t| !t.is_evaluated());
+    let tape = topological_sort_filter(args.outputs(), |t| !t.is_evaluated());
     for t in tape.into_iter() {
         {
             let device = t.device().clone_boxed();

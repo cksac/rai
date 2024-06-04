@@ -1,4 +1,4 @@
-use crate::{utils::topological_sort_with_pred, Func, Shape, Tensor, TensorIter, Value};
+use crate::{utils::topological_sort_filter, Func, Shape, Tensor, TensorIter, Value};
 use colored::*;
 use std::collections::HashMap;
 
@@ -64,7 +64,7 @@ where
         )
     }
     let input_set: Vec<usize> = in_tensors.tensor_iter().map(Tensor::id).collect();
-    let tape = topological_sort_with_pred(&out_tensors, |t| !input_set.contains(&t.id()));
+    let tape = topological_sort_filter(&out_tensors, |t| !input_set.contains(&t.id()));
 
     let inputs = in_tensors
         .tensor_iter()
