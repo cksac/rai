@@ -78,14 +78,14 @@ pub fn metal_enabled() -> bool {
     cfg!(feature = "metal")
 }
 
-pub fn numerical_jvp<F>(
+pub fn numerical_jvp<K, F>(
     func: F,
     input: impl AsRef<Tensor>,
     tangent: impl AsRef<Tensor>,
     eps: f64,
 ) -> Tensor
 where
-    F: for<'a> Func<ty_kind::Basic, &'a Tensor, Tensor>,
+    F: for<'a> Func<K, &'a Tensor, Tensor>,
 {
     let input = input.as_ref();
     let tangent = tangent.as_ref();
@@ -95,17 +95,17 @@ where
     (f_pos - f_neg) * (0.5 / eps)
 }
 
-pub fn check_grad<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
+pub fn check_grad<K, F>(func: F, input: impl AsRef<Tensor>, eps: f64)
 where
-    F: for<'a> Func<ty_kind::Basic, &'a Tensor, Tensor> + Clone,
+    F: for<'a> Func<K, &'a Tensor, Tensor> + Clone,
 {
     check_vjp(func, input, eps);
     //todo: check jvp
 }
 
-pub fn check_vjp<F>(func: F, input: impl AsRef<Tensor>, eps: f64)
+pub fn check_vjp<K, F>(func: F, input: impl AsRef<Tensor>, eps: f64)
 where
-    F: for<'a> Func<ty_kind::Basic, &'a Tensor, Tensor> + Clone,
+    F: for<'a> Func<K, &'a Tensor, Tensor> + Clone,
 {
     let input = input.as_ref();
     let (v_out, vjp_fn) = vjp(func.clone(), input);

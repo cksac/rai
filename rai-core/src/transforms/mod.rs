@@ -1,17 +1,11 @@
-use crate::Value;
+use crate::{Func, Value};
 use std::collections::{HashMap, HashSet};
-
-pub trait Func<InKind, In, Out> {
-    fn invoke(&self, input: In) -> Out;
-}
 
 mod tensor_iter;
 pub use tensor_iter::TensorIter;
 
 mod eval;
 pub use eval::eval;
-
-mod fn_impls;
 
 mod optimize;
 pub use optimize::optimize;

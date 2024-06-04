@@ -1,18 +1,14 @@
-use crate::{nn::Module, ty_kind, Func};
-
-impl<I, O, F> Func<ty_kind::Basic, I, O> for F
-where
-    F: Fn(I) -> O,
-{
-    fn invoke(&self, input: I) -> O {
-        self(input)
-    }
+pub trait Func<InKind, In, Out> {
+    fn invoke(&self, input: In) -> Out;
 }
 
-impl<I, O, F> Func<ty_kind::Module, I, O> for F
+pub struct BasicInput;
+pub struct TupleInput;
+pub struct ArrayInput;
+
+impl<I, O, F> Func<BasicInput, I, O> for F
 where
     F: Fn(I) -> O,
-    I: Module,
 {
     fn invoke(&self, input: I) -> O {
         self(input)
@@ -22,7 +18,7 @@ where
 macro_rules! impl_tuple_arg_fn {
     ($($T:tt)*) => {
         paste::paste! {
-            impl<$($T,)* OUT, FUNC> Func<ty_kind::Tuple<($($T,)*)>, ($($T,)*), OUT> for FUNC
+            impl<$($T,)* OUT, FUNC> Func<TupleInput, ($($T,)*), OUT> for FUNC
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {
@@ -51,7 +47,7 @@ impl_tuple_arg_fn!(A B C D E F G H I J K L);
 macro_rules! impl_array_arg_fn {
     ($S:expr; $($N:expr)*; $($T:tt)*) => {
         paste::paste! {
-            impl<I, OUT, FUNC> Func<ty_kind::Array<[I; $S]>, [I; $S], OUT> for FUNC
+            impl<I, OUT, FUNC> Func<ArrayInput, [I; $S], OUT> for FUNC
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {

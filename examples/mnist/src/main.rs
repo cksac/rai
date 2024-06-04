@@ -5,7 +5,7 @@ use rai::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Aux, Device, Module, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Device, Module, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use std::{fmt::Debug, time::Instant};
@@ -75,42 +75,34 @@ fn main() {
     let dataset = mnist::load(device).expect("mnist dataset");
     let train_images = &dataset.train_images;
     let train_labels = &dataset.train_labels;
-    //let test_images = &dataset.test_images;
-    //let test_labels = &dataset.test_labels;
+    let test_images = &dataset.test_images;
+    let test_labels = &dataset.test_labels;
     let vg_fn = value_and_grad(loss_fn);
     let start = Instant::now();
     for i in 0..num_epochs {
         let start = Instant::now();
         let ((loss, Aux(_logits)), (grads, ..)) = vg_fn((&model, train_images, train_labels));
-
-        let d = rai::raiexpr(&vg_fn, (&model, train_images, train_labels));
-        println!("{}", d);
-
         let mut params = optimizer.step(&grads);
         println!("epoch: {i:04}, step time: {:?}", start.elapsed());
         eval(((&loss, &params), true));
         model.update_params(&mut params);
         let loss = loss.as_scalar(F32);
-        // let test_logits = model.forward(test_images);
-        // let sum_ok = test_logits
-        //     .argmax(-1)
-        //     .to_dtype(test_labels)
-        //     .eq(test_labels)
-        //     .to_dtype(F32)
-        //     .sum(..)
-        //     .as_scalar(F32);
-        // let test_accuracy = sum_ok / test_labels.size() as f32;
+        let test_logits = model.forward(test_images);
+        let sum_ok = test_logits
+            .argmax(-1)
+            .to_dtype(test_labels)
+            .eq(test_labels)
+            .to_dtype(F32)
+            .sum(..)
+            .as_scalar(F32);
+        let test_accuracy = sum_ok / test_labels.size() as f32;
         let elapsed = start.elapsed();
         println!(
-            "epoch: {i:04}, train loss: {:10.5}, time: {:?}",
-            loss, elapsed,
+            "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
+            loss,
+            test_accuracy * 100.0,
+            elapsed,
         );
-        // println!(
-        //     "epoch: {i:04}, train loss: {:10.5}, test acc: {:5.2}%, time: {:?}",
-        //     loss,
-        //     test_accuracy * 100.0,
-        //     elapsed,
-        // );
     }
     let elapsed = start.elapsed();
     let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
