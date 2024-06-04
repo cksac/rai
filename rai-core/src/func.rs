@@ -1,12 +1,10 @@
+use crate::ty_kind;
+
 pub trait Func<InKind, In, Out> {
     fn invoke(&self, input: In) -> Out;
 }
 
-pub struct BasicInput;
-pub struct TupleInput;
-pub struct ArrayInput;
-
-impl<I, O, F> Func<BasicInput, I, O> for F
+impl<I, O, F> Func<ty_kind::Basic, I, O> for F
 where
     F: Fn(I) -> O,
 {
@@ -18,7 +16,7 @@ where
 macro_rules! impl_tuple_arg_fn {
     ($($T:tt)*) => {
         paste::paste! {
-            impl<$($T,)* OUT, FUNC> Func<TupleInput, ($($T,)*), OUT> for FUNC
+            impl<$($T,)* OUT, FUNC> Func<ty_kind::Tuple<($($T,)*)>, ($($T,)*), OUT> for FUNC
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {
@@ -47,7 +45,7 @@ impl_tuple_arg_fn!(A B C D E F G H I J K L);
 macro_rules! impl_array_arg_fn {
     ($S:expr; $($N:expr)*; $($T:tt)*) => {
         paste::paste! {
-            impl<I, OUT, FUNC> Func<ArrayInput, [I; $S], OUT> for FUNC
+            impl<I, OUT, FUNC> Func<ty_kind::Array<[I; $S]>, [I; $S], OUT> for FUNC
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {

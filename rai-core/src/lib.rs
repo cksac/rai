@@ -1,6 +1,9 @@
 pub mod func;
 pub use func::Func;
 
+mod tensor_iter;
+pub use tensor_iter::TensorIter;
+
 pub mod ops;
 pub use ops::Op;
 
@@ -25,9 +28,7 @@ mod value;
 pub use value::{Aux, GenericValue, Value, ValueSpec};
 
 mod transforms;
-pub use transforms::{
-    eval, grad, jvp, linearize, optimize, raiexpr, value_and_grad, vjp, TensorIter,
-};
+pub use transforms::{eval, grad, jvp, linearize, optimize, raiexpr, value_and_grad, vjp};
 
 pub mod dispatch;
 
