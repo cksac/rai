@@ -16,7 +16,7 @@ where
 macro_rules! impl_tuple_arg_fn {
     ($($T:tt)*) => {
         paste::paste! {
-            impl<$($T,)* OUT, FUNC> Func<ty_kind::Tuple<($($T,)*)>, ($($T,)*), OUT> for FUNC
+            impl<$($T,)* OUT, FUNC> Func<ty_kind::Tuple, ($($T,)*), OUT> for FUNC
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {
@@ -45,7 +45,7 @@ impl_tuple_arg_fn!(A B C D E F G H I J K L);
 macro_rules! impl_array_arg_fn {
     ($S:expr; $($N:expr)*; $($T:tt)*) => {
         paste::paste! {
-            impl<I, OUT, FUNC> Func<ty_kind::Array<[I; $S]>, [I; $S], OUT> for FUNC
+            impl<I, OUT, FUNC> Func<ty_kind::Array, [I; $S], OUT> for FUNC
             where
                 FUNC: Fn($($T,)*) -> OUT,
             {

@@ -85,6 +85,11 @@ impl Tensor {
     }
 
     #[inline]
+    pub fn is_empty_inputs(&self) -> bool {
+        self.0.inputs.borrow().is_empty()
+    }
+
+    #[inline]
     pub fn inputs(&self) -> impl Deref<Target = [Tensor]> + '_ {
         Ref::map(self.0.inputs.borrow(), |v| v.as_slice())
     }

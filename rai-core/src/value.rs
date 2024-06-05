@@ -103,43 +103,43 @@ where
     }
 }
 
-impl<'a, A, T, G, X> GenericValue<ty_kind::Array<A>, T, G> for &'a X
+impl<'a, T, G, X> GenericValue<ty_kind::Array, T, G> for &'a X
 where
-    X: GenericValue<ty_kind::Array<A>, T, G>,
+    X: GenericValue<ty_kind::Array, T, G>,
 {
     #[inline]
     fn gv_tensors(&self) -> T {
-        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_tensors(*self)
+        <X as GenericValue<ty_kind::Array, T, G>>::gv_tensors(*self)
     }
 
     #[inline]
     fn gv_grad(tensors: &T, grads: &GradMap) -> G {
-        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad(tensors, grads)
+        <X as GenericValue<ty_kind::Array, T, G>>::gv_grad(tensors, grads)
     }
 
     #[inline]
     fn gv_grad_map(tensors: &T, grad: G, grads: &mut GradMap) {
-        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad_map(tensors, grad, grads)
+        <X as GenericValue<ty_kind::Array, T, G>>::gv_grad_map(tensors, grad, grads)
     }
 }
 
-impl<'a, A, T, G, X> GenericValue<ty_kind::Tuple<A>, T, G> for &'a X
+impl<'a, T, G, X> GenericValue<ty_kind::Tuple, T, G> for &'a X
 where
-    X: GenericValue<ty_kind::Tuple<A>, T, G>,
+    X: GenericValue<ty_kind::Tuple, T, G>,
 {
     #[inline]
     fn gv_tensors(&self) -> T {
-        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_tensors(*self)
+        <X as GenericValue<ty_kind::Tuple, T, G>>::gv_tensors(*self)
     }
 
     #[inline]
     fn gv_grad(tensors: &T, grads: &GradMap) -> G {
-        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad(tensors, grads)
+        <X as GenericValue<ty_kind::Tuple, T, G>>::gv_grad(tensors, grads)
     }
 
     #[inline]
     fn gv_grad_map(tensors: &T, grad: G, grads: &mut GradMap) {
-        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad_map(tensors, grad, grads)
+        <X as GenericValue<ty_kind::Tuple, T, G>>::gv_grad_map(tensors, grad, grads)
     }
 }
 
@@ -219,13 +219,12 @@ where
     [T::Tensors; N]: TensorIter,
     [T::Gradient; N]: TensorIter,
 {
-    type Kind = ty_kind::Array<[T; N]>;
+    type Kind = ty_kind::Array;
     type Tensors = [T::Tensors; N];
     type Gradient = [T::Gradient; N];
 }
 
-impl<const N: usize, T> GenericValue<ty_kind::Array<[T; N]>, [T::Tensors; N], [T::Gradient; N]>
-    for [T; N]
+impl<const N: usize, T> GenericValue<ty_kind::Array, [T::Tensors; N], [T::Gradient; N]> for [T; N]
 where
     T: Value,
     [T::Tensors; N]: TensorIter,
@@ -261,12 +260,12 @@ where
     A::Tensors: TensorIter,
     A::Gradient: TensorIter,
 {
-    type Kind = ty_kind::Tuple<(A,)>;
+    type Kind = ty_kind::Tuple;
     type Tensors = A::Tensors;
     type Gradient = A::Gradient;
 }
 
-impl<A> GenericValue<ty_kind::Tuple<(A,)>, A::Tensors, A::Gradient> for (A,)
+impl<A> GenericValue<ty_kind::Tuple, A::Tensors, A::Gradient> for (A,)
 where
     A: Value,
     A::Tensors: TensorIter,
@@ -294,12 +293,12 @@ macro_rules! impl_tuple_differentiable {
                 ($($T::Tensors,)*): TensorIter,
                 ($($T::Gradient,)*): TensorIter,
             {
-                type Kind = ty_kind::Tuple<($($T,)*)>;
+                type Kind = ty_kind::Tuple;
                 type Tensors = ($($T::Tensors,)*);
                 type Gradient = ($($T::Gradient,)*);
             }
 
-            impl<$($T,)*> GenericValue<ty_kind::Tuple<($($T,)*)>, ($($T::Tensors,)*), ($($T::Gradient,)*)> for ($($T,)*)
+            impl<$($T,)*> GenericValue<ty_kind::Tuple, ($($T::Tensors,)*), ($($T::Gradient,)*)> for ($($T,)*)
             where
                 $($T: Value,)*
                 ($($T::Tensors,)*): TensorIter,

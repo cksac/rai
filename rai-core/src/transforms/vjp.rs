@@ -15,7 +15,7 @@ where
     let vjps_fn = move |cotangents: OUT::Gradient| {
         let mut grads = GradMap::with_capacity(output_tensors.count());
         OUT::grad_map(&output_tensors, cotangents, &mut grads);
-        let tape = topological_sort_filter(&output_tensors, |t| !t.inputs().is_empty());
+        let tape = topological_sort_filter(&output_tensors, |t| !t.is_empty_inputs());
         // run the tape backwards
         for t in tape.iter().rev() {
             let primals = &*t.inputs();

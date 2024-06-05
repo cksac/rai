@@ -2,10 +2,10 @@
 pub struct Basic;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Tuple<T>(T);
+pub struct Tuple;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Array<T>(T);
+pub struct Array;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Module;
