@@ -10,10 +10,7 @@ where
     let mut stack = Vec::new();
     let mut visited = FxHashSet::default();
     for o in outputs.tensor_iter() {
-        if visited.contains(&o.id()) {
-            continue;
-        }
-        stack.push((o.clone(), false));
+        stack.push((o.clone(), o.inputs().is_empty()));
         while let Some((t, visited_inputs)) = stack.pop() {
             if visited.contains(&t.id()) {
                 continue;
@@ -24,7 +21,7 @@ where
             } else {
                 stack.push((t.clone(), true));
                 for input in t.inputs().iter() {
-                    stack.push((input.clone(), false));
+                    stack.push((input.clone(), input.inputs().is_empty()));
                 }
             }
         }
@@ -41,10 +38,7 @@ where
     let mut stack = Vec::new();
     let mut visited = FxHashSet::default();
     for o in outputs.tensor_iter() {
-        if visited.contains(&o.id()) || !f(o) {
-            continue;
-        }
-        stack.push((o.clone(), false));
+        stack.push((o.clone(), o.inputs().is_empty()));
         while let Some((t, visited_inputs)) = stack.pop() {
             if visited.contains(&t.id()) || !f(&t) {
                 continue;
@@ -55,7 +49,7 @@ where
             } else {
                 stack.push((t.clone(), true));
                 for input in t.inputs().iter() {
-                    stack.push((input.clone(), false));
+                    stack.push((input.clone(), input.inputs().is_empty()));
                 }
             }
         }

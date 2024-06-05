@@ -5,7 +5,7 @@ use ty_kind::Basic;
 pub trait ValueSpec {
     type Kind;
     type Tensors: Clone + TensorIter + 'static;
-    type Gradient;
+    type Gradient: Clone + TensorIter + 'static;
 }
 
 impl<'a, T> ValueSpec for &'a T
@@ -217,6 +217,7 @@ impl<const N: usize, T> ValueSpec for [T; N]
 where
     T: Value,
     [T::Tensors; N]: TensorIter,
+    [T::Gradient; N]: TensorIter,
 {
     type Kind = ty_kind::Array<[T; N]>;
     type Tensors = [T::Tensors; N];
@@ -228,6 +229,7 @@ impl<const N: usize, T> GenericValue<ty_kind::Array<[T; N]>, [T::Tensors; N], [T
 where
     T: Value,
     [T::Tensors; N]: TensorIter,
+    [T::Gradient; N]: TensorIter,
 {
     fn gv_tensors(&self) -> [T::Tensors; N] {
         self.iter()
@@ -257,6 +259,7 @@ impl<A> ValueSpec for (A,)
 where
     A: Value,
     A::Tensors: TensorIter,
+    A::Gradient: TensorIter,
 {
     type Kind = ty_kind::Tuple<(A,)>;
     type Tensors = A::Tensors;
@@ -267,6 +270,7 @@ impl<A> GenericValue<ty_kind::Tuple<(A,)>, A::Tensors, A::Gradient> for (A,)
 where
     A: Value,
     A::Tensors: TensorIter,
+    A::Gradient: TensorIter,
 {
     fn gv_tensors(&self) -> A::Tensors {
         self.0.tensors()
@@ -288,6 +292,7 @@ macro_rules! impl_tuple_differentiable {
             where
                 $($T: Value,)*
                 ($($T::Tensors,)*): TensorIter,
+                ($($T::Gradient,)*): TensorIter,
             {
                 type Kind = ty_kind::Tuple<($($T,)*)>;
                 type Tensors = ($($T::Tensors,)*);
@@ -298,6 +303,7 @@ macro_rules! impl_tuple_differentiable {
             where
                 $($T: Value,)*
                 ($($T::Tensors,)*): TensorIter,
+                ($($T::Gradient,)*): TensorIter,
             {
                 fn gv_tensors(&self) -> ($($T::Tensors,)*) {
                     let ($([<$T:lower 1>],)*) = self;
