@@ -262,7 +262,7 @@ macro_rules! impl_std_ops {
 
         impl<T> std::ops::$op<T> for Tensor
         where
-            T: crate::ElemType,
+            T: $crate::ElemType,
         {
             type Output = Tensor;
 
@@ -275,7 +275,7 @@ macro_rules! impl_std_ops {
 
         impl<'a, T> std::ops::$op<T> for &'a Tensor
         where
-            T: crate::ElemType,
+            T: $crate::ElemType,
         {
             type Output = Tensor;
 
@@ -286,9 +286,9 @@ macro_rules! impl_std_ops {
             }
         }
 
-        crate::impl_std_ops_for_scalar!(f32, $op, $func);
-        crate::impl_std_ops_for_scalar!(f64, $op, $func);
-        crate::impl_std_ops_for_scalar!(u8, $op, $func);
+        $crate::impl_std_ops_for_scalar!(f32, $op, $func);
+        $crate::impl_std_ops_for_scalar!(f64, $op, $func);
+        $crate::impl_std_ops_for_scalar!(u8, $op, $func);
     };
 }
 

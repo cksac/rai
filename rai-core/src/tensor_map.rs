@@ -20,34 +20,47 @@ impl TensorMap {
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.tensors.len()
     }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.tensors.is_empty()
+    }
+
+    #[inline]
     pub fn insert(&mut self, id: usize, grad: Tensor) {
         self.tensors.insert(id, grad);
     }
 
+    #[inline]
     pub fn get(&self, id: usize) -> Option<&Tensor> {
         self.tensors.get(&id)
     }
 
+    #[inline]
     pub fn entry(&mut self, id: usize) -> Entry<usize, Tensor> {
         self.tensors.entry(id)
     }
 
+    #[inline]
     pub fn remove(&mut self, id: usize) -> Option<Tensor> {
         self.tensors.remove(&id)
     }
 
+    #[inline]
     pub fn keys(&self) -> Keys<'_, usize, Tensor> {
         self.tensors.keys()
     }
 
+    #[inline]
     pub fn values(&self) -> Values<'_, usize, Tensor> {
         self.tensors.values()
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         self.tensors.clear();
     }

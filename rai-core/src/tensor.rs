@@ -16,11 +16,9 @@ use std::{
     any::Any,
     borrow::Cow,
     cell::{Ref, RefCell},
-    collections::HashMap,
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
     ops::Deref,
-    path::Path,
     rc::Rc,
 };
 

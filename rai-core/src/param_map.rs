@@ -20,34 +20,47 @@ impl ParamMap {
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.params.len()
     }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.params.is_empty()
+    }
+
+    #[inline]
     pub fn insert(&mut self, id: String, grad: Tensor) {
         self.params.insert(id, grad);
     }
 
+    #[inline]
     pub fn get(&self, id: &str) -> Option<&Tensor> {
         self.params.get(id)
     }
 
+    #[inline]
     pub fn entry(&mut self, id: String) -> Entry<String, Tensor> {
         self.params.entry(id)
     }
 
+    #[inline]
     pub fn remove(&mut self, id: &str) -> Option<Tensor> {
         self.params.remove(id)
     }
 
+    #[inline]
     pub fn keys(&self) -> Keys<'_, String, Tensor> {
         self.params.keys()
     }
 
+    #[inline]
     pub fn values(&self) -> Values<'_, String, Tensor> {
         self.params.values()
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         self.params.clear();
     }
