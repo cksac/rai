@@ -839,12 +839,6 @@ impl Tensor {
     pub fn is_evaluated(&self) -> bool {
         self.0.data.borrow().as_ref().is_some()
     }
-
-    #[inline]
-    pub fn to_safetensors(&self, name: impl Into<String>, filename: impl AsRef<Path>) {
-        let data = HashMap::from([(name.into(), self.clone())]);
-        safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
-    }
 }
 
 #[derive(Clone)]
@@ -968,6 +962,32 @@ impl AsRef<Tensor> for Tensor {
 impl Shape for Tensor {
     fn shape(&self) -> &[usize] {
         self.0.shape.shape()
+    }
+}
+
+impl safetensors::View for Tensor {
+    fn dtype(&self) -> safetensors::Dtype {
+        self.0.dtype.safetensor_dtype()
+    }
+
+    fn shape(&self) -> &[usize] {
+        &self.0.shape
+    }
+
+    fn data(&self) -> Cow<[u8]> {
+        if !self.is_evaluated() {
+            eval((self, true));
+        }
+        let data = self.0.data.borrow();
+        let data = data.as_deref().unwrap();
+        let bytes = data.as_bytes();
+        assert_eq!(bytes.len(), self.data_len());
+        bytes.into()
+    }
+
+    fn data_len(&self) -> usize {
+        // number of elements * byte size of element
+        self.0.shape.elem_count() * self.0.dtype.size_of_elem()
     }
 }
 

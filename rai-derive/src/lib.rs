@@ -124,10 +124,10 @@ pub fn module(item: TokenStream) -> TokenStream {
                 fn forward(&self, input: &Self::Input) -> Self::Output {
                     #call_fwd
                 }
-                fn gather_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {}
-                fn update_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {}
-                fn gather_named_params(&self, prefix: &str, params: &mut std::collections::HashMap<String, ::#crate_root::Tensor>) {}
-                fn update_named_params(&self, prefix: &str, params: &mut std::collections::HashMap<String, ::#crate_root::Tensor>) {}
+                fn gather_params(&self, params: &mut ::#crate_root::TensorMap) {}
+                fn update_params(&self, params: &mut ::#crate_root::TensorMap) {}
+                fn gather_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {}
+                fn update_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {}
             }
 
             impl #impl_generics ::#crate_root::ValueSpec for #receiver_name #type_generics #where_clause {
@@ -197,27 +197,27 @@ pub fn module(item: TokenStream) -> TokenStream {
                     #call_fwd
                 }
 
-                fn gather_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {
+                fn gather_params(&self, params: &mut ::#crate_root::TensorMap) {
                     #(#gather_params)*
                 }
 
-                fn update_params(&self, params: &mut std::collections::HashMap<usize, ::#crate_root::Tensor>) {
+                fn update_params(&self, params: &mut ::#crate_root::TensorMap) {
                     #(#update_params)*
                 }
 
-                fn gather_named_params(&self, prefix: &str, params: &mut std::collections::HashMap<String, ::#crate_root::Tensor>) {
+                fn gather_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {
                     #(#gather_named_params)*
                 }
 
-                fn update_named_params(&self, prefix: &str, params: &mut std::collections::HashMap<String, ::#crate_root::Tensor>) {
+                fn update_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {
                     #(#update_named_params)*
                 }
             }
 
             impl #impl_generics ::#crate_root::ValueSpec for #receiver_name #type_generics #where_clause {
                 type Kind = ::#crate_root::ty_kind::Module;
-                type Tensors = std::collections::HashMap<usize, Tensor>;
-                type Gradient = std::collections::HashMap<usize, Tensor>;
+                type Tensors = ::#crate_root::TensorMap;
+                type Gradient = ::#crate_root::GradMap;
             }
 
             impl #impl_generics ::#crate_root::nn::TrainableModule for #receiver_name #type_generics #where_clause {}

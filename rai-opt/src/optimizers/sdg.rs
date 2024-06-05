@@ -1,6 +1,5 @@
 use crate::optimizers::Optimizer;
-use rai_core::{non_differentiable, ty_kind::Basic, Tensor, TensorIter};
-use std::collections::HashMap;
+use rai_core::{non_differentiable, ty_kind::Basic, GradMap, Tensor, TensorIter, TensorMap};
 
 pub struct SDG {
     params: Vec<Tensor>,
@@ -9,7 +8,7 @@ pub struct SDG {
     weight_decay: Option<f64>,
     dampening: Option<f64>,
     nesterov: Option<f64>,
-    state: HashMap<usize, Tensor>,
+    state: TensorMap,
 }
 non_differentiable!(Basic; SDG);
 
@@ -22,7 +21,7 @@ impl SDG {
             weight_decay: None,
             dampening: None,
             nesterov: None,
-            state: HashMap::new(),
+            state: TensorMap::new(),
         }
     }
 
@@ -48,15 +47,15 @@ impl SDG {
 }
 
 impl Optimizer for SDG {
-    fn step(&mut self, grads: &HashMap<usize, Tensor>) -> HashMap<usize, Tensor> {
-        let mut new_params = HashMap::new();
+    fn step(&mut self, grads: &GradMap) -> TensorMap {
+        let mut new_params = TensorMap::new();
         for p in self.params.iter() {
             let id = p.id();
-            let mut g: Tensor = grads.get(&id).cloned().unwrap();
+            let mut g: Tensor = grads.get(id).cloned().unwrap();
             let new_p = match self.momentum {
                 Some(momentum) => {
                     let mut v: Tensor =
-                        self.state.get(&id).cloned().unwrap_or(g.zeros_like()) * momentum;
+                        self.state.get(id).cloned().unwrap_or(g.zeros_like()) * momentum;
                     if let Some(weight_decay) = self.weight_decay {
                         g = &g + p * weight_decay;
                     }

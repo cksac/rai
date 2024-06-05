@@ -7,8 +7,14 @@ pub use value::{Aux, GenericValue, Value, ValueSpec};
 mod tensor_iter;
 pub use tensor_iter::TensorIter;
 
+mod tensor_map;
+pub use tensor_map::TensorMap;
+
 mod grad_map;
 pub use grad_map::GradMap;
+
+mod param_map;
+pub use param_map::ParamMap;
 
 pub mod ops;
 pub use ops::Op;

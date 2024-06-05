@@ -1,6 +1,6 @@
 use crate::{
-    device::Metal, ops, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Shape, Tensor,
-    Type, BF16, F16, F32, F64, I64, U32, U8,
+    device::Metal, ops, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Tensor, Type,
+    BF16, F16, F32, F64, I64, U32, U8,
 };
 use half::{bf16, f16};
 use once_cell::sync::Lazy;

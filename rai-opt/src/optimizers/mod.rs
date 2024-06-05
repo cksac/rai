@@ -1,9 +1,8 @@
-use rai_core::Tensor;
-use std::collections::HashMap;
+use rai_core::{GradMap, TensorMap};
 
 pub trait Optimizer {
     /// return new value for the parameters
-    fn step(&mut self, grads: &HashMap<usize, Tensor>) -> HashMap<usize, Tensor>;
+    fn step(&mut self, grads: &GradMap) -> TensorMap;
 }
 
 mod sdg;

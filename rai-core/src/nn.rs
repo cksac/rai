@@ -1,37 +1,37 @@
-use crate::{ty_kind, AsDevice, GenericValue, GradMap, Tensor, ValueSpec};
-use std::{borrow::Cow, collections::HashMap, path::Path};
+use crate::{ty_kind, AsDevice, GenericValue, GradMap, ParamMap, Tensor, TensorMap, ValueSpec};
+use std::{borrow::Cow, path::Path};
 
 pub trait Module {
     type Input;
     type Output;
     fn forward(&self, x: &Self::Input) -> Self::Output;
 
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>);
+    fn gather_params(&self, params: &mut TensorMap);
 
-    fn params(&self) -> HashMap<usize, Tensor> {
-        let mut params = HashMap::new();
+    fn params(&self) -> TensorMap {
+        let mut params = TensorMap::new();
         self.gather_params(&mut params);
         params
     }
 
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>);
+    fn update_params(&self, params: &mut TensorMap);
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>);
+    fn gather_named_params(&self, prefix: &str, params: &mut ParamMap);
 
-    fn named_params(&self, prefix: &str) -> HashMap<String, Tensor> {
-        let mut params = HashMap::new();
+    fn named_params(&self, prefix: &str) -> ParamMap {
+        let mut params = ParamMap::new();
         self.gather_named_params(prefix, &mut params);
         params
     }
 
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>);
+    fn update_named_params(&self, prefix: &str, params: &mut ParamMap);
 
     fn to_safetensors<P: AsRef<Path>>(&self, filename: P)
     where
         Self: Sized,
     {
         let data = self.named_params("");
-        safetensors::serialize_to_file(&data, &None, filename.as_ref()).unwrap()
+        safetensors::serialize_to_file(data, &None, filename.as_ref()).unwrap()
     }
 
     fn update_by_safetensors<P: AsRef<std::path::Path>>(
@@ -39,7 +39,7 @@ pub trait Module {
         filenames: &[P],
         device: impl AsDevice,
     ) {
-        let mut st_tensors: HashMap<String, Tensor> = HashMap::new();
+        let mut st_tensors = ParamMap::new();
         let device = device.device();
         for filename in filenames {
             let data = std::fs::read(filename).unwrap();
@@ -66,47 +66,42 @@ where
     }
 
     #[inline]
-    fn gather_params(&self, params: &mut HashMap<usize, Tensor>) {
+    fn gather_params(&self, params: &mut TensorMap) {
         (*self).gather_params(params)
     }
 
     #[inline]
-    fn update_params(&self, params: &mut HashMap<usize, Tensor>) {
+    fn update_params(&self, params: &mut TensorMap) {
         (*self).update_params(params)
     }
 
-    fn gather_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+    fn gather_named_params(&self, prefix: &str, params: &mut ParamMap) {
         (*self).gather_named_params(prefix, params)
     }
 
-    fn update_named_params(&self, prefix: &str, params: &mut HashMap<String, Tensor>) {
+    fn update_named_params(&self, prefix: &str, params: &mut ParamMap) {
         (*self).update_named_params(prefix, params)
     }
 }
 
 pub trait TrainableModule:
-    Module
-    + ValueSpec<
-        Kind = ty_kind::Module,
-        Tensors = HashMap<usize, Tensor>,
-        Gradient = HashMap<usize, Tensor>,
-    >
+    Module + ValueSpec<Kind = ty_kind::Module, Tensors = TensorMap, Gradient = GradMap>
 {
 }
 
 impl<'a, T> TrainableModule for &'a T where T: TrainableModule {}
 
-impl<T> GenericValue<ty_kind::Module, HashMap<usize, Tensor>, HashMap<usize, Tensor>> for T
+impl<T> GenericValue<ty_kind::Module, TensorMap, GradMap> for T
 where
-    T: TrainableModule<Tensors = HashMap<usize, Tensor>, Gradient = HashMap<usize, Tensor>>,
+    T: TrainableModule<Tensors = TensorMap, Gradient = GradMap>,
 {
     #[inline]
-    fn gv_tensors(&self) -> HashMap<usize, Tensor> {
+    fn gv_tensors(&self) -> TensorMap {
         self.params()
     }
 
     #[inline]
-    fn gv_grad(tensors: &HashMap<usize, Tensor>, grads: &GradMap) -> HashMap<usize, Tensor> {
+    fn gv_grad(tensors: &TensorMap, grads: &GradMap) -> GradMap {
         tensors
             .keys()
             .map(|id| (*id, grads.get(*id).unwrap().clone()))
@@ -114,13 +109,9 @@ where
     }
 
     #[inline]
-    fn gv_grad_map(
-        tensors: &HashMap<usize, Tensor>,
-        grad: HashMap<usize, Tensor>,
-        grads: &mut GradMap,
-    ) {
+    fn gv_grad_map(tensors: &TensorMap, grad: GradMap, grads: &mut GradMap) {
         for id in tensors.keys() {
-            grads.insert(*id, grad.get(id).unwrap().clone());
+            grads.insert(*id, grad.get(*id).unwrap().clone());
         }
     }
 }
@@ -152,27 +143,26 @@ where
 impl<T, M> ApplyModule<M> for T where M: Module<Input = T> {}
 
 pub trait WithParams {
-    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>);
-    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>);
-
-    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
-    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str);
+    fn gather_by_id(&self, params: &mut TensorMap);
+    fn update_by_id(&self, params: &mut TensorMap);
+    fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str);
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str);
 }
 
 impl WithParams for Tensor {
-    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn gather_by_id(&self, params: &mut TensorMap) {
         params.insert(self.id(), self.clone());
     }
 
-    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
-        if let Some(t) = params.remove(&self.id()) {
+    fn update_by_id(&self, params: &mut TensorMap) {
+        if let Some(t) = params.remove(self.id()) {
             // todo: check if can promote type
             let t = t.to_dtype(self).to_device(self);
             self.replace_data(t);
         }
     }
 
-    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         let name = if prefix.is_empty() {
             name.into()
         } else {
@@ -181,7 +171,7 @@ impl WithParams for Tensor {
         params.insert(name, self.clone());
     }
 
-    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         let name: Cow<'_, str> = if prefix.is_empty() {
             name.into()
         } else {
@@ -201,25 +191,25 @@ impl<T> WithParams for Option<T>
 where
     T: WithParams,
 {
-    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn gather_by_id(&self, params: &mut TensorMap) {
         if let Some(t) = self {
             t.gather_by_id(params);
         }
     }
 
-    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn update_by_id(&self, params: &mut TensorMap) {
         if let Some(t) = self {
             t.update_by_id(params);
         }
     }
 
-    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         if let Some(t) = self {
             t.gather_by_name(params, prefix, name);
         }
     }
 
-    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         if let Some(t) = self {
             t.update_by_name(params, prefix, name);
         }
@@ -230,26 +220,26 @@ impl<T> WithParams for Vec<T>
 where
     T: WithParams,
 {
-    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn gather_by_id(&self, params: &mut TensorMap) {
         for t in self {
             t.gather_by_id(params);
         }
     }
 
-    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn update_by_id(&self, params: &mut TensorMap) {
         for t in self {
             t.update_by_id(params);
         }
     }
 
-    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         for (i, t) in self.iter().enumerate() {
             let name = &format!("{}.{}", name, i);
             t.gather_by_name(params, prefix, name);
         }
     }
 
-    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         for (i, t) in self.iter().enumerate() {
             let name = &format!("{}.{}", name, i);
             t.update_by_name(params, prefix, name);
@@ -261,15 +251,15 @@ impl<T> WithParams for T
 where
     T: Module,
 {
-    fn gather_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn gather_by_id(&self, params: &mut TensorMap) {
         self.gather_params(params);
     }
 
-    fn update_by_id(&self, params: &mut HashMap<usize, Tensor>) {
+    fn update_by_id(&self, params: &mut TensorMap) {
         self.update_params(params);
     }
 
-    fn gather_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         let p: Cow<'_, str> = if prefix.is_empty() {
             name.into()
         } else {
@@ -278,7 +268,7 @@ where
         self.gather_named_params(&p, params)
     }
 
-    fn update_by_name(&self, params: &mut HashMap<String, Tensor>, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
         let p: Cow<'_, str> = if prefix.is_empty() {
             name.into()
         } else {

@@ -1,5 +1,5 @@
-use crate::Tensor;
-use std::{collections::HashMap, iter, ops::Deref};
+use crate::{GradMap, Tensor, TensorMap};
+use std::{iter, ops::Deref};
 
 pub trait TensorIter {
     fn count(&self) -> usize;
@@ -39,7 +39,17 @@ impl TensorIter for Tensor {
     }
 }
 
-impl<S> TensorIter for HashMap<usize, Tensor, S> {
+impl TensorIter for TensorMap {
+    fn count(&self) -> usize {
+        self.len()
+    }
+
+    fn tensor_iter(&self) -> impl Iterator<Item = &Tensor> {
+        self.values()
+    }
+}
+
+impl TensorIter for GradMap {
     fn count(&self) -> usize {
         self.len()
     }

@@ -1,6 +1,5 @@
-use crate::{non_differentiable, ty_kind, GradMap, Tensor, TensorIter};
+use crate::{non_differentiable, ty_kind, GradMap, Tensor, TensorIter, TensorMap};
 use half::{bf16, f16};
-use std::{collections::HashMap, hash::BuildHasher};
 use ty_kind::Basic;
 
 pub trait ValueSpec {
@@ -164,38 +163,52 @@ impl GenericValue<ty_kind::Basic, Tensor, Tensor> for Tensor {
     }
 }
 
-impl<S> ValueSpec for HashMap<usize, Tensor, S>
-where
-    S: Default + Clone + BuildHasher + 'static,
-{
+impl ValueSpec for TensorMap {
     type Kind = ty_kind::Basic;
-    type Tensors = HashMap<usize, Tensor, S>;
-    type Gradient = HashMap<usize, Tensor, S>;
+    type Tensors = TensorMap;
+    type Gradient = GradMap;
 }
 
-impl<S> GenericValue<ty_kind::Basic, HashMap<usize, Tensor, S>, HashMap<usize, Tensor, S>>
-    for HashMap<usize, Tensor, S>
-where
-    S: Default + Clone + BuildHasher + 'static,
-{
-    fn gv_tensors(&self) -> HashMap<usize, Tensor, S> {
+impl GenericValue<ty_kind::Basic, TensorMap, GradMap> for TensorMap {
+    fn gv_tensors(&self) -> TensorMap {
         self.clone()
     }
 
-    fn gv_grad(tensors: &HashMap<usize, Tensor, S>, grads: &GradMap) -> HashMap<usize, Tensor, S> {
+    fn gv_grad(tensors: &TensorMap, grads: &GradMap) -> GradMap {
         tensors
             .keys()
             .map(|id| (*id, grads.get(*id).unwrap().clone()))
             .collect()
     }
 
-    fn gv_grad_map(
-        tensors: &HashMap<usize, Tensor, S>,
-        grad: HashMap<usize, Tensor, S>,
-        grads: &mut GradMap,
-    ) {
+    fn gv_grad_map(tensors: &TensorMap, grad: GradMap, grads: &mut GradMap) {
         for id in tensors.keys() {
-            grads.insert(*id, grad.get(id).unwrap().clone());
+            grads.insert(*id, grad.get(*id).unwrap().clone());
+        }
+    }
+}
+
+impl ValueSpec for GradMap {
+    type Kind = ty_kind::Basic;
+    type Tensors = TensorMap;
+    type Gradient = GradMap;
+}
+
+impl GenericValue<ty_kind::Basic, TensorMap, GradMap> for GradMap {
+    fn gv_tensors(&self) -> TensorMap {
+        self.values().map(|t| (t.id(), t.clone())).collect()
+    }
+
+    fn gv_grad(tensors: &TensorMap, grads: &GradMap) -> GradMap {
+        tensors
+            .keys()
+            .map(|id| (*id, grads.get(*id).unwrap().clone()))
+            .collect()
+    }
+
+    fn gv_grad_map(tensors: &TensorMap, grad: GradMap, grads: &mut GradMap) {
+        for id in tensors.keys() {
+            grads.insert(*id, grad.get(*id).unwrap().clone());
         }
     }
 }
