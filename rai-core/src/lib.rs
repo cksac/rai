@@ -1,8 +1,14 @@
 pub mod func;
 pub use func::Func;
 
+mod value;
+pub use value::{Aux, GenericValue, Value, ValueSpec};
+
 mod tensor_iter;
 pub use tensor_iter::TensorIter;
+
+mod grad_map;
+pub use grad_map::GradMap;
 
 pub mod ops;
 pub use ops::Op;
@@ -26,9 +32,6 @@ pub use device::{AsDevice, Cpu, Cuda, Device, Metal};
 
 mod backend;
 pub use backend::{Backend, CandleBackend, Eval};
-
-mod value;
-pub use value::{Aux, GenericValue, Value, ValueSpec};
 
 mod transforms;
 pub use transforms::{grad, jvp, linearize, optimize, raiexpr, value_and_grad, vjp};

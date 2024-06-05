@@ -1,5 +1,4 @@
-use crate::{Func, TensorIter, Value};
-use std::collections::HashMap;
+use crate::{Func, GradMap, TensorIter, Value};
 
 pub fn jvp<K, IN, OUT, F>(func: F, input: IN, tangents: IN::Gradient) -> (OUT, OUT::Gradient)
 where
@@ -8,11 +7,11 @@ where
     OUT: Value,
 {
     let input_tensors = input.tensors();
-    let mut grads = HashMap::new();
+    let mut grads = GradMap::with_capacity(input_tensors.count());
     IN::grad_map(&input_tensors, tangents, &mut grads);
     let output = func.invoke(input);
     let output_tensors = output.tensors();
-    let mut jvps = HashMap::new();
+    let mut jvps = GradMap::with_capacity(output_tensors.count());
     for t in output_tensors.tensor_iter() {
         jvps.insert(t.id(), t.jvp(&mut grads));
     }

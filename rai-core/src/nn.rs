@@ -1,4 +1,4 @@
-use crate::{ty_kind, AsDevice, GenericValue, Tensor, ValueSpec};
+use crate::{ty_kind, AsDevice, GenericValue, GradMap, Tensor, ValueSpec};
 use std::{borrow::Cow, collections::HashMap, path::Path};
 
 pub trait Module {
@@ -106,13 +106,10 @@ where
     }
 
     #[inline]
-    fn gv_grad(
-        tensors: &HashMap<usize, Tensor>,
-        grad_map: &HashMap<usize, Tensor>,
-    ) -> HashMap<usize, Tensor> {
+    fn gv_grad(tensors: &HashMap<usize, Tensor>, grads: &GradMap) -> HashMap<usize, Tensor> {
         tensors
             .keys()
-            .map(|id| (*id, grad_map.get(id).unwrap().clone()))
+            .map(|id| (*id, grads.get(*id).unwrap().clone()))
             .collect()
     }
 
@@ -120,10 +117,10 @@ where
     fn gv_grad_map(
         tensors: &HashMap<usize, Tensor>,
         grad: HashMap<usize, Tensor>,
-        out: &mut HashMap<usize, Tensor>,
+        grads: &mut GradMap,
     ) {
         for id in tensors.keys() {
-            out.insert(*id, grad.get(id).unwrap().clone());
+            grads.insert(*id, grad.get(id).unwrap().clone());
         }
     }
 }
@@ -139,8 +136,8 @@ where
     T: NonTrainableModule<Tensors = (), Gradient = ()>,
 {
     fn gv_tensors(&self) {}
-    fn gv_grad(_: &(), _: &HashMap<usize, Tensor>) {}
-    fn gv_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
+    fn gv_grad(_: &(), _: &GradMap) {}
+    fn gv_grad_map(_: &(), _: (), _: &mut GradMap) {}
 }
 
 pub trait ApplyModule<M>

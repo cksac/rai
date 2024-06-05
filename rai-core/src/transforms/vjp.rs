@@ -1,5 +1,4 @@
-use crate::{utils::topological_sort_filter, Func, TensorIter, Value};
-use std::collections::HashMap;
+use crate::{utils::topological_sort_filter, Func, GradMap, TensorIter, Value};
 
 pub fn vjp<'a, K, IN, OUT, F>(
     func: F,
@@ -14,33 +13,24 @@ where
     let output = func.invoke(input);
     let output_tensors = output.tensors();
     let vjps_fn = move |cotangents: OUT::Gradient| {
-        let mut cotangent_cache = HashMap::new();
-        OUT::grad_map(&output_tensors, cotangents, &mut cotangent_cache);
+        let mut grads = GradMap::with_capacity(output_tensors.count());
+        OUT::grad_map(&output_tensors, cotangents, &mut grads);
         let tape = topological_sort_filter(&output_tensors, |t| !t.inputs().is_empty());
         // run the tape backwards
         for t in tape.iter().rev() {
             let primals = &*t.inputs();
-            let cotangent = cotangent_cache
-                .entry(t.id())
-                .or_insert_with(|| t.ones_like());
+            let cotangent = grads.entry(t.id()).or_insert_with(|| t.ones_like());
             let cotangents = t.primitive().vjp(t, primals, cotangent);
             for (primal, cotan) in primals.iter().zip(cotangents.into_iter()) {
                 let id = primal.id();
-                if let Some(sum) = cotangent_cache.get(&id) {
-                    cotangent_cache.insert(id, sum + cotan);
+                if let Some(sum) = grads.get(id) {
+                    grads.insert(id, sum + cotan);
                 } else {
-                    cotangent_cache.insert(id, cotan);
+                    grads.insert(id, cotan);
                 }
             }
         }
-        // collect the final cotangents for inputs
-        let mut vjps = HashMap::new();
-        for t in input_tensors.tensor_iter() {
-            let id = t.id();
-            let c = cotangent_cache.get(&id).unwrap().clone();
-            vjps.insert(id, c);
-        }
-        IN::grad(&input_tensors, &vjps)
+        IN::grad(&input_tensors, &grads)
     };
     (output, vjps_fn)
 }

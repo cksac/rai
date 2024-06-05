@@ -1,6 +1,6 @@
-use crate::{non_differentiable, ty_kind, Tensor, TensorIter};
+use crate::{non_differentiable, ty_kind, GradMap, Tensor, TensorIter};
 use half::{bf16, f16};
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::BuildHasher};
 use ty_kind::Basic;
 
 pub trait ValueSpec {
@@ -32,16 +32,16 @@ pub trait Value: ValueSpec {
         self.tensors().tensor_iter().cloned().collect()
     }
     fn tensors(&self) -> Self::Tensors;
-    fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient;
-    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>);
+    fn grad(tensors: &Self::Tensors, grads: &GradMap) -> Self::Gradient;
+    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, grads: &mut GradMap);
 }
 
 pub trait GenericValue<Kind, Tensors, Gradient> {
     fn gv_tensors(&self) -> Tensors;
 
-    fn gv_grad(tensors: &Tensors, grad_map: &HashMap<usize, Tensor>) -> Gradient;
+    fn gv_grad(tensors: &Tensors, grads: &GradMap) -> Gradient;
 
-    fn gv_grad_map(tensors: &Tensors, grad: Gradient, out: &mut HashMap<usize, Tensor>);
+    fn gv_grad_map(tensors: &Tensors, grad: Gradient, grads: &mut GradMap);
 }
 
 impl<T> Value for T
@@ -54,13 +54,13 @@ where
     }
 
     #[inline]
-    fn grad(tensors: &Self::Tensors, grad_map: &HashMap<usize, Tensor>) -> Self::Gradient {
-        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad(tensors, grad_map)
+    fn grad(tensors: &Self::Tensors, grads: &GradMap) -> Self::Gradient {
+        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad(tensors, grads)
     }
 
     #[inline]
-    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, out: &mut HashMap<usize, Tensor>) {
-        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad_map(tensors, grad, out);
+    fn grad_map(tensors: &Self::Tensors, grad: Self::Gradient, grads: &mut GradMap) {
+        <T as GenericValue<T::Kind, T::Tensors, T::Gradient>>::gv_grad_map(tensors, grad, grads);
     }
 }
 
@@ -74,13 +74,13 @@ where
     }
 
     #[inline]
-    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
-        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad(tensors, grad_map)
+    fn gv_grad(tensors: &T, grads: &GradMap) -> G {
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad(tensors, grads)
     }
 
     #[inline]
-    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
-        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad_map(tensors, grad, out)
+    fn gv_grad_map(tensors: &T, grad: G, grads: &mut GradMap) {
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad_map(tensors, grad, grads)
     }
 }
 
@@ -94,13 +94,13 @@ where
     }
 
     #[inline]
-    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
-        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad(tensors, grad_map)
+    fn gv_grad(tensors: &T, grads: &GradMap) -> G {
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad(tensors, grads)
     }
 
     #[inline]
-    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
-        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad_map(tensors, grad, out)
+    fn gv_grad_map(tensors: &T, grad: G, grads: &mut GradMap) {
+        <X as GenericValue<ty_kind::Basic, T, G>>::gv_grad_map(tensors, grad, grads)
     }
 }
 
@@ -114,13 +114,13 @@ where
     }
 
     #[inline]
-    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
-        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad(tensors, grad_map)
+    fn gv_grad(tensors: &T, grads: &GradMap) -> G {
+        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad(tensors, grads)
     }
 
     #[inline]
-    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
-        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad_map(tensors, grad, out)
+    fn gv_grad_map(tensors: &T, grad: G, grads: &mut GradMap) {
+        <X as GenericValue<ty_kind::Array<A>, T, G>>::gv_grad_map(tensors, grad, grads)
     }
 }
 
@@ -134,13 +134,13 @@ where
     }
 
     #[inline]
-    fn gv_grad(tensors: &T, grad_map: &HashMap<usize, Tensor>) -> G {
-        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad(tensors, grad_map)
+    fn gv_grad(tensors: &T, grads: &GradMap) -> G {
+        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad(tensors, grads)
     }
 
     #[inline]
-    fn gv_grad_map(tensors: &T, grad: G, out: &mut HashMap<usize, Tensor>) {
-        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad_map(tensors, grad, out)
+    fn gv_grad_map(tensors: &T, grad: G, grads: &mut GradMap) {
+        <X as GenericValue<ty_kind::Tuple<A>, T, G>>::gv_grad_map(tensors, grad, grads)
     }
 }
 
@@ -155,45 +155,47 @@ impl GenericValue<ty_kind::Basic, Tensor, Tensor> for Tensor {
         self.clone()
     }
 
-    fn gv_grad(tensor: &Tensor, grad_map: &HashMap<usize, Tensor>) -> Tensor {
-        grad_map.get(&tensor.id()).cloned().unwrap()
+    fn gv_grad(tensor: &Tensor, grads: &GradMap) -> Tensor {
+        grads.get(tensor.id()).cloned().unwrap()
     }
 
-    fn gv_grad_map(tensor: &Tensor, grad: Tensor, out: &mut HashMap<usize, Tensor>) {
-        out.insert(tensor.id(), grad);
+    fn gv_grad_map(tensor: &Tensor, grad: Tensor, grads: &mut GradMap) {
+        grads.insert(tensor.id(), grad);
     }
 }
 
-impl ValueSpec for HashMap<usize, Tensor> {
-    type Kind = ty_kind::Basic;
-    type Tensors = HashMap<usize, Tensor>;
-    type Gradient = HashMap<usize, Tensor>;
-}
-
-impl GenericValue<ty_kind::Basic, HashMap<usize, Tensor>, HashMap<usize, Tensor>>
-    for HashMap<usize, Tensor>
+impl<S> ValueSpec for HashMap<usize, Tensor, S>
+where
+    S: Default + Clone + BuildHasher + 'static,
 {
-    fn gv_tensors(&self) -> HashMap<usize, Tensor> {
+    type Kind = ty_kind::Basic;
+    type Tensors = HashMap<usize, Tensor, S>;
+    type Gradient = HashMap<usize, Tensor, S>;
+}
+
+impl<S> GenericValue<ty_kind::Basic, HashMap<usize, Tensor, S>, HashMap<usize, Tensor, S>>
+    for HashMap<usize, Tensor, S>
+where
+    S: Default + Clone + BuildHasher + 'static,
+{
+    fn gv_tensors(&self) -> HashMap<usize, Tensor, S> {
         self.clone()
     }
 
-    fn gv_grad(
-        tensors: &HashMap<usize, Tensor>,
-        grad_map: &HashMap<usize, Tensor>,
-    ) -> HashMap<usize, Tensor> {
+    fn gv_grad(tensors: &HashMap<usize, Tensor, S>, grads: &GradMap) -> HashMap<usize, Tensor, S> {
         tensors
             .keys()
-            .map(|id| (*id, grad_map.get(id).unwrap().clone()))
+            .map(|id| (*id, grads.get(*id).unwrap().clone()))
             .collect()
     }
 
     fn gv_grad_map(
-        tensors: &HashMap<usize, Tensor>,
-        grad: HashMap<usize, Tensor>,
-        out: &mut HashMap<usize, Tensor>,
+        tensors: &HashMap<usize, Tensor, S>,
+        grad: HashMap<usize, Tensor, S>,
+        grads: &mut GradMap,
     ) {
         for id in tensors.keys() {
-            out.insert(*id, grad.get(id).unwrap().clone());
+            grads.insert(*id, grad.get(id).unwrap().clone());
         }
     }
 }
@@ -222,22 +224,18 @@ where
             .unwrap_or_else(|_| unreachable!())
     }
 
-    fn gv_grad(tensors: &[T::Tensors; N], grad_map: &HashMap<usize, Tensor>) -> [T::Gradient; N] {
+    fn gv_grad(tensors: &[T::Tensors; N], grads: &GradMap) -> [T::Gradient; N] {
         tensors
             .iter()
-            .map(|t| T::grad(t, grad_map))
+            .map(|t| T::grad(t, grads))
             .collect::<Vec<T::Gradient>>()
             .try_into()
             .unwrap_or_else(|_| unreachable!())
     }
 
-    fn gv_grad_map(
-        tensors: &[T::Tensors; N],
-        grad: [T::Gradient; N],
-        out: &mut HashMap<usize, Tensor>,
-    ) {
+    fn gv_grad_map(tensors: &[T::Tensors; N], grad: [T::Gradient; N], grads: &mut GradMap) {
         for (t, g) in tensors.iter().zip(grad.into_iter()) {
-            T::grad_map(t, g, out);
+            T::grad_map(t, g, grads);
         }
     }
 }
@@ -261,12 +259,12 @@ where
         self.0.tensors()
     }
 
-    fn gv_grad(tensors: &A::Tensors, grad_map: &HashMap<usize, Tensor>) -> A::Gradient {
-        A::grad(tensors, grad_map)
+    fn gv_grad(tensors: &A::Tensors, grads: &GradMap) -> A::Gradient {
+        A::grad(tensors, grads)
     }
 
-    fn gv_grad_map(tensors: &A::Tensors, grad: A::Gradient, out: &mut HashMap<usize, Tensor>) {
-        A::grad_map(tensors, grad, out);
+    fn gv_grad_map(tensors: &A::Tensors, grad: A::Gradient, grads: &mut GradMap) {
+        A::grad_map(tensors, grad, grads);
     }
 }
 
@@ -293,15 +291,15 @@ macro_rules! impl_tuple_differentiable {
                     ($([<$T:lower 1>].tensors(),)*)
                 }
 
-                fn gv_grad(tensors: &($($T::Tensors,)*), grad_map: &HashMap<usize, Tensor>) -> ($($T::Gradient,)*) {
+                fn gv_grad(tensors: &($($T::Tensors,)*), grads: &GradMap) -> ($($T::Gradient,)*) {
                     let ($([<$T:lower 1>],)*) = tensors;
-                    ($($T::grad([<$T:lower 1>], grad_map),)*)
+                    ($($T::grad([<$T:lower 1>], grads),)*)
                 }
 
-                fn gv_grad_map(tensors: &($($T::Tensors,)*), grad: ($($T::Gradient,)*), out: &mut HashMap<usize, Tensor>) {
+                fn gv_grad_map(tensors: &($($T::Tensors,)*), grad: ($($T::Gradient,)*), grads: &mut GradMap) {
                     let ($([<$T:lower 1>],)*) = tensors;
                     let ($([<$T:lower 2>],)*) = grad;
-                    $($T::grad_map([<$T:lower 1>], [<$T:lower 2>], out);)*
+                    $($T::grad_map([<$T:lower 1>], [<$T:lower 2>], grads);)*
                 }
             }
         }

@@ -1,5 +1,4 @@
-use crate::{vjp, Func, TensorIter, Value};
-use std::collections::HashMap;
+use crate::{vjp, Func, GradMap, TensorIter, Value};
 
 pub fn grad<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> IN::Gradient + Clone + 'a
 where
@@ -9,11 +8,11 @@ where
 {
     move |input: IN| {
         let (output, vjp_fn) = vjp(func.clone(), input);
-        let mut cotangents = HashMap::new();
         let output_tensors = output.tensors();
+        let mut grads = GradMap::with_capacity(output_tensors.count());
         for t in output_tensors.tensor_iter() {
-            cotangents.insert(t.id(), t.ones_like());
+            grads.insert(t.id(), t.ones_like());
         }
-        vjp_fn(OUT::grad(&output_tensors, &cotangents))
+        vjp_fn(OUT::grad(&output_tensors, &grads))
     }
 }

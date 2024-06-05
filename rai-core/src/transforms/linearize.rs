@@ -1,5 +1,4 @@
-use crate::{Func, TensorIter, Value};
-use std::collections::HashMap;
+use crate::{Func, GradMap, TensorIter, Value};
 
 pub fn linearize<'a, K, IN, OUT, F>(
     func: F,
@@ -14,9 +13,9 @@ where
     let output = func.invoke(input);
     let output_tensors = output.tensors();
     let jvp_fn = move |tangents: IN::Gradient| {
-        let mut grads = HashMap::new();
+        let mut grads = GradMap::with_capacity(input_tensors.count());
         IN::grad_map(&input_tensors, tangents, &mut grads);
-        let mut jvps = HashMap::new();
+        let mut jvps = GradMap::with_capacity(output_tensors.count());
         for t in output_tensors.tensor_iter() {
             jvps.insert(t.id(), t.jvp(&mut grads));
         }

@@ -7,7 +7,7 @@ use crate::{
         MaxPool2dArgs, ReduceArgs, ToPair,
     },
     utils::{self, dot_graph},
-    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, Op, Shape, Type,
+    AsDType, AsDevice, DType, Device, Dim, Dims, ElemType, FloatElemType, GradMap, Op, Shape, Type,
 };
 use safetensors::tensor::TensorView;
 #[cfg(feature = "debug-location")]
@@ -725,9 +725,9 @@ impl Tensor {
         ops::scatter_add(self, dim, index.as_ref(), source.as_ref())
     }
 
-    pub(crate) fn jvp(&self, tangent_cache: &mut HashMap<usize, Tensor>) -> Tensor {
-        if let Some(tangent) = tangent_cache.get(&self.id()) {
-            return tangent.clone();
+    pub(crate) fn jvp(&self, tangent_cache: &mut GradMap) -> Tensor {
+        if let Some(tangent) = tangent_cache.get(self.id()).cloned() {
+            return tangent;
         }
         let primals = &*self.inputs();
         let tangents = primals

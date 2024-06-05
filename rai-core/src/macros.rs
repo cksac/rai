@@ -64,8 +64,8 @@ macro_rules! __non_differentiable {
         impl<$($generics)*> $crate::GenericValue<$kind, (), ()> for $($path)* where $($bound)*
         {
             fn gv_tensors(&self) {}
-            fn gv_grad(_: &(), _: &HashMap<usize, Tensor>) {}
-            fn gv_grad_map(_: &(), _: (), _: &mut HashMap<usize, Tensor>) {}
+            fn gv_grad(_: &(), _: &$crate::GradMap) {}
+            fn gv_grad_map(_: &(), _: (), _: &mut $crate::GradMap) {}
         }
     };
 }
