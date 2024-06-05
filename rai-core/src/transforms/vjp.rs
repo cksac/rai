@@ -20,7 +20,7 @@ where
         for t in tape.iter().rev() {
             let primals = &*t.inputs();
             let cotangent = grads.entry(t.id()).or_insert_with(|| t.ones_like());
-            let cotangents = t.primitive().vjp(t, primals, cotangent);
+            let cotangents = t.op().vjp(t, primals, cotangent);
             for (primal, cotan) in primals.iter().zip(cotangents.into_iter()) {
                 let id = primal.id();
                 if let Some(sum) = grads.get(id) {

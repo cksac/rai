@@ -294,7 +294,7 @@ macro_rules! impl_std_ops {
 
 #[macro_export]
 macro_rules! broadcast_binary_op {
-    ($(#[$meta:meta])* $primitive:ident, $func:ident) => {
+    ($(#[$meta:meta])* $op:ident, $func:ident) => {
         $(#[$meta])*
         #[track_caller]
         pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
@@ -315,10 +315,10 @@ macro_rules! broadcast_binary_op {
                 (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
                 (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
             };
-            Tensor::new(device, dtype, shape, $primitive, inputs)
+            Tensor::new(device, dtype, shape, $op, inputs)
         }
     };
-    ($(#[$meta:meta])* $primitive:ident, $func:ident, $out_ty:ident) => {
+    ($(#[$meta:meta])* $op:ident, $func:ident, $out_ty:ident) => {
         $(#[$meta])*
         #[track_caller]
         pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
@@ -339,7 +339,7 @@ macro_rules! broadcast_binary_op {
                 (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
                 (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
             };
-            Tensor::new(device, dtype, shape, $primitive, inputs)
+            Tensor::new(device, dtype, shape, $op, inputs)
         }
     };
 }

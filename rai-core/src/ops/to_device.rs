@@ -53,6 +53,6 @@ pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let primitive = device.primitive_to_device();
-    Tensor::new(device, dtype, shape, primitive, inputs)
+    let op = device.to_device_op();
+    Tensor::new(device, dtype, shape, op, inputs)
 }

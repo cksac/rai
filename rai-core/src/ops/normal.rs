@@ -86,7 +86,7 @@ pub fn randn_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
-    let primitive = dtype.primitive_randn();
+    let op = dtype.randn_op();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, op, inputs)
 }

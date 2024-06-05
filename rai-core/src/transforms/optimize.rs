@@ -6,61 +6,30 @@ use crate::{
 use std::{any::TypeId, collections::HashMap};
 
 fn is_full(t: &Tensor) -> Option<String> {
-    if let Some(f) = t.primitive().as_any().downcast_ref::<Full<F32>>() {
+    if let Some(f) = t.op().as_any().downcast_ref::<Full<F32>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<F64>>() {
+    } else if let Some(f) = t.op().as_any().downcast_ref::<Full<F64>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<BF16>>() {
+    } else if let Some(f) = t.op().as_any().downcast_ref::<Full<BF16>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<F16>>() {
+    } else if let Some(f) = t.op().as_any().downcast_ref::<Full<F16>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<U32>>() {
+    } else if let Some(f) = t.op().as_any().downcast_ref::<Full<U32>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<U8>>() {
+    } else if let Some(f) = t.op().as_any().downcast_ref::<Full<U8>>() {
         Some(format!("{:?}", f.val))
-    } else if let Some(f) = t.primitive().as_any().downcast_ref::<Full<I64>>() {
+    } else if let Some(f) = t.op().as_any().downcast_ref::<Full<I64>>() {
         Some(format!("{:?}", f.val))
-    } else if t
-        .primitive()
-        .as_any()
-        .downcast_ref::<ToDType<F32>>()
-        .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDType<F64>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDType<BF16>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDType<F16>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDType<U32>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDType<U8>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDType<I64>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDevice<Cpu>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDevice<Cuda>>()
-            .is_some()
-        || t.primitive()
-            .as_any()
-            .downcast_ref::<ToDevice<Metal>>()
-            .is_some()
+    } else if t.op().as_any().downcast_ref::<ToDType<F32>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDType<F64>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDType<BF16>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDType<F16>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDType<U32>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDType<U8>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDType<I64>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDevice<Cpu>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDevice<Cuda>>().is_some()
+        || t.op().as_any().downcast_ref::<ToDevice<Metal>>().is_some()
     {
         is_full(t.inputs().first().unwrap())
     } else {

@@ -42,23 +42,23 @@ pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
         Self::Repr::from_f64(val)
     }
 
-    fn primitive_full_zero() -> Full<Self> {
+    fn full_zero_op() -> Full<Self> {
         Full::new(Self::Repr::zero())
     }
 
-    fn primitive_full_one() -> Full<Self> {
+    fn full_one_op() -> Full<Self> {
         Full::new(Self::Repr::one())
     }
 
-    fn primitive_rand() -> Random<Self> {
+    fn rand_op() -> Random<Self> {
         Random::new(Self::Repr::zero(), Self::Repr::one())
     }
 
-    fn primitive_randn() -> Normal<Self> {
+    fn randn_op() -> Normal<Self> {
         Normal::new(Self::Repr::zero(), Self::Repr::one())
     }
 
-    fn primitive_as_type(&self) -> ToDType<Self> {
+    fn to_type_op(&self) -> ToDType<Self> {
         ToDType::new(*self)
     }
 
@@ -73,11 +73,11 @@ pub trait DType: Debug {
     fn as_any(&self) -> &dyn Any;
     fn clone_boxed(&self) -> Box<dyn DType>;
     fn equal(&self, rhs: &dyn DType) -> bool;
-    fn primitive_full_zero(&self) -> Box<dyn Op>;
-    fn primitive_full_one(&self) -> Box<dyn Op>;
-    fn primitive_rand(&self) -> Box<dyn Op>;
-    fn primitive_randn(&self) -> Box<dyn Op>;
-    fn primitive_as_dtype(&self) -> Box<dyn Op>;
+    fn full_zero_op(&self) -> Box<dyn Op>;
+    fn full_one_op(&self) -> Box<dyn Op>;
+    fn rand_op(&self) -> Box<dyn Op>;
+    fn randn_op(&self) -> Box<dyn Op>;
+    fn to_dtype_op(&self) -> Box<dyn Op>;
     fn size_of_elem(&self) -> usize;
     fn safetensor_dtype(&self) -> safetensors::Dtype;
 }
@@ -97,24 +97,24 @@ impl<D: Type> DType for D {
             .map_or(false, |other| self == other)
     }
 
-    fn primitive_full_zero(&self) -> Box<dyn Op> {
-        Box::new(Self::primitive_full_zero())
+    fn full_zero_op(&self) -> Box<dyn Op> {
+        Box::new(Self::full_zero_op())
     }
 
-    fn primitive_full_one(&self) -> Box<dyn Op> {
-        Box::new(Self::primitive_full_one())
+    fn full_one_op(&self) -> Box<dyn Op> {
+        Box::new(Self::full_one_op())
     }
 
-    fn primitive_rand(&self) -> Box<dyn Op> {
-        Box::new(Self::primitive_rand())
+    fn rand_op(&self) -> Box<dyn Op> {
+        Box::new(Self::rand_op())
     }
 
-    fn primitive_randn(&self) -> Box<dyn Op> {
-        Box::new(Self::primitive_randn())
+    fn randn_op(&self) -> Box<dyn Op> {
+        Box::new(Self::randn_op())
     }
 
-    fn primitive_as_dtype(&self) -> Box<dyn Op> {
-        Box::new(self.primitive_as_type())
+    fn to_dtype_op(&self) -> Box<dyn Op> {
+        Box::new(self.to_type_op())
     }
 
     fn size_of_elem(&self) -> usize {

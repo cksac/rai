@@ -5,7 +5,7 @@ pub trait Device: Debug {
     fn as_any(&self) -> &dyn Any;
     fn clone_boxed(&self) -> Box<dyn Device>;
     fn eq(&self, rhs: &dyn Device) -> bool;
-    fn primitive_to_device(&self) -> Box<dyn Op>;
+    fn to_device_op(&self) -> Box<dyn Op>;
 }
 
 impl<'a, T> Device for &'a T
@@ -24,8 +24,8 @@ where
         Device::eq(*self, rhs)
     }
 
-    fn primitive_to_device(&self) -> Box<dyn Op> {
-        Device::primitive_to_device(*self)
+    fn to_device_op(&self) -> Box<dyn Op> {
+        Device::to_device_op(*self)
     }
 }
 
@@ -42,8 +42,8 @@ impl<'a> Device for &'a dyn Device {
         Device::eq(*self, rhs)
     }
 
-    fn primitive_to_device(&self) -> Box<dyn Op> {
-        Device::primitive_to_device(*self)
+    fn to_device_op(&self) -> Box<dyn Op> {
+        Device::to_device_op(*self)
     }
 }
 
@@ -60,8 +60,8 @@ impl Device for Box<dyn Device> {
         self.as_ref().eq(rhs)
     }
 
-    fn primitive_to_device(&self) -> Box<dyn Op> {
-        self.as_ref().primitive_to_device()
+    fn to_device_op(&self) -> Box<dyn Op> {
+        self.as_ref().to_device_op()
     }
 }
 
@@ -136,7 +136,7 @@ impl Device for Cpu {
             .map_or(false, |other| self == other)
     }
 
-    fn primitive_to_device(&self) -> Box<dyn Op> {
+    fn to_device_op(&self) -> Box<dyn Op> {
         Box::new(ToDevice::new(*self))
     }
 }
@@ -169,7 +169,7 @@ impl Device for Cuda {
             .map_or(false, |other| self == other)
     }
 
-    fn primitive_to_device(&self) -> Box<dyn Op> {
+    fn to_device_op(&self) -> Box<dyn Op> {
         Box::new(ToDevice::new(*self))
     }
 }
@@ -210,7 +210,7 @@ impl Device for Metal {
             .map_or(false, |other| self == other)
     }
 
-    fn primitive_to_device(&self) -> Box<dyn Op> {
+    fn to_device_op(&self) -> Box<dyn Op> {
         Box::new(ToDevice::new(*self))
     }
 }

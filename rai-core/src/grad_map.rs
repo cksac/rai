@@ -1,6 +1,6 @@
 use crate::Tensor;
 use rustc_hash::FxHashMap;
-use std::collections::hash_map::{Entry, Keys, Values};
+use std::collections::hash_map::{Entry, IntoIter, Iter, Keys, Values};
 
 #[derive(Debug, Clone, Default)]
 pub struct GradMap {
@@ -23,6 +23,11 @@ impl GradMap {
     #[inline]
     pub fn len(&self) -> usize {
         self.grads.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.grads.is_empty()
     }
 
     #[inline]
@@ -59,6 +64,11 @@ impl GradMap {
     pub fn clear(&mut self) {
         self.grads.clear();
     }
+
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, usize, Tensor> {
+        self.grads.iter()
+    }
 }
 
 impl FromIterator<(usize, Tensor)> for GradMap {
@@ -66,5 +76,14 @@ impl FromIterator<(usize, Tensor)> for GradMap {
         Self {
             grads: iter.into_iter().collect(),
         }
+    }
+}
+
+impl IntoIterator for GradMap {
+    type Item = (usize, Tensor);
+    type IntoIter = IntoIter<usize, Tensor>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.grads.into_iter()
     }
 }

@@ -35,7 +35,7 @@ struct TensorImpl {
     device: Box<dyn Device>,
     dtype: Box<dyn DType>,
     shape: Vec<usize>,
-    primitive: Box<dyn Op>,
+    op: Box<dyn Op>,
     inputs: RefCell<Vec<Tensor>>,
     data: RefCell<Option<Box<dyn TensorLike>>>,
     #[cfg(feature = "debug-location")]
@@ -48,14 +48,14 @@ impl Tensor {
         device: impl AsDevice,
         dtype: impl AsDType,
         shape: impl Shape,
-        primitive: impl Into<Box<dyn Op>>,
+        op: impl Into<Box<dyn Op>>,
         inputs: impl Into<Vec<Tensor>>,
     ) -> Self {
         let inner = TensorImpl {
             device: device.into_boxed_device(),
             dtype: dtype.into_boxed_dtype(),
             shape: shape.shape().to_vec(),
-            primitive: primitive.into(),
+            op: op.into(),
             inputs: RefCell::new(inputs.into()),
             data: RefCell::new(None),
             #[cfg(feature = "debug-location")]
@@ -80,8 +80,8 @@ impl Tensor {
     }
 
     #[inline]
-    pub fn primitive(&self) -> &dyn Op {
-        self.0.primitive.as_ref()
+    pub fn op(&self) -> &dyn Op {
+        self.0.op.as_ref()
     }
 
     #[inline]
@@ -732,7 +732,7 @@ impl Tensor {
             .iter()
             .map(|t| t.jvp(tangent_cache))
             .collect::<Vec<_>>();
-        let tangent = self.primitive().jvp(self, primals, &tangents);
+        let tangent = self.op().jvp(self, primals, &tangents);
         tangent_cache.insert(self.id(), tangent.clone());
         tangent
     }
@@ -879,7 +879,7 @@ impl Debug for Tensor {
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
             .field("device", &self.device())
-            .field("primitive", &self.primitive())
+            .field("op", &self.op())
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
@@ -896,7 +896,7 @@ impl Debug for Tensor {
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
             .field("device", &self.device())
-            .field("primitive", &self.primitive())
+            .field("op", &self.op())
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
@@ -918,7 +918,7 @@ impl Display for Tensor {
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
             .field("device", &self.device())
-            .field("primitive", &self.primitive())
+            .field("op", &self.op())
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
@@ -940,7 +940,7 @@ impl Display for Tensor {
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
             .field("device", &self.device())
-            .field("primitive", &self.primitive())
+            .field("op", &self.op())
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),

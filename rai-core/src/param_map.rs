@@ -1,6 +1,6 @@
 use crate::Tensor;
 use rustc_hash::FxHashMap;
-use std::collections::hash_map::{Entry, Keys, Values};
+use std::collections::hash_map::{Entry, IntoIter, Iter, Keys, Values};
 
 #[derive(Debug, Clone, Default)]
 pub struct ParamMap {
@@ -64,6 +64,11 @@ impl ParamMap {
     pub fn clear(&mut self) {
         self.params.clear();
     }
+
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, String, Tensor> {
+        self.params.iter()
+    }
 }
 
 impl FromIterator<(String, Tensor)> for ParamMap {
@@ -76,7 +81,7 @@ impl FromIterator<(String, Tensor)> for ParamMap {
 
 impl IntoIterator for ParamMap {
     type Item = (String, Tensor);
-    type IntoIter = std::collections::hash_map::IntoIter<String, Tensor>;
+    type IntoIter = IntoIter<String, Tensor>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.params.into_iter()

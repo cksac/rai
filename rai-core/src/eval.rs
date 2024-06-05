@@ -34,16 +34,12 @@ pub fn eval<T: EvalArgs>(args: T) {
         {
             let device = t.device().clone_boxed();
             let device = device.as_ref();
-            let primitive = t.primitive().clone_boxed();
-            let primitive = primitive.as_ref();
+            let op = t.op().clone_boxed();
+            let op = op.as_ref();
             let inputs = &*t.inputs();
-            let rule = eval_rule(device, primitive).unwrap_or_else(|| {
-                panic!(
-                    "no eval rule for device: {:?}, primitive: {:?}",
-                    device, primitive
-                )
-            });
-            rule.eval(device, primitive, inputs, &t);
+            let rule = eval_rule(device, op)
+                .unwrap_or_else(|| panic!("no eval rule for device: {:?}, op: {:?}", device, op));
+            rule.eval(device, op, inputs, &t);
         }
         if !args.retain_graph() {
             t.detach();

@@ -105,8 +105,8 @@ pub fn full_like<T: ElemType>(x: &Tensor, val: T) -> Tensor {
 pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
     let device = device.device();
-    let primitive = dtype.primitive_full_one();
-    Tensor::new(device, dtype, shape, primitive, vec![])
+    let op = dtype.full_one_op();
+    Tensor::new(device, dtype, shape, op, vec![])
 }
 
 /// Creates a `Tensor` filled with ones, with the same shape, data type and device as another `Tensor`.
@@ -123,9 +123,9 @@ pub fn ones_like(x: &Tensor) -> Tensor {
     let dtype = x.dtype();
     let device = x.device();
     let shape = x.shape();
-    let primitive = dtype.primitive_full_one();
+    let op = dtype.full_one_op();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, op, inputs)
 }
 
 /// Creates a `Tensor` filled with zeros.
@@ -143,8 +143,8 @@ pub fn ones_like(x: &Tensor) -> Tensor {
 pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let dtype = dtype.dtype();
     let device = device.device();
-    let primitive = dtype.primitive_full_zero();
-    Tensor::new(device, dtype, shape, primitive, vec![])
+    let op = dtype.full_zero_op();
+    Tensor::new(device, dtype, shape, op, vec![])
 }
 
 /// Creates a `Tensor` filled with zeros, with the same shape, data type and device as another `Tensor`.
@@ -161,7 +161,7 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
     let dtype = x.dtype();
     let shape = x.shape();
     let device = x.device();
-    let primitive = dtype.primitive_full_zero();
+    let op = dtype.full_zero_op();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, op, inputs)
 }

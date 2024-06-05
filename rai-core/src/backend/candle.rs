@@ -200,9 +200,9 @@ where
     T: Type,
     T::Repr: candle_core::WithDType,
 {
-    fn eval(&self, device: &D, primitive: &ops::Full<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, op: &ops::Full<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
-            let t = candle_core::Tensor::full(primitive.val, output.shape(), dev).unwrap();
+            let t = candle_core::Tensor::full(op.val, output.shape(), dev).unwrap();
             output.set_data(t);
         });
     }
@@ -214,9 +214,9 @@ where
     T: Type,
     T::Repr: candle_core::FloatDType,
 {
-    fn eval(&self, device: &D, primitive: &ops::Normal<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, op: &ops::Normal<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
-            let t = candle_core::Tensor::randn(primitive.mean, primitive.std, output.shape(), dev);
+            let t = candle_core::Tensor::randn(op.mean, op.std, output.shape(), dev);
             let t = t.unwrap();
             output.set_data(t);
         });
@@ -229,9 +229,9 @@ where
     T: Type,
     T::Repr: candle_core::FloatDType,
 {
-    fn eval(&self, device: &D, primitive: &ops::Random<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, op: &ops::Random<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
-            let t = candle_core::Tensor::rand(primitive.from, primitive.to, output.shape(), dev);
+            let t = candle_core::Tensor::rand(op.from, op.to, output.shape(), dev);
             let t = t.unwrap();
             output.set_data(t);
         });
@@ -244,11 +244,11 @@ where
     T: Type,
     T::Repr: candle_core::WithDType,
 {
-    fn eval(&self, device: &D, primitive: &ops::Arange<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, op: &ops::Arange<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
-            let start = primitive.start;
-            let end = primitive.stop;
-            let step = primitive.step;
+            let start = op.start;
+            let end = op.stop;
+            let step = op.step;
             let t = candle_core::Tensor::arange_step::<T::Repr>(start, end, step, dev).unwrap();
             output.set_data(t);
         });
@@ -261,9 +261,9 @@ where
     T: Type,
     T::Repr: candle_core::WithDType,
 {
-    fn eval(&self, device: &D, primitive: &ops::FromArray<T>, _: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &D, op: &ops::FromArray<T>, _: &[Tensor], output: &Tensor) {
         device.with_device(|dev| {
-            let t = candle_core::Tensor::new(primitive.data.as_slice(), dev)
+            let t = candle_core::Tensor::new(op.data.as_slice(), dev)
                 .unwrap()
                 .reshape(output.shape())
                 .unwrap();
@@ -473,12 +473,12 @@ impl<D: Device> Eval<D, ops::Negative> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ReduceSum> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ReduceSum, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ReduceSum, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let dims = primitive.dims();
-        let t = if primitive.keep_dim {
+        let dims = op.dims();
+        let t = if op.keep_dim {
             t.sum_keepdim(dims).unwrap()
         } else {
             t.sum(dims).unwrap()
@@ -488,16 +488,16 @@ impl<D: Device> Eval<D, ops::ReduceSum> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ReduceMax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ReduceMax, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ReduceMax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let dims = primitive.dims();
+        let dims = op.dims();
         assert!(
             dims.len() == 1,
             "Candle only support reduce max with single dim"
         );
-        let t = if primitive.keep_dim {
+        let t = if op.keep_dim {
             t.max_keepdim(dims[0]).unwrap()
         } else {
             t.max(dims[0]).unwrap()
@@ -507,13 +507,13 @@ impl<D: Device> Eval<D, ops::ReduceMax> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ReduceMin> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ReduceMin, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ReduceMin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let dims = primitive.dims();
+        let dims = op.dims();
         assert!(dims.len() == 1, "only support reduce min with single dim");
-        let t = if primitive.keep_dim {
+        let t = if op.keep_dim {
             t.min_keepdim(dims[0]).unwrap()
         } else {
             t.min(dims[0]).unwrap()
@@ -553,41 +553,41 @@ impl<D: Device> Eval<D, ops::Rsqrt> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::Transpose> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Transpose, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Transpose, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.transpose(primitive.dim0, primitive.dim1).unwrap();
+        let t = t.transpose(op.dim0, op.dim1).unwrap();
         output.set_data(t)
     }
 }
 
 impl<D: Device> Eval<D, ops::Reshape> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Reshape, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Reshape, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.reshape(primitive.shape()).unwrap();
+        let t = t.reshape(op.shape()).unwrap();
         output.set_data(t)
     }
 }
 
 impl<D: Device> Eval<D, ops::Broadcast> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Broadcast, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Broadcast, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.broadcast_as(primitive.shape()).unwrap();
+        let t = t.broadcast_as(op.shape()).unwrap();
         output.set_data(t)
     }
 }
 
 impl<D: Device> Eval<D, ops::Permute> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Permute, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Permute, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.permute(primitive.dims()).unwrap();
+        let t = t.permute(op.dims()).unwrap();
         output.set_data(t)
     }
 }
@@ -764,11 +764,11 @@ where
     D: Device,
     T: Type + Into<candle_core::DType>,
 {
-    fn eval(&self, _: &D, primitive: &ops::ToDType<T>, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ToDType<T>, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.to_dtype(primitive.dtype.into()).unwrap();
+        let t = t.to_dtype(op.dtype.into()).unwrap();
         output.set_data(t)
     }
 }
@@ -778,8 +778,8 @@ where
     D1: Device,
     D2: Device + Clone + WithDevice,
 {
-    fn eval(&self, _: &D1, primitive: &ops::ToDevice<D2>, inputs: &[Tensor], output: &Tensor) {
-        primitive.device.with_device(|dev| {
+    fn eval(&self, _: &D1, op: &ops::ToDevice<D2>, inputs: &[Tensor], output: &Tensor) {
+        op.device.with_device(|dev| {
             let x = &inputs[0];
             let t = x.get_data::<Data>().unwrap();
             let t = t.deref();
@@ -816,40 +816,40 @@ fn log_softmax<D: candle_core::shape::Dim>(
 }
 
 impl<D: Device> Eval<D, ops::Softmax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Softmax, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Softmax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = softmax(t, primitive.dim).unwrap();
+        let t = softmax(t, op.dim).unwrap();
         output.set_data(t)
     }
 }
 
 impl<D: Device> Eval<D, ops::LogSoftmax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::LogSoftmax, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::LogSoftmax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = log_softmax(t, primitive.dim).unwrap();
+        let t = log_softmax(t, op.dim).unwrap();
         output.set_data(t)
     }
 }
 
 impl<D: Device> Eval<D, ops::Gather> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Gather, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Gather, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = &t2.deref().contiguous().unwrap();
-        let t = t1.gather(t2, primitive.dim).unwrap();
+        let t = t1.gather(t2, op.dim).unwrap();
         output.set_data(t);
     }
 }
 
 impl<D: Device> Eval<D, ops::IndexAdd> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::IndexAdd, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::IndexAdd, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let source = &inputs[1];
         let index = &inputs[2];
@@ -859,43 +859,41 @@ impl<D: Device> Eval<D, ops::IndexAdd> for CandleBackend {
         let t1 = t1.deref();
         let t2 = t2.deref();
         let t3 = t3.deref();
-        let t = t1.index_add(t2, t3, primitive.dim).unwrap();
+        let t = t1.index_add(t2, t3, op.dim).unwrap();
         output.set_data(t);
     }
 }
 
 impl<D: Device> Eval<D, ops::IndexSelect> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::IndexSelect, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::IndexSelect, inputs: &[Tensor], output: &Tensor) {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let t1 = lhs.get_data::<Data>().unwrap();
         let t2 = rhs.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let t = t1.index_select(t2, primitive.dim).unwrap();
+        let t = t1.index_select(t2, op.dim).unwrap();
         output.set_data(t);
     }
 }
 
 impl<D: Device> Eval<D, ops::Concatenate> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Concatenate, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Concatenate, inputs: &[Tensor], output: &Tensor) {
         let tensors: Vec<_> = inputs
             .iter()
             .map(|t| t.get_data::<Data>().unwrap().clone())
             .collect();
-        let t = candle_core::Tensor::cat(tensors.as_slice(), primitive.dim).unwrap();
+        let t = candle_core::Tensor::cat(tensors.as_slice(), op.dim).unwrap();
         output.set_data(t)
     }
 }
 
 impl<D: Device> Eval<D, ops::Narrow> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Narrow, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Narrow, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t
-            .narrow(primitive.dim, primitive.start, primitive.len)
-            .unwrap();
+        let t = t.narrow(op.dim, op.start, op.len).unwrap();
         output.set_data(t)
     }
 }
@@ -917,12 +915,12 @@ impl<D: Device> Eval<D, ops::Where> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ArgMax> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ArgMax, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ArgMax, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let dim = primitive.dim();
-        let t = if primitive.keep_dim {
+        let dim = op.dim();
+        let t = if op.keep_dim {
             t.argmax_keepdim(dim).unwrap()
         } else {
             t.argmax(dim).unwrap()
@@ -932,12 +930,12 @@ impl<D: Device> Eval<D, ops::ArgMax> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ArgMin> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ArgMin, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ArgMin, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let dim = primitive.dim();
-        let t = if primitive.keep_dim {
+        let dim = op.dim();
+        let t = if op.keep_dim {
             t.argmax_keepdim(dim).unwrap()
         } else {
             t.argmax(dim).unwrap()
@@ -967,11 +965,11 @@ impl<D: Device> Eval<D, ops::Tanh> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::PowerFloat> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::PowerFloat, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::PowerFloat, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.powf(primitive.exponent).unwrap();
+        let t = t.powf(op.exponent).unwrap();
         output.set_data(t)
     }
 }
@@ -987,7 +985,7 @@ impl<D: Device> Eval<D, ops::ToContiguous> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ScatterAdd> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ScatterAdd, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ScatterAdd, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let updates = &inputs[1];
         let indices = &inputs[2];
@@ -997,13 +995,13 @@ impl<D: Device> Eval<D, ops::ScatterAdd> for CandleBackend {
         let t1 = t1.deref();
         let t2 = t2.deref().contiguous().unwrap();
         let t3 = t3.deref().contiguous().unwrap();
-        let t = t1.scatter_add(&t2, &t3, primitive.dim).unwrap();
+        let t = t1.scatter_add(&t2, &t3, op.dim).unwrap();
         output.set_data(t);
     }
 }
 
 impl<D: Device> Eval<D, ops::Conv1d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Conv1d, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Conv1d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -1011,29 +1009,23 @@ impl<D: Device> Eval<D, ops::Conv1d> for CandleBackend {
         let t1 = t1.deref();
         let t2 = t2.deref();
         let t = t1
-            .conv1d(
-                t2,
-                primitive.padding,
-                primitive.stride,
-                primitive.dilation,
-                1,
-            )
+            .conv1d(t2, op.padding, op.stride, op.dilation, 1)
             .unwrap();
         output.set_data(t);
     }
 }
 
 impl<D: Device> Eval<D, ops::Conv2d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::Conv2d, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::Conv2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
         let t2 = kernel.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let padding = primitive.padding.as_slice();
-        let stride = primitive.stride.as_slice();
-        let dilation = primitive.dilation.as_slice();
+        let padding = op.padding.as_slice();
+        let stride = op.stride.as_slice();
+        let dilation = op.dilation.as_slice();
         assert_eq!(padding[0], padding[1], "Candle only support square padding");
         assert_eq!(stride[0], stride[1], "Candle only support square stride");
         assert_eq!(
@@ -1048,7 +1040,7 @@ impl<D: Device> Eval<D, ops::Conv2d> for CandleBackend {
 }
 
 impl<D: Device> Eval<D, ops::ConvTranspose1d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ConvTranspose1d, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ConvTranspose1d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
@@ -1056,31 +1048,24 @@ impl<D: Device> Eval<D, ops::ConvTranspose1d> for CandleBackend {
         let t1 = t1.deref();
         let t2 = t2.deref();
         let t = t1
-            .conv_transpose1d(
-                t2,
-                primitive.padding,
-                primitive.output_padding,
-                primitive.stride,
-                primitive.dilation,
-                1,
-            )
+            .conv_transpose1d(t2, op.padding, op.output_padding, op.stride, op.dilation, 1)
             .unwrap();
         output.set_data(t);
     }
 }
 
 impl<D: Device> Eval<D, ops::ConvTranspose2d> for CandleBackend {
-    fn eval(&self, _: &D, primitive: &ops::ConvTranspose2d, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &D, op: &ops::ConvTranspose2d, inputs: &[Tensor], output: &Tensor) {
         let x: &Tensor = &inputs[0];
         let kernel = &inputs[1];
         let t1 = x.get_data::<Data>().unwrap();
         let t2 = kernel.get_data::<Data>().unwrap();
         let t1 = t1.deref();
         let t2 = t2.deref();
-        let padding = primitive.padding.as_slice();
-        let out_padding = primitive.out_padding.as_slice();
-        let stride = primitive.stride.as_slice();
-        let dilation = primitive.dilation.as_slice();
+        let padding = op.padding.as_slice();
+        let out_padding = op.out_padding.as_slice();
+        let stride = op.stride.as_slice();
+        let dilation = op.dilation.as_slice();
         assert_eq!(padding[0], padding[1], "Candle only support square padding");
         assert_eq!(
             out_padding[0], out_padding[1],
@@ -1162,7 +1147,7 @@ impl<D: Device> Eval<D, ops::UpsampleNearest2d> for CandleBackend {
     feature = "candle-flash-attn"
 ))]
 impl Eval<Cuda, ops::FlashAttention> for CandleBackend {
-    fn eval(&self, _: &Cuda, primitive: &ops::FlashAttention, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, _: &Cuda, op: &ops::FlashAttention, inputs: &[Tensor], output: &Tensor) {
         let q = &inputs[0];
         let k = &inputs[1];
         let v = &inputs[2];
@@ -1172,7 +1157,7 @@ impl Eval<Cuda, ops::FlashAttention> for CandleBackend {
         let t1 = t1.deref();
         let t2 = t2.deref();
         let t3 = t3.deref();
-        let t = match &primitive.alibi_slopes {
+        let t = match &op.alibi_slopes {
             Some(alibi_slopes) => {
                 let t4 = alibi_slopes.get_data::<Data>().unwrap();
                 let t4 = t4.deref();
@@ -1181,9 +1166,9 @@ impl Eval<Cuda, ops::FlashAttention> for CandleBackend {
                     t2,
                     t3,
                     t4,
-                    primitive.softmax_scale,
-                    primitive.window_size_left,
-                    primitive.window_size_right,
+                    op.softmax_scale,
+                    op.window_size_left,
+                    op.window_size_right,
                 )
                 .unwrap()
             }
@@ -1191,9 +1176,9 @@ impl Eval<Cuda, ops::FlashAttention> for CandleBackend {
                 t1,
                 t2,
                 t3,
-                primitive.softmax_scale,
-                primitive.window_size_left,
-                primitive.window_size_right,
+                op.softmax_scale,
+                op.window_size_left,
+                op.window_size_right,
             )
             .unwrap(),
         };

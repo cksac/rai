@@ -15,10 +15,10 @@ where
     B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
-    fn eval(&self, device: &dyn Device, primitive: &dyn Op, inputs: &[Tensor], output: &Tensor) {
+    fn eval(&self, device: &dyn Device, op: &dyn Op, inputs: &[Tensor], output: &Tensor) {
         let device = device.as_any().downcast_ref::<D>().unwrap();
-        let primitive = primitive.as_any().downcast_ref::<P>().unwrap();
-        self.backend.eval(device, primitive, inputs, output);
+        let op = op.as_any().downcast_ref::<P>().unwrap();
+        self.backend.eval(device, op, inputs, output);
     }
 }
 
@@ -29,16 +29,10 @@ where
     B: Eval<D, P> + 'static + Clone,
 {
     #[inline]
-    fn eval(
-        &self,
-        device: &Box<dyn Device>,
-        primitive: &Box<dyn Op>,
-        inputs: &[Tensor],
-        output: &Tensor,
-    ) {
+    fn eval(&self, device: &Box<dyn Device>, op: &Box<dyn Op>, inputs: &[Tensor], output: &Tensor) {
         let device = device.as_any().downcast_ref::<D>().unwrap();
-        let primitive = primitive.as_any().downcast_ref::<P>().unwrap();
-        self.backend.eval(device, primitive, inputs, output);
+        let op = op.as_any().downcast_ref::<P>().unwrap();
+        self.backend.eval(device, op, inputs, output);
     }
 }
 
@@ -207,9 +201,9 @@ where
 }
 
 #[inline(always)]
-pub fn eval_rule(device: &dyn Device, primitive: &dyn Op) -> Option<DynBackend> {
+pub fn eval_rule(device: &dyn Device, op: &dyn Op) -> Option<DynBackend> {
     let dispatcher = EVAL_DISPATCHER.read().unwrap();
     dispatcher
-        .get(&(device.as_any().type_id(), primitive.as_any().type_id()))
+        .get(&(device.as_any().type_id(), op.as_any().type_id()))
         .cloned()
 }

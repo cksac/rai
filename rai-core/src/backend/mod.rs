@@ -50,7 +50,7 @@ where
     D: ?Sized,
     P: ?Sized,
 {
-    fn eval(&self, device: &D, primitive: &P, inputs: &[Tensor], output: &Tensor);
+    fn eval(&self, device: &D, op: &P, inputs: &[Tensor], output: &Tensor);
 }
 dyn_clone::clone_trait_object!(<D, P> Eval<D, P> where D: ?Sized, P: ?Sized);
 

@@ -1,6 +1,6 @@
 use crate::Tensor;
 use rustc_hash::FxHashMap;
-use std::collections::hash_map::{Entry, Keys, Values};
+use std::collections::hash_map::{Entry, IntoIter, Iter, Keys, Values};
 
 #[derive(Debug, Clone, Default)]
 pub struct TensorMap {
@@ -64,6 +64,11 @@ impl TensorMap {
     pub fn clear(&mut self) {
         self.tensors.clear();
     }
+
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, usize, Tensor> {
+        self.tensors.iter()
+    }
 }
 
 impl FromIterator<(usize, Tensor)> for TensorMap {
@@ -76,7 +81,7 @@ impl FromIterator<(usize, Tensor)> for TensorMap {
 
 impl IntoIterator for TensorMap {
     type Item = (usize, Tensor);
-    type IntoIter = std::collections::hash_map::IntoIter<usize, Tensor>;
+    type IntoIter = IntoIter<usize, Tensor>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.tensors.into_iter()

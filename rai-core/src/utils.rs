@@ -80,7 +80,7 @@ pub fn dot_graph<T: TensorIter>(args: T) -> String {
             "{} [label=\"{}: {}|{{dtype:|shape:|inputs:}}|{{{{{:?}}}|{{{:?}}}|{{{:?}}}}}\"{}];",
             tensor.id(),
             tensor.id(),
-            tensor.primitive().dot_label(),
+            tensor.op().dot_label(),
             tensor.dtype(),
             tensor.shape(),
             tensor.inputs().iter().map(|t| t.id()).collect::<Vec<_>>(),

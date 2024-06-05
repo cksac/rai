@@ -40,7 +40,7 @@ where
         format!(
             "\t{} = {} {}",
             decl(id_map, id_seq, t),
-            t.primitive().dot_label(),
+            t.op().dot_label(),
             t.inputs()
                 .iter()
                 .map(|v| decl(id_map, id_seq, v))
@@ -54,7 +54,7 @@ where
         format!(
             "\t{} = {} {} // {}",
             decl(id_map, id_seq, t),
-            t.primitive().dot_label(),
+            t.op().dot_label(),
             t.inputs()
                 .iter()
                 .map(|v| decl(id_map, id_seq, v))

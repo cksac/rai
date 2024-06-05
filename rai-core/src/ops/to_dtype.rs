@@ -49,6 +49,6 @@ pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     let device = x.device();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    let primitive = dtype.primitive_as_dtype();
-    Tensor::new(device, dtype, shape, primitive, inputs)
+    let op = dtype.to_dtype_op();
+    Tensor::new(device, dtype, shape, op, inputs)
 }

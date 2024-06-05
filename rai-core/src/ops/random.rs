@@ -81,7 +81,7 @@ pub fn rand_like(x: &Tensor) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
-    let primitive = dtype.primitive_rand();
+    let op = dtype.rand_op();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, primitive, inputs)
+    Tensor::new(device, dtype, shape, op, inputs)
 }
