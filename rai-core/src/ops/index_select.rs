@@ -58,3 +58,11 @@ pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     // TODO: asserts
     Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn index_select(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
+        index_select(self, dim, index.as_ref())
+    }
+}

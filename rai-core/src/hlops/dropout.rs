@@ -8,3 +8,11 @@ pub fn dropout(input: &Tensor, p: f32) -> Tensor {
     let mask = r.ge(r.full_like(p)).to_dtype(r) * scale;
     input * mask
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn dropout(&self, p: f32) -> Tensor {
+        dropout(self, p)
+    }
+}

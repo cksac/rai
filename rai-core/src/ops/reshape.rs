@@ -66,3 +66,11 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
         panic!("reshape({:?}, {:?}) with error", x, shape.shape());
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn reshape(&self, shape: impl Shape) -> Tensor {
+        reshape(self, shape)
+    }
+}

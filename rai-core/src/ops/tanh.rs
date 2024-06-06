@@ -37,3 +37,11 @@ pub fn tanh(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Tanh, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn tanh(&self) -> Tensor {
+        tanh(self)
+    }
+}

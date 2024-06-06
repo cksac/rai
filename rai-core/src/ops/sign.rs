@@ -36,3 +36,11 @@ pub fn sign(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Sign, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn sign(&self) -> Tensor {
+        sign(self)
+    }
+}

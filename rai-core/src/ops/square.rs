@@ -36,3 +36,11 @@ pub fn square(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Square, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn square(&self) -> Tensor {
+        square(self)
+    }
+}

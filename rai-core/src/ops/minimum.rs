@@ -38,3 +38,11 @@ impl Op for Minimum {
 }
 
 broadcast_binary_op!(Minimum, minimum);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn minimum<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        minimum(self, rhs.as_ref())
+    }
+}

@@ -30,3 +30,11 @@ impl Op for Less {
 }
 
 broadcast_binary_op!(Less, lt, U8);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn lt<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        lt(self, rhs.as_ref())
+    }
+}

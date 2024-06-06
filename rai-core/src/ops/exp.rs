@@ -37,3 +37,11 @@ pub fn exp(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Exp, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn exp(&self) -> Tensor {
+        exp(self)
+    }
+}

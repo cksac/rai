@@ -137,3 +137,11 @@ pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn max_pool1d(&self, args: impl MaxPool1dArgs) -> Tensor {
+        max_pool1d(self, args)
+    }
+}

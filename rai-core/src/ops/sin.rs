@@ -36,3 +36,11 @@ pub fn sin(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Sin, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn sin(&self) -> Tensor {
+        sin(self)
+    }
+}

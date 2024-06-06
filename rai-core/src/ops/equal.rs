@@ -30,3 +30,11 @@ impl Op for Equal {
 }
 
 broadcast_binary_op!(Equal, eq, U8);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn eq<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        eq(self, rhs.as_ref())
+    }
+}

@@ -58,3 +58,17 @@ pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn t(&self) -> Tensor {
+        transpose(self, -2, -1)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn transpose(&self, dim0: impl Dim, dim1: impl Dim) -> Tensor {
+        transpose(self, dim0, dim1)
+    }
+}

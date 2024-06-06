@@ -30,3 +30,41 @@ pub fn new_gelu(x: &Tensor) -> Tensor {
 pub fn silu(x: &Tensor) -> Tensor {
     x / (x.neg().exp() + 1.0f32)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn relu(&self) -> Tensor {
+        relu(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn relu2(&self) -> Tensor {
+        relu2(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn relu6(&self) -> Tensor {
+        relu6(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn gelu(&self) -> Tensor {
+        gelu(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn new_gelu(&self) -> Tensor {
+        new_gelu(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn silu(&self) -> Tensor {
+        silu(self)
+    }
+}

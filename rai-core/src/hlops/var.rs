@@ -36,3 +36,11 @@ pub fn var<T: VarArgs>(x: &Tensor, args: T) -> Tensor {
     let s = (x - m).square().sum((args.dims(), args.keep_dim()));
     s / (elem_count - args.ddof()) as f32
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn var<T: VarArgs>(&self, args: T) -> Tensor {
+        var(self, args)
+    }
+}

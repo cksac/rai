@@ -82,3 +82,26 @@ pub fn linspace<T: FloatElemType>(start: T, end: T, steps: usize, device: impl A
     let data = T::linspace(start, end, steps);
     from_array(data, [steps], device)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn from_array<T: ElemType>(
+        data: impl Into<Vec<T>> + Debug,
+        shape: impl Shape,
+        device: impl AsDevice,
+    ) -> Tensor {
+        from_array(data, shape, device)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn linspace<T: FloatElemType>(
+        start: T,
+        end: T,
+        steps: usize,
+        device: impl AsDevice,
+    ) -> Tensor {
+        linspace(start, end, steps, device)
+    }
+}

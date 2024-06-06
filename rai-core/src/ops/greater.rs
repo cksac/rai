@@ -30,3 +30,11 @@ impl Op for Greater {
 }
 
 broadcast_binary_op!(Greater, gt, U8);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn gt<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        gt(self, rhs.as_ref())
+    }
+}

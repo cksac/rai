@@ -49,3 +49,14 @@ broadcast_binary_op!(
 );
 
 impl_std_ops!(Mul, mul);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn mul<T>(&self, rhs: T) -> Tensor
+    where
+        for<'a> &'a Self: std::ops::Mul<T, Output = Tensor>,
+    {
+        std::ops::Mul::mul(self, rhs)
+    }
+}

@@ -53,3 +53,11 @@ impl<'a> std::ops::Neg for &'a Tensor {
         neg(self)
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn neg(&self) -> Tensor {
+        neg(self)
+    }
+}

@@ -50,3 +50,11 @@ pub fn softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
     let dim = shape.dim(d);
     Tensor::new(device, dtype, shape, Softmax::new(dim), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn softmax<D: Dim>(&self, d: D) -> Tensor {
+        softmax(self, d)
+    }
+}

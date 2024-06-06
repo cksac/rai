@@ -57,3 +57,11 @@ pub fn permute(x: &Tensor, d: impl Dims<Vec<usize>>) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Permute::new(dims), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn permute(&self, d: impl Dims<Vec<usize>>) -> Tensor {
+        permute(self, d)
+    }
+}

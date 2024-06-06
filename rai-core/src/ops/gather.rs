@@ -62,3 +62,11 @@ pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let inputs = vec![x.clone(), index.clone()];
     Tensor::new(device, dtype, shape, Gather::new(dim), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn gather(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
+        gather(self, dim, index.as_ref())
+    }
+}

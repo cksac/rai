@@ -47,3 +47,14 @@ broadcast_binary_op!(
 );
 
 impl_std_ops!(Div, div);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn div<T>(&self, rhs: T) -> Tensor
+    where
+        for<'a> &'a Self: std::ops::Div<T, Output = Tensor>,
+    {
+        std::ops::Div::div(self, rhs)
+    }
+}

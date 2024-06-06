@@ -65,3 +65,11 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
         Tensor::new(device, dtype, shape, MatMul, inputs)
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn matmul<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        matmul(self, rhs.as_ref())
+    }
+}

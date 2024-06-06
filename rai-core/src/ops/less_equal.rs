@@ -30,3 +30,11 @@ impl Op for LessEqual {
 }
 
 broadcast_binary_op!(LessEqual, le, U8);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn le<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        le(self, rhs.as_ref())
+    }
+}

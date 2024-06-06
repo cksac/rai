@@ -90,3 +90,28 @@ pub fn randn_like(x: &Tensor) -> Tensor {
     let inputs = vec![];
     Tensor::new(device, dtype, shape, op, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn randn<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+        randn(shape, dtype, device)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn randn_with<T: ElemType>(
+        mean: T,
+        std: T,
+        shape: impl Shape,
+        device: impl AsDevice,
+    ) -> Tensor {
+        randn_with(mean, std, shape, device)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn randn_like(&self) -> Tensor {
+        randn_like(self)
+    }
+}

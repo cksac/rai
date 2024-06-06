@@ -12,3 +12,11 @@ pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
     }
     x.reshape(shape)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn unsqueeze(&self, d: impl Dim) -> Tensor {
+        unsqueeze(self, d)
+    }
+}

@@ -38,3 +38,11 @@ impl Op for Maximum {
 }
 
 broadcast_binary_op!(Maximum, maximum);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn maximum<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        maximum(self, rhs.as_ref())
+    }
+}

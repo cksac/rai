@@ -30,3 +30,11 @@ impl Op for NotEqual {
 }
 
 broadcast_binary_op!(NotEqual, ne, U8);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn ne<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ne(self, rhs.as_ref())
+    }
+}

@@ -57,3 +57,11 @@ pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
     let inputs = vec![input.clone()];
     Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn upsample_nearest2d(&self, size: impl ToPair<usize>) -> Tensor {
+        upsample_nearest2d(self, size)
+    }
+}

@@ -36,3 +36,11 @@ pub fn cos(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Cos, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn cos(&self) -> Tensor {
+        cos(self)
+    }
+}

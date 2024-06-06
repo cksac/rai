@@ -11,3 +11,11 @@ pub fn squeeze(x: &Tensor, dims: impl Dims<Vec<usize>>) -> Tensor {
     }
     x.reshape(out_shape)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn squeeze(&self, dims: impl Dims<Vec<usize>>) -> Tensor {
+        squeeze(self, dims)
+    }
+}

@@ -56,3 +56,11 @@ pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
     let op = device.to_device_op();
     Tensor::new(device, dtype, shape, op, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn to_device(&self, device: impl AsDevice) -> Tensor {
+        to_device(self, device)
+    }
+}

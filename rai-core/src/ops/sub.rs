@@ -45,3 +45,14 @@ broadcast_binary_op!(
 );
 
 impl_std_ops!(Sub, sub);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn sub<T>(&self, rhs: T) -> Tensor
+    where
+        for<'a> &'a Self: std::ops::Sub<T, Output = Tensor>,
+    {
+        std::ops::Sub::sub(self, rhs)
+    }
+}

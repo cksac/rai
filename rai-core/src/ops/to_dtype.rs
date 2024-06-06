@@ -52,3 +52,11 @@ pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     let op = dtype.to_dtype_op();
     Tensor::new(device, dtype, shape, op, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn to_dtype(&self, dtype: impl AsDType) -> Tensor {
+        to_dtype(self, dtype)
+    }
+}

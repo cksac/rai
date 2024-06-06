@@ -173,3 +173,11 @@ pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn max_pool2d(&self, args: impl MaxPool2dArgs) -> Tensor {
+        max_pool2d(self, args)
+    }
+}

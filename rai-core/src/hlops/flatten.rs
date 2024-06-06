@@ -179,3 +179,11 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
         x.clone()
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
+        flatten(self, args)
+    }
+}

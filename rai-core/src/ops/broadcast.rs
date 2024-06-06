@@ -92,3 +92,29 @@ pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
     }
     x.broadcast_to_unchecked(out_shape)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn broadcast_to(&self, shape: impl Shape) -> Tensor {
+        broadcast_to(self, shape)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn broadcast_to_unchecked(&self, shape: impl Shape) -> Tensor {
+        broadcast_to_unchecked(self, shape)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn broadcast_left(&self, shape: impl Shape) -> Tensor {
+        broadcast_left(self, shape)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn broadcast_right(&self, shape: impl Shape) -> Tensor {
+        broadcast_right(self, shape)
+    }
+}

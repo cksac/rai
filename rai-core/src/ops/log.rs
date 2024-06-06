@@ -37,3 +37,11 @@ pub fn log(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Log, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn log(&self) -> Tensor {
+        log(self)
+    }
+}

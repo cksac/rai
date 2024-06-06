@@ -56,3 +56,16 @@ pub fn scatter_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -
     let inputs = vec![x.clone(), source.clone(), index.clone()];
     Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn scatter_add(
+        &self,
+        dim: impl Dim,
+        index: impl AsRef<Tensor>,
+        source: impl AsRef<Tensor>,
+    ) -> Tensor {
+        scatter_add(self, dim, index.as_ref(), source.as_ref())
+    }
+}

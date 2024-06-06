@@ -42,3 +42,11 @@ pub fn where_cond(x: &Tensor, input: &Tensor, other: &Tensor) -> Tensor {
     let inputs = vec![input.clone(), other.clone(), x.clone()];
     Tensor::new(device, dtype, shape, Where, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn where_cond(&self, input: impl AsRef<Tensor>, other: impl AsRef<Tensor>) -> Tensor {
+        where_cond(self, input.as_ref(), other.as_ref())
+    }
+}

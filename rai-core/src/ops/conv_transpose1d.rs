@@ -122,3 +122,27 @@ pub fn conv_transpose1d(
         Tensor::cat(&outputs, 1)
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn conv_transpose1d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: usize,
+        output_padding: usize,
+        stride: usize,
+        dilation: usize,
+        groups: usize,
+    ) -> Tensor {
+        conv_transpose1d(
+            self,
+            kernel.as_ref(),
+            padding,
+            output_padding,
+            stride,
+            dilation,
+            groups,
+        )
+    }
+}

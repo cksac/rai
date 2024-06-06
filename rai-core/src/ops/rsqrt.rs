@@ -37,3 +37,11 @@ pub fn rsqrt(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Rsqrt, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn rsqrt(&self) -> Tensor {
+        rsqrt(self)
+    }
+}

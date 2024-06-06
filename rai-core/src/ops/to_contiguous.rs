@@ -35,3 +35,11 @@ pub fn to_contiguous(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, ToContiguous, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn to_contiguous(&self) -> Tensor {
+        to_contiguous(self)
+    }
+}

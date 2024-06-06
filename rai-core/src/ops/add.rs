@@ -45,3 +45,14 @@ broadcast_binary_op!(
 );
 
 impl_std_ops!(Add, add);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn add<T>(&self, rhs: T) -> Tensor
+    where
+        for<'a> &'a Self: std::ops::Add<T, Output = Tensor>,
+    {
+        std::ops::Add::add(self, rhs)
+    }
+}

@@ -89,3 +89,12 @@ pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
         _ => todo!(),
     }
 }
+
+impl Tensor {
+    /// see [`hlops::from_safetensor`](hlops::from_safetensor)
+    #[inline]
+    #[track_caller]
+    pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
+        from_safetensor(view, device)
+    }
+}

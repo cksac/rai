@@ -128,3 +128,27 @@ pub fn conv_transpose2d(
         Tensor::cat(&outputs, 1)
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn conv_transpose2d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: [usize; 2],
+        output_padding: [usize; 2],
+        stride: [usize; 2],
+        dilation: [usize; 2],
+        groups: usize,
+    ) -> Tensor {
+        conv_transpose2d(
+            self,
+            kernel.as_ref(),
+            padding,
+            output_padding,
+            stride,
+            dilation,
+            groups,
+        )
+    }
+}

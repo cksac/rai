@@ -59,3 +59,11 @@ pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> 
     // TODO: asserts
     Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn index_add(&self, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+        index_add(self, dim, index, source)
+    }
+}

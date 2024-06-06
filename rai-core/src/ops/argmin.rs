@@ -59,3 +59,11 @@ pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn argmin<T: ArgReduceArgs>(&self, args: T) -> Tensor {
+        argmin(self, args)
+    }
+}

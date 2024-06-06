@@ -165,3 +165,41 @@ pub fn zeros_like(x: &Tensor) -> Tensor {
     let inputs = vec![];
     Tensor::new(device, dtype, shape, op, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn full<T: ElemType>(val: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
+        full(val, shape, device)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn full_like<T: ElemType>(&self, val: T) -> Tensor {
+        full_like(self, val)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn ones(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+        ones(shape, dtype, device)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn ones_like(&self) -> Tensor {
+        ones_like(self)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn zeros(shape: impl Shape, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
+        zeros(shape, dtype, device)
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn zeros_like(&self) -> Tensor {
+        zeros_like(self)
+    }
+}

@@ -143,3 +143,11 @@ pub fn avg_pool2d(input: &Tensor, args: impl AvgPool2dArgs) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn avg_pool2d<A: AvgPool2dArgs>(&self, args: A) -> Tensor {
+        avg_pool2d(self, args)
+    }
+}

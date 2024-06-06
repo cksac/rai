@@ -78,3 +78,11 @@ pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn min<T: ReduceArgs>(&self, args: T) -> Tensor {
+        min(self, args)
+    }
+}

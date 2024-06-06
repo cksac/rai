@@ -54,3 +54,11 @@ pub fn upsample_nearest1d(input: &Tensor, size: usize) -> Tensor {
     let inputs = vec![input.clone()];
     Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn upsample_nearest1d(&self, size: usize) -> Tensor {
+        upsample_nearest1d(self, size)
+    }
+}

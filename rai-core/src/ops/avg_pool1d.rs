@@ -111,3 +111,11 @@ pub fn avg_pool1d(input: &Tensor, args: impl AvgPool1dArgs) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn avg_pool1d(&self, args: impl AvgPool1dArgs) -> Tensor {
+        avg_pool1d(self, args)
+    }
+}

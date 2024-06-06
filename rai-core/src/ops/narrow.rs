@@ -87,3 +87,11 @@ pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn narrow(&self, dim: impl Dim, start: usize, len: usize) -> Tensor {
+        narrow(self, dim, start, len)
+    }
+}

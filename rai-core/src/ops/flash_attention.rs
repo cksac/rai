@@ -173,3 +173,11 @@ pub fn flash_attention(
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn flash_attention(&self, k: &Tensor, v: &Tensor, opts: impl FlashAttentionOpts) -> Tensor {
+        flash_attention(self, k, v, opts)
+    }
+}

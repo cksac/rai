@@ -53,3 +53,11 @@ pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn powf(&self, exponent: f64) -> Tensor {
+        powf(self, exponent)
+    }
+}

@@ -127,3 +127,18 @@ pub fn conv2d(
         Tensor::cat(&outputs, 1)
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn conv2d(
+        &self,
+        kernel: impl AsRef<Tensor>,
+        padding: [usize; 2],
+        stride: [usize; 2],
+        dilation: [usize; 2],
+        groups: usize,
+    ) -> Tensor {
+        conv2d(self, kernel.as_ref(), padding, stride, dilation, groups)
+    }
+}

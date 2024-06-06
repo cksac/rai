@@ -73,3 +73,11 @@ pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn sum<T: ReduceArgs>(&self, args: T) -> Tensor {
+        sum(self, args)
+    }
+}

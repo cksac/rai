@@ -30,3 +30,11 @@ impl Op for GreaterEqual {
 }
 
 broadcast_binary_op!(GreaterEqual, ge, U8);
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn ge<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
+        ge(self, rhs.as_ref())
+    }
+}

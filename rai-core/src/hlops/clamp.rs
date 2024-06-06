@@ -29,3 +29,11 @@ pub fn clamp(x: &Tensor, min: impl ClampBound, max: impl ClampBound) -> Tensor {
     let max = max.bound(x);
     x.maximum(min).minimum(max)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn clamp(&self, min: impl ClampBound, max: impl ClampBound) -> Tensor {
+        clamp(self, min, max)
+    }
+}

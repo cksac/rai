@@ -37,3 +37,11 @@ pub fn erf(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Erf, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn erf(&self) -> Tensor {
+        erf(self)
+    }
+}

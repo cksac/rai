@@ -37,3 +37,11 @@ pub fn abs(x: &Tensor) -> Tensor {
     let inputs = vec![x.clone()];
     Tensor::new(device, dtype, shape, Abs, inputs)
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn abs(&self) -> Tensor {
+        abs(self)
+    }
+}

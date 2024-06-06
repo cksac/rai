@@ -24,3 +24,11 @@ pub fn chunk(x: &Tensor, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
         tensors
     }
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn chunk(&self, chunks: usize, dim: impl Dim) -> Vec<Tensor> {
+        chunk(self, chunks, dim)
+    }
+}

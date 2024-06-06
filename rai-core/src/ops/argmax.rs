@@ -58,3 +58,11 @@ pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
         inputs,
     )
 }
+
+impl Tensor {
+    #[inline]
+    #[track_caller]
+    pub fn argmax<T: ArgReduceArgs>(&self, args: T) -> Tensor {
+        argmax(self, args)
+    }
+}
