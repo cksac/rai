@@ -54,17 +54,10 @@ pub fn to_dtype(x: impl TryAsTensor, dtype: impl AsDType) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, op, inputs).into()
 }
 
-pub trait ToDTypeOp {
-    fn to_dtype<D: Type>(self, dtype: D) -> RaiResult<Tensor>;
-}
-
-impl<T> ToDTypeOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn to_dtype<D: Type>(self, dtype: D) -> RaiResult<Tensor> {
+    pub fn to_dtype(&self, dtype: impl AsDType) -> RaiResult<Tensor> {
         to_dtype(self, dtype)
     }
 }

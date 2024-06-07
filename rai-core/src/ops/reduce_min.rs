@@ -81,17 +81,10 @@ pub fn min<T: ReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
     .into()
 }
 
-pub trait ReduceMinOp {
-    fn min<T: ReduceArgs>(self, args: T) -> RaiResult<Tensor>;
-}
-
-impl<T> ReduceMinOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn min<U: ReduceArgs>(self, args: U) -> RaiResult<Tensor> {
+    pub fn min<U: ReduceArgs>(&self, args: U) -> RaiResult<Tensor> {
         min(self, args)
     }
 }

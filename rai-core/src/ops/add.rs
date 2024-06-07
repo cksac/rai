@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, impl_std_ops, Op, RaiResult, Shape, Tensor, TryAsTensor};
+use crate::{broadcast_binary_op, impl_std_ops, Op, RaiResult, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -46,19 +46,13 @@ broadcast_binary_op!(
 
 impl_std_ops!(Add, add);
 
-pub trait AddOp {
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn add<RHS>(self, rhs: RHS) -> RaiResult<Tensor>
+    pub fn add<RHS>(&self, rhs: RHS) -> RaiResult<Tensor>
     where
-        Self: Sized + std::ops::Add<RHS, Output = RaiResult<Tensor>>,
+        for<'a> &'a Self: std::ops::Add<RHS, Output = RaiResult<Tensor>>,
     {
         self + rhs
     }
 }
-
-impl AddOp for Tensor {}
-impl<'a> AddOp for &'a Tensor {}
-impl AddOp for RaiResult<Tensor> {}
-impl<'a> AddOp for RaiResult<&'a Tensor> {}
-impl<'a> AddOp for &'a RaiResult<Tensor> {}

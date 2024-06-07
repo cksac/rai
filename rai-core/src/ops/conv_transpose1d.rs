@@ -130,26 +130,11 @@ pub fn conv_transpose1d(
     }
 }
 
-pub trait ConvTranspose1dOp {
-    fn conv_transpose1d(
-        self,
-        kernel: impl TryAsTensor,
-        padding: usize,
-        output_padding: usize,
-        stride: usize,
-        dilation: usize,
-        groups: usize,
-    ) -> RaiResult<Tensor>;
-}
-
-impl<T> ConvTranspose1dOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn conv_transpose1d(
-        self,
+    pub fn conv_transpose1d(
+        &self,
         kernel: impl TryAsTensor,
         padding: usize,
         output_padding: usize,

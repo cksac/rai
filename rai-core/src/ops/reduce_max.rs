@@ -81,17 +81,10 @@ pub fn max<T: ReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
     .into()
 }
 
-pub trait ReduceMaxOp {
-    fn max<T: ReduceArgs>(self, args: T) -> RaiResult<Tensor>;
-}
-
-impl<T> ReduceMaxOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn max<A: ReduceArgs>(self, args: A) -> RaiResult<Tensor> {
+    pub fn max<A: ReduceArgs>(&self, args: A) -> RaiResult<Tensor> {
         max(self, args)
     }
 }

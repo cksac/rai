@@ -38,17 +38,10 @@ pub fn sign(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Sign, inputs).into()
 }
 
-pub trait SignOp {
-    fn sign(self) -> RaiResult<Tensor>;
-}
-
-impl<T> SignOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn sign(self) -> RaiResult<Tensor> {
+    pub fn sign(&self) -> RaiResult<Tensor> {
         sign(self)
     }
 }

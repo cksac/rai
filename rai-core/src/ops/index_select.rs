@@ -65,15 +65,10 @@ pub fn index_select(
     Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs).into()
 }
 
-pub trait IndexSelectOp {
-    fn index_select(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> IndexSelectOp for T
-where
-    T: TryAsTensor,
-{
-    fn index_select(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
+crate::impl_op! {
+    #[inline]
+    #[track_caller]
+    pub fn index_select(&self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
         index_select(self, dim, index)
     }
 }

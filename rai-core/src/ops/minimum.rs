@@ -39,17 +39,10 @@ impl Op for Minimum {
 
 broadcast_binary_op!(Minimum, minimum);
 
-pub trait MinimumOp {
-    fn minimum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> MinimumOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn minimum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn minimum(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         minimum(self, rhs)
     }
 }

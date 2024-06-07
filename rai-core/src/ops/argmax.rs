@@ -61,17 +61,10 @@ pub fn argmax<T: ArgReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tenso
     .into()
 }
 
-pub trait ArgMaxOp {
-    fn argmax<T: ArgReduceArgs>(self, args: T) -> RaiResult<Tensor>;
-}
-
-impl<T> ArgMaxOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn argmax<U: ArgReduceArgs>(self, args: U) -> RaiResult<Tensor> {
+    pub fn argmax<U: ArgReduceArgs>(&self, args: U) -> RaiResult<Tensor> {
         argmax(self, args)
     }
 }

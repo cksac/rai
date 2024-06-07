@@ -39,17 +39,10 @@ pub fn tanh(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Tanh, inputs).into()
 }
 
-pub trait TanhOp {
-    fn tanh(self) -> RaiResult<Tensor>;
-}
-
-impl<T> TanhOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn tanh(self) -> RaiResult<Tensor> {
+    pub fn tanh(&self) -> RaiResult<Tensor> {
         tanh(self)
     }
 }

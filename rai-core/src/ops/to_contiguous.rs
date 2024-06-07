@@ -37,17 +37,10 @@ pub fn to_contiguous(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, ToContiguous, inputs).into()
 }
 
-pub trait ToContiguousOp {
-    fn to_contiguous(self) -> RaiResult<Tensor>;
-}
-
-impl<T> ToContiguousOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn to_contiguous(self) -> RaiResult<Tensor> {
+    pub fn to_contiguous(&self) -> RaiResult<Tensor> {
         to_contiguous(self)
     }
 }

@@ -9,7 +9,7 @@ pub fn dropout(input: &Tensor, p: f32) -> Tensor {
     input * mask
 }
 
-impl Tensor {
+crate::impl_op! {
     #[inline]
     #[track_caller]
     pub fn dropout(&self, p: f32) -> Tensor {

@@ -59,15 +59,10 @@ pub fn upsample_nearest2d(input: impl TryAsTensor, size: impl ToPair<usize>) -> 
     Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs).into()
 }
 
-pub trait UpsampleNearest2dOp {
-    fn upsample_nearest2d(self, size: impl ToPair<usize>) -> RaiResult<Tensor>;
-}
-
-impl<T> UpsampleNearest2dOp for T
-where
-    T: TryAsTensor,
-{
-    fn upsample_nearest2d(self, size: impl ToPair<usize>) -> RaiResult<Tensor> {
+crate::impl_op! {
+    #[inline]
+    #[track_caller]
+    pub fn upsample_nearest2d(&self, size: impl ToPair<usize>) -> RaiResult<Tensor> {
         upsample_nearest2d(self, size)
     }
 }

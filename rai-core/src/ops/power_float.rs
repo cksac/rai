@@ -55,17 +55,10 @@ pub fn powf(x: impl TryAsTensor, exponent: f64) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs).into()
 }
 
-pub trait PowerFloatOp {
-    fn powf(self, exponent: f64) -> RaiResult<Tensor>;
-}
-
-impl<T> PowerFloatOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn powf(self, exponent: f64) -> RaiResult<Tensor> {
+    pub fn powf(&self, exponent: f64) -> RaiResult<Tensor> {
         powf(self, exponent)
     }
 }

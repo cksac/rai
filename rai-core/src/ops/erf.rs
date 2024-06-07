@@ -39,17 +39,10 @@ pub fn erf(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Erf, inputs).into()
 }
 
-pub trait ErfOp {
-    fn erf(self) -> RaiResult<Tensor>;
-}
-
-impl<T> ErfOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn erf(self) -> RaiResult<Tensor> {
+    pub fn erf(&self) -> RaiResult<Tensor> {
         erf(self)
     }
 }

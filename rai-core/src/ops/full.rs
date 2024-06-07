@@ -1,6 +1,4 @@
-use crate::{
-    AsDType, AsDevice, ElemType, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor, Type,
-};
+use crate::{AsDType, AsDevice, ElemType, Op, RaiResult, Shape, Tensor, TryAsTensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -204,31 +202,22 @@ impl Tensor {
     }
 }
 
-pub trait FullOp {
-    fn full_like<T: ElemType>(self, val: T) -> RaiResult<Tensor>;
-    fn ones_like(self) -> RaiResult<Tensor>;
-    fn zeros_like(self) -> RaiResult<Tensor>;
-}
-
-impl<T> FullOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn full_like<U: ElemType>(self, val: U) -> RaiResult<Tensor> {
+    pub fn full_like<U: ElemType>(&self, val: U) -> RaiResult<Tensor> {
         full_like::<U>(self, val)
     }
 
     #[inline]
     #[track_caller]
-    fn ones_like(self) -> RaiResult<Tensor> {
+    pub fn ones_like(&self) -> RaiResult<Tensor> {
         ones_like(self)
     }
 
     #[inline]
     #[track_caller]
-    fn zeros_like(self) -> RaiResult<Tensor> {
+    pub fn zeros_like(&self) -> RaiResult<Tensor> {
         zeros_like(self)
     }
 }

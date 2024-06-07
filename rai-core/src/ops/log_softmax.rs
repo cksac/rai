@@ -50,17 +50,10 @@ pub fn log_softmax<D: Dim>(x: impl TryAsTensor, d: D) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, LogSoftmax::new(dim), inputs).into()
 }
 
-pub trait LogSoftmaxOp {
-    fn log_softmax<D: Dim>(self, d: D) -> RaiResult<Tensor>;
-}
-
-impl<T> LogSoftmaxOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn log_softmax<D: Dim>(self, d: D) -> RaiResult<Tensor> {
+    pub fn log_softmax<D: Dim>(&self, d: D) -> RaiResult<Tensor> {
         log_softmax(self, d)
     }
 }

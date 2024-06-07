@@ -50,19 +50,13 @@ broadcast_binary_op!(
 
 impl_std_ops!(Mul, mul);
 
-pub trait MulOp {
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn mul<RHS>(self, rhs: RHS) -> RaiResult<Tensor>
+    pub fn mul<RHS>(&self, rhs: RHS) -> RaiResult<Tensor>
     where
-        Self: Sized + std::ops::Mul<RHS, Output = RaiResult<Tensor>>,
+        for<'a> &'a Self: std::ops::Mul<RHS, Output = RaiResult<Tensor>>,
     {
         self * rhs
     }
 }
-
-impl MulOp for Tensor {}
-impl<'a> MulOp for &'a Tensor {}
-impl MulOp for RaiResult<Tensor> {}
-impl<'a> MulOp for RaiResult<&'a Tensor> {}
-impl<'a> MulOp for &'a RaiResult<Tensor> {}

@@ -178,23 +178,11 @@ pub fn flash_attention(
     .into()
 }
 
-pub trait FlashAttentionOp {
-    fn flash_attention(
-        self,
-        k: impl TryAsTensor,
-        v: impl TryAsTensor,
-        opts: impl FlashAttentionOpts,
-    ) -> RaiResult<Tensor>;
-}
-
-impl<T> FlashAttentionOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn flash_attention(
-        self,
+    pub fn flash_attention(
+        &self,
         k: impl TryAsTensor,
         v: impl TryAsTensor,
         opts: impl FlashAttentionOpts,

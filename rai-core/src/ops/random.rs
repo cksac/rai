@@ -111,17 +111,10 @@ impl Tensor {
     }
 }
 
-pub trait RandOp {
-    fn rand_like(self) -> RaiResult<Tensor>;
-}
-
-impl<T> RandOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn rand_like(self) -> RaiResult<Tensor> {
+    pub fn rand_like(&self) -> RaiResult<Tensor> {
         rand_like(self)
     }
 }

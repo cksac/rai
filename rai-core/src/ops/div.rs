@@ -48,19 +48,13 @@ broadcast_binary_op!(
 
 impl_std_ops!(Div, div);
 
-pub trait DivOp {
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn sub<RHS>(self, rhs: RHS) -> RaiResult<Tensor>
+    pub fn sub<RHS>(&self, rhs: RHS) -> RaiResult<Tensor>
     where
-        Self: Sized + std::ops::Div<RHS, Output = RaiResult<Tensor>>,
+        for<'a> &'a Self: std::ops::Div<RHS, Output = RaiResult<Tensor>>,
     {
         self / rhs
     }
 }
-
-impl DivOp for Tensor {}
-impl<'a> DivOp for &'a Tensor {}
-impl DivOp for RaiResult<Tensor> {}
-impl<'a> DivOp for RaiResult<&'a Tensor> {}
-impl<'a> DivOp for &'a RaiResult<Tensor> {}

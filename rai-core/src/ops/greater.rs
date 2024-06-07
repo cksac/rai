@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor, U8};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor, U8};
 use std::any::Any;
 use tracing::Level;
 
@@ -31,17 +31,10 @@ impl Op for Greater {
 
 broadcast_binary_op!(Greater, gt, U8);
 
-pub trait GtOp {
-    fn gt(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> GtOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn gt(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn gt(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         gt(self, rhs)
     }
 }

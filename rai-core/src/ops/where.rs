@@ -43,7 +43,7 @@ pub fn where_cond(x: &Tensor, input: &Tensor, other: &Tensor) -> Tensor {
     Tensor::new(device, dtype, shape, Where, inputs)
 }
 
-impl Tensor {
+crate::impl_op! {
     #[inline]
     #[track_caller]
     pub fn where_cond(&self, input: impl AsRef<Tensor>, other: impl AsRef<Tensor>) -> Tensor {

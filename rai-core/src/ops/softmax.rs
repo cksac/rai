@@ -52,17 +52,10 @@ pub fn softmax<D: Dim>(x: impl TryAsTensor, d: D) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Softmax::new(dim), inputs).into()
 }
 
-pub trait SoftmaxOp {
-    fn softmax<D: Dim>(self, d: D) -> RaiResult<Tensor>;
-}
-
-impl<T> SoftmaxOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn softmax<D: Dim>(self, d: D) -> RaiResult<Tensor> {
+    pub fn softmax<D: Dim>(&self, d: D) -> RaiResult<Tensor> {
         softmax(self, d)
     }
 }

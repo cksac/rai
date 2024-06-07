@@ -1,4 +1,4 @@
-use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor};
+use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -136,24 +136,11 @@ pub fn conv2d(
     }
 }
 
-pub trait Conv2dOp {
-    fn conv2d(
-        self,
-        kernel: impl TryAsTensor,
-        padding: [usize; 2],
-        stride: [usize; 2],
-        dilation: [usize; 2],
-    ) -> RaiResult<Tensor>;
-}
-
-impl<T> Conv2dOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn conv2d(
-        self,
+    pub fn conv2d(
+        &self,
         kernel: impl TryAsTensor,
         padding: [usize; 2],
         stride: [usize; 2],

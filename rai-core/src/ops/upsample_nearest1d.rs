@@ -56,15 +56,10 @@ pub fn upsample_nearest1d(input: impl TryAsTensor, size: usize) -> RaiResult<Ten
     Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs).into()
 }
 
-pub trait UpsampleNearest1dOp {
-    fn upsample_nearest1d(self, size: usize) -> RaiResult<Tensor>;
-}
-
-impl<T> UpsampleNearest1dOp for T
-where
-    T: TryAsTensor,
-{
-    fn upsample_nearest1d(self, size: usize) -> RaiResult<Tensor> {
+crate::impl_op! {
+    #[inline]
+    #[track_caller]
+    pub fn upsample_nearest1d(&self, size: usize) -> RaiResult<Tensor> {
         upsample_nearest1d(self, size)
     }
 }

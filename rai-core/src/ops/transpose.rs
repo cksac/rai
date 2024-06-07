@@ -60,20 +60,10 @@ pub fn transpose(x: impl TryAsTensor, dim0: impl Dim, dim1: impl Dim) -> RaiResu
     Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs).into()
 }
 
-pub trait TransposeOp {
-    fn t(self) -> RaiResult<Tensor> {
-        self.transpose(-2, -1)
-    }
-    fn transpose(self, dim0: impl Dim, dim1: impl Dim) -> RaiResult<Tensor>;
-}
-
-impl<T> TransposeOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn transpose(self, dim0: impl Dim, dim1: impl Dim) -> RaiResult<Tensor> {
+    pub fn transpose(&self, dim0: impl Dim, dim1: impl Dim) -> RaiResult<Tensor> {
         transpose(self, dim0, dim1)
     }
 }

@@ -68,23 +68,11 @@ pub fn index_add(
     Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs).into()
 }
 
-pub trait IndexAddOp {
-    fn index_add(
-        self,
-        dim: impl Dim,
-        index: impl TryAsTensor,
-        source: impl TryAsTensor,
-    ) -> RaiResult<Tensor>;
-}
-
-impl<T> IndexAddOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn index_add(
-        self,
+    pub fn index_add(
+        &self,
         dim: impl Dim,
         index: impl TryAsTensor,
         source: impl TryAsTensor,

@@ -89,17 +89,10 @@ pub fn narrow(x: impl TryAsTensor, dim: impl Dim, start: usize, len: usize) -> R
     Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs).into()
 }
 
-pub trait NarrowOp {
-    fn narrow<D: Dim>(self, d: D, start: usize, len: usize) -> RaiResult<Tensor>;
-}
-
-impl<T> NarrowOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn narrow<D: Dim>(self, d: D, start: usize, len: usize) -> RaiResult<Tensor> {
+    pub fn narrow<D: Dim>(&self, d: D, start: usize, len: usize) -> RaiResult<Tensor> {
         narrow(self, d, start, len)
     }
 }

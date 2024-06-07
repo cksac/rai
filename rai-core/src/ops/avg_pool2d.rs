@@ -146,17 +146,10 @@ pub fn avg_pool2d(input: impl TryAsTensor, args: impl AvgPool2dArgs) -> RaiResul
     .into()
 }
 
-pub trait AvgPool2dOp {
-    fn avg_pool2d<A: AvgPool2dArgs>(self, args: A) -> RaiResult<Tensor>;
-}
-
-impl<T> AvgPool2dOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn avg_pool2d<A: AvgPool2dArgs>(self, args: A) -> RaiResult<Tensor> {
+    pub fn avg_pool2d<A: AvgPool2dArgs>(&self, args: A) -> RaiResult<Tensor> {
         avg_pool2d(self, args)
     }
 }

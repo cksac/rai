@@ -31,17 +31,10 @@ impl Op for Equal {
 
 broadcast_binary_op!(Equal, eq, U8);
 
-pub trait EqOp {
-    fn eq(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> EqOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn eq(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn eq(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         eq(self, rhs)
     }
 }

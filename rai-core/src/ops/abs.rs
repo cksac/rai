@@ -1,5 +1,5 @@
-use crate::{try_get, Error, Op, RaiResult, Shape, Tensor, TryAsTensor};
-use std::{any::Any, rc::Rc};
+use crate::{try_get, Op, RaiResult, Shape, Tensor, TryAsTensor};
+use std::any::Any;
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -18,6 +18,7 @@ impl Op for Abs {
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
+        let t = x.sign();
         tangent_x * x.sign()
     }
 
@@ -38,17 +39,10 @@ pub fn abs(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Abs, inputs).into()
 }
 
-pub trait AbsOp {
-    fn abs(self) -> RaiResult<Tensor>;
-}
-
-impl<T> AbsOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn abs(self) -> RaiResult<Tensor> {
+    pub fn abs(&self) -> RaiResult<Tensor> {
         abs(self)
     }
 }

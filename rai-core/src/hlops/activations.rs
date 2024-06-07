@@ -1,4 +1,4 @@
-use crate::{RaiResult, Tensor, TensorOps, TryAsTensor};
+use crate::{RaiResult, Tensor, TryAsTensor};
 use std::f32::consts::PI;
 
 #[track_caller]
@@ -37,40 +37,40 @@ pub fn silu(x: impl TryAsTensor) -> RaiResult<Tensor> {
     x / (x.neg().exp() + 1.0f32)
 }
 
-impl Tensor {
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    pub fn relu(&self) -> Tensor {
+    pub fn relu(&self) -> RaiResult<Tensor> {
         relu(self)
     }
 
     #[inline]
     #[track_caller]
-    pub fn relu2(&self) -> Tensor {
+    pub fn relu2(&self) -> RaiResult<Tensor> {
         relu2(self)
     }
 
     #[inline]
     #[track_caller]
-    pub fn relu6(&self) -> Tensor {
+    pub fn relu6(&self) -> RaiResult<Tensor> {
         relu6(self)
     }
 
     #[inline]
     #[track_caller]
-    pub fn gelu(&self) -> Tensor {
+    pub fn gelu(&self) -> RaiResult<Tensor> {
         gelu(self)
     }
 
     #[inline]
     #[track_caller]
-    pub fn new_gelu(&self) -> Tensor {
+    pub fn new_gelu(&self) -> RaiResult<Tensor> {
         new_gelu(self)
     }
 
     #[inline]
     #[track_caller]
-    pub fn silu(&self) -> Tensor {
+    pub fn silu(&self) -> RaiResult<Tensor> {
         silu(self)
     }
 }

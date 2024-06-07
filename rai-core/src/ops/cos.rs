@@ -38,17 +38,10 @@ pub fn cos(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Cos, inputs).into()
 }
 
-pub trait CosOp {
-    fn cos(self) -> RaiResult<Tensor>;
-}
-
-impl<T> CosOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn cos(self) -> RaiResult<Tensor> {
+    pub fn cos(&self) -> RaiResult<Tensor> {
         cos(self)
     }
 }

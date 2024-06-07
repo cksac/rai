@@ -176,17 +176,10 @@ pub fn max_pool2d(input: impl TryAsTensor, args: impl MaxPool2dArgs) -> RaiResul
     .into()
 }
 
-pub trait MaxPool2dOp {
-    fn max_pool2d(self, args: impl MaxPool2dArgs) -> RaiResult<Tensor>;
-}
-
-impl<T> MaxPool2dOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn max_pool2d(self, args: impl MaxPool2dArgs) -> RaiResult<Tensor> {
+    pub fn max_pool2d(&self, args: impl MaxPool2dArgs) -> RaiResult<Tensor> {
         max_pool2d(self, args)
     }
 }

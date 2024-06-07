@@ -39,17 +39,10 @@ pub fn log2(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Log2, inputs).into()
 }
 
-pub trait Log2Op {
-    fn log2(self) -> RaiResult<Tensor>;
-}
-
-impl<T> Log2Op for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn log2(self) -> RaiResult<Tensor> {
+    pub fn log2(&self) -> RaiResult<Tensor> {
         log2(self)
     }
 }

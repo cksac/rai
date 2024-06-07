@@ -31,17 +31,10 @@ impl Op for NotEqual {
 
 broadcast_binary_op!(NotEqual, ne, U8);
 
-pub trait NeOp {
-    fn ne(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> NeOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn ne(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn ne(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         ne(self, rhs)
     }
 }

@@ -39,17 +39,10 @@ pub fn exp(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Exp, inputs).into()
 }
 
-pub trait ExpOp {
-    fn exp(self) -> RaiResult<Tensor>;
-}
-
-impl<T> ExpOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn exp(self) -> RaiResult<Tensor> {
+    pub fn exp(&self) -> RaiResult<Tensor> {
         exp(self)
     }
 }

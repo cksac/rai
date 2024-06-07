@@ -73,26 +73,10 @@ impl<'a> std::ops::Neg for &'a RaiResult<Tensor> {
     }
 }
 
-impl<'a> std::ops::Neg for RaiResult<&'a Tensor> {
-    type Output = RaiResult<Tensor>;
-
-    #[track_caller]
-    fn neg(self) -> Self::Output {
-        neg(self)
-    }
-}
-
-pub trait NegOp {
-    fn neg(self) -> RaiResult<Tensor>;
-}
-
-impl<T> NegOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn neg(self) -> RaiResult<Tensor> {
+    pub fn neg(&self) -> RaiResult<Tensor> {
         neg(self)
     }
 }

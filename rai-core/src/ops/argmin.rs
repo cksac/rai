@@ -62,17 +62,10 @@ pub fn argmin<T: ArgReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tenso
     .into()
 }
 
-pub trait ArgMinOp {
-    fn argmin<T: ArgReduceArgs>(self, args: T) -> RaiResult<Tensor>;
-}
-
-impl<T> ArgMinOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn argmin<U: ArgReduceArgs>(self, args: U) -> RaiResult<Tensor> {
+    pub fn argmin<U: ArgReduceArgs>(&self, args: U) -> RaiResult<Tensor> {
         argmin(self, args)
     }
 }

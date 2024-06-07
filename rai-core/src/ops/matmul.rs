@@ -68,17 +68,10 @@ pub fn matmul(lhs: impl TryAsTensor, rhs: impl TryAsTensor) -> RaiResult<Tensor>
     }
 }
 
-pub trait MatMulOp {
-    fn matmul(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> MatMulOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn matmul(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn matmul(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         matmul(self, rhs)
     }
 }

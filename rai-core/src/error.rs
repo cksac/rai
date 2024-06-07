@@ -1,5 +1,4 @@
 use crate::Tensor;
-use std::{iter, rc::Rc};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
@@ -7,51 +6,41 @@ pub enum Error {
     IncompatibleShape { lhs: Vec<usize>, rhs: Vec<usize> },
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type StdResult<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
-pub enum RaiResult<T> {
-    Ok(T),
-    Err(Rc<Error>),
-}
+pub struct RaiResult<T>(pub StdResult<T>);
 
-impl<T> From<RaiResult<T>> for Result<T> {
+impl<T> From<RaiResult<T>> for StdResult<T> {
     fn from(result: RaiResult<T>) -> Self {
-        match result {
-            RaiResult::Ok(v) => Ok(v),
-            RaiResult::Err(e) => Err((*e).clone()),
-        }
+        result.0
     }
 }
 
-impl<T> From<Result<T>> for RaiResult<T> {
-    fn from(result: Result<T>) -> Self {
-        match result {
-            Ok(v) => RaiResult::Ok(v),
-            Err(e) => RaiResult::Err(Rc::new(e)),
-        }
+impl<T> From<StdResult<T>> for RaiResult<T> {
+    fn from(result: StdResult<T>) -> Self {
+        RaiResult(result)
     }
 }
 
 impl<T> RaiResult<T> {
-    pub fn to_std_result(self) -> std::result::Result<T, Error> {
-        self.into()
+    pub fn from_val(val: T) -> Self {
+        RaiResult(StdResult::Ok(val))
     }
 
     pub fn as_ref(&self) -> RaiResult<&T> {
-        match self {
-            RaiResult::Ok(v) => RaiResult::Ok(v),
-            RaiResult::Err(e) => RaiResult::Err(e.clone()),
-        }
+        RaiResult(self.0.as_ref().map_err(|e| e.clone()))
     }
 }
 
 #[macro_export]
 macro_rules! try_get {
-    ($v:expr) => {
-        match $crate::RaiResult::from($v) {
-            $crate::RaiResult::Ok(v) => v,
-            $crate::RaiResult::Err(e) => return $crate::RaiResult::Err(e.clone()),
+    ($r:expr) => {
+        match $r.0 {
+            $crate::StdResult::Ok(v) => v,
+            $crate::StdResult::Err(e) => {
+                return $crate::RaiResult($crate::StdResult::Err(e.clone()))
+            }
         }
     };
 }
@@ -62,45 +51,43 @@ pub trait TryAsTensor {
 
 impl TryAsTensor for Tensor {
     fn try_as_tensor(&self) -> RaiResult<&Tensor> {
-        RaiResult::Ok(self)
+        RaiResult(StdResult::Ok(self))
     }
 }
 
 impl<'a> TryAsTensor for &'a Tensor {
     fn try_as_tensor(&self) -> RaiResult<&Tensor> {
-        RaiResult::Ok(*self)
+        RaiResult(StdResult::Ok(*self))
     }
 }
 
 impl TryAsTensor for RaiResult<Tensor> {
     fn try_as_tensor(&self) -> RaiResult<&Tensor> {
-        match self {
-            RaiResult::Ok(v) => RaiResult::Ok(v),
-            RaiResult::Err(e) => RaiResult::Err(e.clone()),
-        }
-    }
-}
-
-impl<'a> TryAsTensor for RaiResult<&'a Tensor> {
-    fn try_as_tensor(&self) -> RaiResult<&Tensor> {
-        match self {
-            RaiResult::Ok(v) => RaiResult::Ok(*v),
-            RaiResult::Err(e) => RaiResult::Err(e.clone()),
-        }
+        self.as_ref()
     }
 }
 
 impl<'a> TryAsTensor for &'a RaiResult<Tensor> {
     fn try_as_tensor(&self) -> RaiResult<&Tensor> {
-        match self {
-            RaiResult::Ok(v) => RaiResult::Ok(v),
-            RaiResult::Err(e) => RaiResult::Err(e.clone()),
-        }
+        self.as_ref()
     }
 }
 
 impl From<Tensor> for RaiResult<Tensor> {
     fn from(v: Tensor) -> Self {
-        RaiResult::Ok(v)
+        RaiResult(StdResult::Ok(v))
+    }
+}
+
+impl<A, V: FromIterator<A>> FromIterator<RaiResult<A>> for RaiResult<V> {
+    fn from_iter<I: IntoIterator<Item = RaiResult<A>>>(iter: I) -> Self {
+        let mut vec = vec![];
+        for v in iter {
+            match v.0 {
+                Ok(v) => vec.push(v),
+                Err(e) => return RaiResult(Err(e)),
+            }
+        }
+        RaiResult(Ok(vec.into_iter().collect()))
     }
 }

@@ -58,17 +58,10 @@ pub fn to_device(x: impl TryAsTensor, device: impl AsDevice) -> RaiResult<Tensor
     Tensor::new(device, dtype, shape, op, inputs).into()
 }
 
-pub trait ToDeviceOp {
-    fn to_device(self, device: impl AsDevice) -> RaiResult<Tensor>;
-}
-
-impl<T> ToDeviceOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn to_device(self, device: impl AsDevice) -> RaiResult<Tensor> {
+    pub fn to_device(&self, device: impl AsDevice) -> RaiResult<Tensor> {
         to_device(self, device)
     }
 }

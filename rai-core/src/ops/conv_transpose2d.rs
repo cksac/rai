@@ -148,14 +148,11 @@ pub trait ConvTranspose2dOp {
     ) -> RaiResult<Tensor>;
 }
 
-impl<T> ConvTranspose2dOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn conv_transpose2d(
-        self,
+    pub fn conv_transpose2d(
+        &self,
         kernel: impl TryAsTensor,
         padding: [usize; 2],
         output_padding: [usize; 2],

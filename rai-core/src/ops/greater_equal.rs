@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor, U8};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor, U8};
 use std::any::Any;
 use tracing::Level;
 
@@ -31,17 +31,10 @@ impl Op for GreaterEqual {
 
 broadcast_binary_op!(GreaterEqual, ge, U8);
 
-pub trait GeOp {
-    fn ge(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> GeOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn ge(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn ge(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         ge(self, rhs)
     }
 }

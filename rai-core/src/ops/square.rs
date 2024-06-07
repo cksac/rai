@@ -38,17 +38,10 @@ pub fn square(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Square, inputs).into()
 }
 
-pub trait SquareOp {
-    fn square(self) -> RaiResult<Tensor>;
-}
-
-impl<T> SquareOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn square(self) -> RaiResult<Tensor> {
+    pub fn square(&self) -> RaiResult<Tensor> {
         square(self)
     }
 }

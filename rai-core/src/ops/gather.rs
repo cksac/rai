@@ -1,4 +1,4 @@
-use crate::{Dim, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -65,17 +65,10 @@ pub fn gather(x: impl TryAsTensor, dim: impl Dim, index: impl TryAsTensor) -> Ra
     Tensor::new(device, dtype, shape, Gather::new(dim), inputs).into()
 }
 
-pub trait GatherOp {
-    fn gather(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> GatherOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn gather(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn gather(&self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
         gather(self, dim, index)
     }
 }

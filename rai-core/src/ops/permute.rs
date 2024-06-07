@@ -59,17 +59,10 @@ pub fn permute(x: impl TryAsTensor, d: impl Dims<Vec<usize>>) -> RaiResult<Tenso
     Tensor::new(device, dtype, shape, Permute::new(dims), inputs).into()
 }
 
-pub trait PermuteOp {
-    fn permute<D: Dims<Vec<usize>>>(self, d: D) -> RaiResult<Tensor>;
-}
-
-impl<T> PermuteOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn permute<D: Dims<Vec<usize>>>(self, d: D) -> RaiResult<Tensor> {
+    pub fn permute<D: Dims<Vec<usize>>>(&self, d: D) -> RaiResult<Tensor> {
         permute(self, d)
     }
 }

@@ -76,17 +76,10 @@ pub fn sum<T: ReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
     .into()
 }
 
-pub trait ReduceSumOp {
-    fn sum<T: ReduceArgs>(self, args: T) -> RaiResult<Tensor>;
-}
-
-impl<T> ReduceSumOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn sum<U: ReduceArgs>(self, args: U) -> RaiResult<Tensor> {
+    pub fn sum<U: ReduceArgs>(&self, args: U) -> RaiResult<Tensor> {
         sum(self, args)
     }
 }

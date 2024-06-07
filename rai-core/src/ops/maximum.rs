@@ -39,17 +39,10 @@ impl Op for Maximum {
 
 broadcast_binary_op!(Maximum, maximum);
 
-pub trait MaximumOp {
-    fn maximum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> MaximumOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn maximum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn maximum(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         maximum(self, rhs)
     }
 }

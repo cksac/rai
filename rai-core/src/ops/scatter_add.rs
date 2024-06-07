@@ -65,23 +65,11 @@ pub fn scatter_add(
     Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs).into()
 }
 
-pub trait ScatterAddOp {
-    fn scatter_add<D: Dim>(
-        self,
-        dim: D,
-        index: impl TryAsTensor,
-        source: impl TryAsTensor,
-    ) -> RaiResult<Tensor>;
-}
-
-impl<T> ScatterAddOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn scatter_add<D: Dim>(
-        self,
+    pub fn scatter_add<D: Dim>(
+        &self,
         dim: D,
         index: impl TryAsTensor,
         source: impl TryAsTensor,

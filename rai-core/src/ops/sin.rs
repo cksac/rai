@@ -38,17 +38,10 @@ pub fn sin(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Sin, inputs).into()
 }
 
-pub trait SinOp {
-    fn sin(self) -> RaiResult<Tensor>;
-}
-
-impl<T> SinOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn sin(self) -> RaiResult<Tensor> {
+    pub fn sin(&self) -> RaiResult<Tensor> {
         sin(self)
     }
 }

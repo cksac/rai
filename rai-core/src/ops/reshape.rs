@@ -68,17 +68,10 @@ pub fn reshape(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
     }
 }
 
-pub trait ReshapeOp {
-    fn reshape(self, shape: impl Shape) -> RaiResult<Tensor>;
-}
-
-impl<T> ReshapeOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn reshape(self, shape: impl Shape) -> RaiResult<Tensor> {
+    pub fn reshape(&self, shape: impl Shape) -> RaiResult<Tensor> {
         reshape(self, shape)
     }
 }

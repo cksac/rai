@@ -242,17 +242,6 @@ macro_rules! impl_std_ops_for_scalar {
                 $func(lhs, rhs)
             }
         }
-
-        impl<'a> std::ops::$op<$crate::RaiResult<&'a Tensor>> for $T {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<&'a Tensor>) -> Self::Output {
-                let lhs = rhs.full_like::<$T>(self);
-                $func(lhs, rhs)
-            }
-        }
     };
 }
 
@@ -299,23 +288,13 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl<'a> std::ops::$op<$crate::RaiResult<&'a Tensor>> for Tensor {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<&'a Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
         impl<'b> std::ops::$op<Tensor> for &'b Tensor {
             type Output = $crate::RaiResult<Tensor>;
 
             #[inline]
             #[track_caller]
             fn $func(self, rhs: Tensor) -> Self::Output {
-                $func(&self, rhs)
+                $func(self, rhs)
             }
         }
 
@@ -335,7 +314,7 @@ macro_rules! impl_std_ops {
             #[inline]
             #[track_caller]
             fn $func(self, rhs: $crate::RaiResult<Tensor>) -> Self::Output {
-                $func(&self, rhs)
+                $func(self, rhs)
             }
         }
 
@@ -345,16 +324,6 @@ macro_rules! impl_std_ops {
             #[inline]
             #[track_caller]
             fn $func(self, rhs: &'a $crate::RaiResult<Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
-        impl<'a, 'b> std::ops::$op<$crate::RaiResult<&'a Tensor>> for &'b Tensor {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<&'a Tensor>) -> Self::Output {
                 $func(self, rhs)
             }
         }
@@ -395,16 +364,6 @@ macro_rules! impl_std_ops {
             #[inline]
             #[track_caller]
             fn $func(self, rhs: &'a $crate::RaiResult<Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
-        impl<'a> std::ops::$op<$crate::RaiResult<&'a Tensor>> for $crate::RaiResult<Tensor> {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<&'a Tensor>) -> Self::Output {
                 $func(self, rhs)
             }
         }
@@ -451,18 +410,6 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl<'a, 'b> std::ops::$op<$crate::RaiResult<&'a Tensor>>
-            for &'b $crate::RaiResult<Tensor>
-        {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<&'a Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
         impl<'b> std::ops::$op<Tensor> for $crate::RaiResult<&'b Tensor> {
             type Output = $crate::RaiResult<Tensor>;
 
@@ -501,18 +448,6 @@ macro_rules! impl_std_ops {
             #[inline]
             #[track_caller]
             fn $func(self, rhs: &'a $crate::RaiResult<Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
-        impl<'a, 'b> std::ops::$op<$crate::RaiResult<&'a Tensor>>
-            for $crate::RaiResult<&'b Tensor>
-        {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<&'a Tensor>) -> Self::Output {
                 $func(self, rhs)
             }
         }
@@ -557,19 +492,6 @@ macro_rules! impl_std_ops {
         }
 
         impl<'a, T> std::ops::$op<T> for &'a $crate::RaiResult<Tensor>
-        where
-            T: $crate::ElemType,
-        {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[track_caller]
-            fn $func(self, rhs: T) -> Self::Output {
-                let rhs = self.full_like::<T>(rhs);
-                $func(self, rhs)
-            }
-        }
-
-        impl<'a, T> std::ops::$op<T> for $crate::RaiResult<&'a Tensor>
         where
             T: $crate::ElemType,
         {
@@ -641,6 +563,19 @@ macro_rules! broadcast_binary_op {
                 (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
             };
             Tensor::new(device, dtype, shape, $op, inputs).into()
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_op {
+    ($($func:tt)+) => {
+        impl Tensor {
+            $($func)+
+        }
+
+        impl RaiResult<Tensor> {
+            $($func)+
         }
     };
 }

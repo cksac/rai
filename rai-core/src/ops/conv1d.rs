@@ -132,25 +132,11 @@ pub fn conv1d(
     }
 }
 
-pub trait Conv1dOp {
-    fn conv1d(
-        self,
-        kernel: impl TryAsTensor,
-        padding: usize,
-        stride: usize,
-        dilation: usize,
-        groups: usize,
-    ) -> RaiResult<Tensor>;
-}
-
-impl<T> Conv1dOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn conv1d(
-        self,
+    pub fn conv1d(
+        &self,
         kernel: impl TryAsTensor,
         padding: usize,
         stride: usize,

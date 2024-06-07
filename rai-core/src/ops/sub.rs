@@ -46,19 +46,13 @@ broadcast_binary_op!(
 
 impl_std_ops!(Sub, sub);
 
-pub trait SubOp {
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn sub<RHS>(self, rhs: RHS) -> RaiResult<Tensor>
+    pub fn sub<RHS>(&self, rhs: RHS) -> RaiResult<Tensor>
     where
-        Self: Sized + std::ops::Sub<RHS, Output = RaiResult<Tensor>>,
+        for<'a> &'a Self: Sized + std::ops::Sub<RHS, Output = RaiResult<Tensor>>,
     {
         self - rhs
     }
 }
-
-impl SubOp for Tensor {}
-impl<'a> SubOp for &'a Tensor {}
-impl SubOp for RaiResult<Tensor> {}
-impl<'a> SubOp for RaiResult<&'a Tensor> {}
-impl<'a> SubOp for &'a RaiResult<Tensor> {}

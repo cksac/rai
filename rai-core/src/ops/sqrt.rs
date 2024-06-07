@@ -40,17 +40,10 @@ pub fn sqrt(x: impl TryAsTensor) -> RaiResult<Tensor> {
     Tensor::new(device, dtype, shape, Sqrt, inputs).into()
 }
 
-pub trait SqrtOp {
-    fn sqrt(self) -> RaiResult<Tensor>;
-}
-
-impl<T> SqrtOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn sqrt(self) -> RaiResult<Tensor> {
+    pub fn sqrt(&self) -> RaiResult<Tensor> {
         sqrt(self)
     }
 }

@@ -31,17 +31,10 @@ impl Op for LessEqual {
 
 broadcast_binary_op!(LessEqual, le, U8);
 
-pub trait LeOp {
-    fn le(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
-}
-
-impl<T> LeOp for T
-where
-    T: TryAsTensor,
-{
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    fn le(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    pub fn le(&self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
         le(self, rhs)
     }
 }
