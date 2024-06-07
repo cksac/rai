@@ -410,48 +410,6 @@ macro_rules! impl_std_ops {
             }
         }
 
-        impl<'b> std::ops::$op<Tensor> for $crate::RaiResult<&'b Tensor> {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: Tensor) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
-        impl<'a, 'b> std::ops::$op<&'a Tensor> for $crate::RaiResult<&'b Tensor> {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: &'a Tensor) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
-        impl<'b> std::ops::$op<$crate::RaiResult<Tensor>> for $crate::RaiResult<&'b Tensor> {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: $crate::RaiResult<Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
-        impl<'a, 'b> std::ops::$op<&'a $crate::RaiResult<Tensor>>
-            for $crate::RaiResult<&'b Tensor>
-        {
-            type Output = $crate::RaiResult<Tensor>;
-
-            #[inline]
-            #[track_caller]
-            fn $func(self, rhs: &'a $crate::RaiResult<Tensor>) -> Self::Output {
-                $func(self, rhs)
-            }
-        }
-
         impl<T> std::ops::$op<T> for Tensor
         where
             T: $crate::ElemType,
@@ -574,7 +532,7 @@ macro_rules! impl_op {
             $($func)+
         }
 
-        impl RaiResult<Tensor> {
+        impl $crate::RaiResult<Tensor> {
             $($func)+
         }
     };
@@ -685,8 +643,13 @@ pub trait Op: Debug {
         format!("{:?}", self)
     }
     fn as_any(&self) -> &dyn Any;
-    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor;
-    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor>;
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor>;
+    fn vjp(
+        &self,
+        output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>>;
 }
 
 impl<T> From<T> for Box<dyn Op>

@@ -22,7 +22,7 @@ pub fn chunk(x: impl TryAsTensor, chunks: usize, dim: impl Dim) -> RaiResult<Vec
             tensors.push(tensor);
             sum_chunk_size += chunk_size
         }
-        RaiResult::from_val(tensors)
+        Ok(tensors).into()
     }
 }
 

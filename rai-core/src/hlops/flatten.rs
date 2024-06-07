@@ -1,4 +1,4 @@
-use crate::{Dim, Shape, Tensor};
+use crate::{Dim, RaiResult, Shape, Tensor, TryAsTensor};
 use std::{
     fmt::Debug,
     ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
@@ -162,7 +162,8 @@ impl FlattenArgs for RangeInclusive<i32> {
 }
 
 #[track_caller]
-pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
+pub fn flatten<T: FlattenArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     if x.rank() == 0 {
         return x.reshape([1]);
     }
@@ -176,14 +177,14 @@ pub fn flatten<T: FlattenArgs>(x: &Tensor, args: T) -> Tensor {
         }
         x.reshape(dst_dim)
     } else {
-        x.clone()
+        x.clone().into()
     }
 }
 
 impl Tensor {
     #[inline]
     #[track_caller]
-    pub fn flatten<T: FlattenArgs>(&self, args: T) -> Tensor {
+    pub fn flatten<T: FlattenArgs>(&self, args: T) -> RaiResult<Tensor> {
         flatten(self, args)
     }
 }

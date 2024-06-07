@@ -1,4 +1,4 @@
-use crate::{AsDevice, Tensor};
+use crate::{AsDevice, RaiResult, Tensor};
 use half::{bf16, f16};
 use safetensors::tensor::TensorView;
 use std::slice::from_raw_parts;
@@ -48,7 +48,7 @@ fn convert_slice<T: Clone>(data: &[u8]) -> Vec<T> {
 ///
 /// A `Tensor` created from the `safetensors::TensorView`.
 #[track_caller]
-pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
+pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> RaiResult<Tensor> {
     let shape = view.shape();
     let data = view.data();
     match view.dtype() {
@@ -94,7 +94,7 @@ impl Tensor {
     /// see [`hlops::from_safetensor`](hlops::from_safetensor)
     #[inline]
     #[track_caller]
-    pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> Tensor {
+    pub fn from_safetensor(view: &TensorView, device: impl AsDevice) -> RaiResult<Tensor> {
         from_safetensor(view, device)
     }
 }

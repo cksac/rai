@@ -32,13 +32,18 @@ impl Op for Broadcast {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         let tangent_x = &tangents[0];
         tangent_x.broadcast_to(self.shape())
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         let x = &primals[0];
         let shape = x.shape().to_vec();
         let diff = cotangent.rank() - shape.rank();
@@ -49,7 +54,7 @@ impl Op for Broadcast {
             }
         }
         let cotangent_x = cotangent.sum((dims, true)).reshape(&shape);
-        vec![cotangent_x]
+        vec![cotangent_x].into_iter().collect()
     }
 }
 
@@ -90,11 +95,11 @@ pub fn broadcast_left(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tenso
 pub fn broadcast_right(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
     let x = crate::try_get! { x.try_as_tensor() };
     let out_shape = x.shape_expand_right(&shape);
-    let mut x = x.clone();
+    let mut y: RaiResult<Tensor> = x.clone().into();
     for _ in x.rank()..out_shape.rank() {
-        x = x.unsqueeze(-1);
+        y = y.unsqueeze(-1);
     }
-    x.broadcast_to_unchecked(out_shape)
+    y.broadcast_to_unchecked(out_shape)
 }
 
 crate::impl_op! {

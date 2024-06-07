@@ -15,17 +15,22 @@ impl Op for Add {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         let tangent_lhs = &tangents[0];
         let tangent_rhs = &tangents[1];
         tangent_lhs + tangent_rhs
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        _primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         let cotangent_lhs = cotangent.clone();
         let cotangent_rhs = cotangent.clone();
-        vec![cotangent_lhs, cotangent_rhs]
+        Ok(vec![cotangent_lhs, cotangent_rhs]).into()
     }
 }
 

@@ -36,12 +36,17 @@ impl Op for AvgPool1d {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         todo!("jvp for AvgPool1d")
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         assert_eq!(
             self.kernel_size, self.stride,
             "vjp not supported for avgPool1d if kernel_size != stride"
@@ -50,7 +55,7 @@ impl Op for AvgPool1d {
         let [_n, _c, l] = x.sizes(Before::<3>);
         let cotan_upsampled = cotangent.upsample_nearest1d(l);
         let cotan_x = cotan_upsampled * (1.0f32 / self.kernel_size as f32);
-        vec![cotan_x]
+        vec![cotan_x].into_iter().collect()
     }
 }
 

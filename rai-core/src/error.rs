@@ -24,10 +24,6 @@ impl<T> From<StdResult<T>> for RaiResult<T> {
 }
 
 impl<T> RaiResult<T> {
-    pub fn from_val(val: T) -> Self {
-        RaiResult(StdResult::Ok(val))
-    }
-
     pub fn as_ref(&self) -> RaiResult<&T> {
         RaiResult(self.0.as_ref().map_err(|e| e.clone()))
     }
@@ -89,5 +85,11 @@ impl<A, V: FromIterator<A>> FromIterator<RaiResult<A>> for RaiResult<V> {
             }
         }
         RaiResult(Ok(vec.into_iter().collect()))
+    }
+}
+
+impl<V: FromIterator<Tensor>> FromIterator<Tensor> for RaiResult<V> {
+    fn from_iter<I: IntoIterator<Item = Tensor>>(iter: I) -> Self {
+        RaiResult(Ok(iter.into_iter().collect()))
     }
 }

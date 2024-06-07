@@ -15,18 +15,22 @@ impl Op for Abs {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         let x = &primals[0];
         let tangent_x = &tangents[0];
-        let t = x.sign();
         tangent_x * x.sign()
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         let x = &primals[0];
         let cotangent_x = cotangent * x.sign();
-        vec![cotangent_x]
+        vec![cotangent_x].into_iter().collect()
     }
 }
 

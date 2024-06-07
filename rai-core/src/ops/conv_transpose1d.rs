@@ -38,16 +38,22 @@ impl Op for ConvTranspose1d {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         todo!("jvp for ConvTranspose1d")
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         let input = &primals[0];
         let kernel = &primals[1];
         let cotan_input = cotangent.conv1d(kernel, self.padding, self.stride, self.dilation, 1);
-        let cotan_kernel = cotangent
+        let cotan_kernel = try_get! {
+            cotangent
             .transpose(0, 1)
             .conv1d(
                 input.transpose(0, 1),
@@ -56,15 +62,16 @@ impl Op for ConvTranspose1d {
                 self.dilation,
                 1,
             )
-            .transpose(0, 1);
+            .transpose(0, 1)
+        };
         let [_, _, k_l] = kernel.sizes(Before::<3>);
         let [_, _, ck_l] = cotan_kernel.sizes(Before::<3>);
         let cotan_kernel = if ck_l > k_l {
             cotan_kernel.narrow(2, 0, k_l)
         } else {
-            cotan_kernel
+            cotan_kernel.into()
         };
-        vec![cotan_input, cotan_kernel]
+        vec![cotan_input, cotan_kernel].into_iter().collect()
     }
 }
 
@@ -108,8 +115,8 @@ pub fn conv_transpose1d(
     if groups == 1 {
         conv_transpose1d_single_group(input, kernel, padding, output_padding, stride, dilation)
     } else {
-        let blocks = input.chunk(groups, 1);
-        let kernels = kernel.chunk(groups, 0);
+        let blocks = try_get! { input.chunk(groups, 1)};
+        let kernels = try_get! { kernel.chunk(groups, 0)};
         let outputs = blocks
             .iter()
             .zip(kernels.iter())
@@ -122,9 +129,8 @@ pub fn conv_transpose1d(
                     stride,
                     dilation,
                 )
-                .to_std_result()
             })
-            .collect::<Result<Vec<_>, _>>();
+            .collect::<RaiResult<Vec<_>>>();
         let outputs = crate::try_get! { outputs };
         Tensor::cat(&outputs, 1).into()
     }

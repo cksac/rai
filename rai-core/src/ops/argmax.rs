@@ -33,13 +33,18 @@ impl Op for ArgMax {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         output.zeros_like()
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
-        vec![]
+    fn vjp(
+        &self,
+        output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
+        Ok(vec![]).into()
     }
 }
 

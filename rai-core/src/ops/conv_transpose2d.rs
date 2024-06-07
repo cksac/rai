@@ -1,4 +1,4 @@
-use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TryAsTensor};
+use crate::{dim::Before, try_get, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -43,16 +43,22 @@ impl Op for ConvTranspose2d {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         todo!("jvp for ConvTranspose2d")
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         let input = &primals[0];
         let kernel = &primals[1];
         let cotan_input = cotangent.conv2d(kernel, self.padding, self.stride, self.dilation, 1);
-        let cotan_kernel = cotangent
+        let cotan_kernel = try_get! {
+        cotangent
             .transpose(0, 1)
             .conv2d(
                 input.transpose(0, 1),
@@ -61,16 +67,17 @@ impl Op for ConvTranspose2d {
                 self.dilation,
                 1,
             )
-            .transpose(0, 1);
+            .transpose(0, 1)
+        };
         let [_, _, k_h, k_w] = kernel.sizes(Before::<4>);
         let [_, _, ck_h, ck_w] = cotan_kernel.sizes(Before::<4>);
         let cotan_kernel = match (ck_h > k_h, ck_w > k_w) {
             (true, true) => cotan_kernel.narrow(2, 0, k_h).narrow(3, 0, k_w),
             (true, false) => cotan_kernel.narrow(2, 0, k_h),
             (false, true) => cotan_kernel.narrow(3, 0, k_w),
-            (false, false) => cotan_kernel,
+            (false, false) => cotan_kernel.into(),
         };
-        vec![cotan_input, cotan_kernel]
+        vec![cotan_input, cotan_kernel].into_iter().collect()
     }
 }
 

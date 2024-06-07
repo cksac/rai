@@ -145,7 +145,8 @@ crate::impl_op! {
         padding: [usize; 2],
         stride: [usize; 2],
         dilation: [usize; 2],
+        groups: usize,
     ) -> RaiResult<Tensor> {
-        conv2d(self, kernel, padding, stride, dilation, 1)
+        conv2d(self, kernel, padding, stride, dilation, groups)
     }
 }

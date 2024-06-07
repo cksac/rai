@@ -1,7 +1,8 @@
-use crate::{Dim, Shape, Tensor};
+use crate::{Dim, RaiResult, Shape, Tensor, TryAsTensor};
 
 #[track_caller]
-pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
+pub fn unsqueeze(x: impl TryAsTensor, d: impl Dim) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let is_negative = d.is_negative();
     let dim = x.dim(d);
     let mut shape = x.shape().to_vec();
@@ -13,10 +14,10 @@ pub fn unsqueeze(x: &Tensor, d: impl Dim) -> Tensor {
     x.reshape(shape)
 }
 
-impl Tensor {
+crate::impl_op! {
     #[inline]
     #[track_caller]
-    pub fn unsqueeze(&self, d: impl Dim) -> Tensor {
+    pub fn unsqueeze(&self, d: impl Dim) -> RaiResult<Tensor> {
         unsqueeze(self, d)
     }
 }

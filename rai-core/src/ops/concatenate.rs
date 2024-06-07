@@ -31,12 +31,17 @@ impl Op for Concatenate {
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
+    fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> RaiResult<Tensor> {
         Tensor::cat(tangents, self.dim)
     }
 
     #[tracing::instrument(ret(level = Level::TRACE))]
-    fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
+    fn vjp(
+        &self,
+        _output: &Tensor,
+        primals: &[Tensor],
+        cotangent: &Tensor,
+    ) -> RaiResult<Vec<Tensor>> {
         let mut start_idx = 0;
         let mut cotangent_primals = Vec::with_capacity(primals.len());
         for t in primals {
@@ -45,7 +50,7 @@ impl Op for Concatenate {
             cotangent_primals.push(cotangent_t);
             start_idx += len;
         }
-        cotangent_primals
+        cotangent_primals.into_iter().collect()
     }
 }
 
