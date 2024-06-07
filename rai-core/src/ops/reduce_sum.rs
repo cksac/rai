@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -59,7 +59,8 @@ impl Op for ReduceSum {
 }
 
 #[track_caller]
-pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+pub fn sum<T: ReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let dims = x.dims(args.dims());
@@ -72,12 +73,20 @@ pub fn sum<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
         ReduceSum::new(dims, args.keep_dim()),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait ReduceSumOp {
+    fn sum<T: ReduceArgs>(self, args: T) -> RaiResult<Tensor>;
+}
+
+impl<T> ReduceSumOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn sum<T: ReduceArgs>(&self, args: T) -> Tensor {
+    fn sum<U: ReduceArgs>(self, args: U) -> RaiResult<Tensor> {
         sum(self, args)
     }
 }

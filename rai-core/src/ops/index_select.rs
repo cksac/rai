@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -48,7 +48,13 @@ impl Op for IndexSelect {
 }
 
 #[track_caller]
-pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
+pub fn index_select(
+    x: impl TryAsTensor,
+    dim: impl Dim,
+    index: impl TryAsTensor,
+) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
+    let index = crate::try_get! { index.try_as_tensor() };
     let dim = x.dim(dim);
     let device = x.device();
     let dtype = x.dtype();
@@ -56,13 +62,18 @@ pub fn index_select(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     shape[dim] = index.elem_count();
     let inputs = vec![x.clone(), index.clone()];
     // TODO: asserts
-    Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs)
+    Tensor::new(device, dtype, shape, IndexSelect::new(dim), inputs).into()
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn index_select(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
-        index_select(self, dim, index.as_ref())
+pub trait IndexSelectOp {
+    fn index_select(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> IndexSelectOp for T
+where
+    T: TryAsTensor,
+{
+    fn index_select(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
+        index_select(self, dim, index)
     }
 }

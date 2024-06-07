@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -40,19 +40,27 @@ impl Op for LogSoftmax {
 }
 
 #[track_caller]
-pub fn log_softmax<D: Dim>(x: &Tensor, d: D) -> Tensor {
+pub fn log_softmax<D: Dim>(x: impl TryAsTensor, d: D) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     let dim = shape.dim(d);
-    Tensor::new(device, dtype, shape, LogSoftmax::new(dim), inputs)
+    Tensor::new(device, dtype, shape, LogSoftmax::new(dim), inputs).into()
 }
 
-impl Tensor {
+pub trait LogSoftmaxOp {
+    fn log_softmax<D: Dim>(self, d: D) -> RaiResult<Tensor>;
+}
+
+impl<T> LogSoftmaxOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn log_softmax<D: Dim>(&self, d: D) -> Tensor {
+    fn log_softmax<D: Dim>(self, d: D) -> RaiResult<Tensor> {
         log_softmax(self, d)
     }
 }

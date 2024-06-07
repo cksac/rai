@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, Shape, Tensor, U8};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor, U8};
 use std::any::Any;
 use tracing::Level;
 
@@ -31,10 +31,17 @@ impl Op for LessEqual {
 
 broadcast_binary_op!(LessEqual, le, U8);
 
-impl Tensor {
+pub trait LeOp {
+    fn le(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> LeOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn le<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        le(self, rhs.as_ref())
+    fn le(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+        le(self, rhs)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{AsDevice, ElemType, Op, Tensor, Type, F16, F32, F64, U32, U8};
+use crate::{AsDevice, ElemType, Op, RaiResult, Tensor, Type, F16, F32, F64, U32, U8};
 use half::f16;
 use std::any::Any;
 use std::fmt::Debug;
@@ -97,7 +97,10 @@ impl<D: Type> ArangeArgs<D> {
 ///
 /// A 1-D `Tensor` with values from the specified range.
 #[track_caller]
-pub fn arange<D: Type, A: Into<ArangeArgs<D>>>(args: A, device: impl AsDevice) -> Tensor {
+pub fn arange<D: Type, A: Into<ArangeArgs<D>>>(
+    args: A,
+    device: impl AsDevice,
+) -> RaiResult<Tensor> {
     let args = args.into();
     let start = args.start;
     let stop = args.stop;
@@ -112,12 +115,16 @@ pub fn arange<D: Type, A: Into<ArangeArgs<D>>>(args: A, device: impl AsDevice) -
         Arange::<D>::new(start, stop, step),
         inputs,
     )
+    .into()
 }
 
 impl Tensor {
     #[inline]
     #[track_caller]
-    pub fn arange<D: Type, A: Into<ArangeArgs<D>>>(args: A, device: impl AsDevice) -> Tensor {
+    pub fn arange<D: Type, A: Into<ArangeArgs<D>>>(
+        args: A,
+        device: impl AsDevice,
+    ) -> RaiResult<Tensor> {
         arange(args, device)
     }
 }

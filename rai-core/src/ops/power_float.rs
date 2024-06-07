@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -46,18 +46,26 @@ impl Op for PowerFloat {
 }
 
 #[track_caller]
-pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
+pub fn powf(x: impl TryAsTensor, exponent: f64) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype(); // todo: promote to f64?
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs)
+    Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs).into()
 }
 
-impl Tensor {
+pub trait PowerFloatOp {
+    fn powf(self, exponent: f64) -> RaiResult<Tensor>;
+}
+
+impl<T> PowerFloatOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn powf(&self, exponent: f64) -> Tensor {
+    fn powf(self, exponent: f64) -> RaiResult<Tensor> {
         powf(self, exponent)
     }
 }

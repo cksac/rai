@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -78,20 +78,28 @@ impl Op for Narrow {
 }
 
 #[track_caller]
-pub fn narrow(x: &Tensor, dim: impl Dim, start: usize, len: usize) -> Tensor {
+pub fn narrow(x: impl TryAsTensor, dim: impl Dim, start: usize, len: usize) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let dim = x.dim(dim);
     let device = x.device();
     let dtype = x.dtype();
     let mut shape = x.shape().to_vec();
     shape[dim] = len;
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs)
+    Tensor::new(device, dtype, shape, Narrow::new(dim, start, len), inputs).into()
 }
 
-impl Tensor {
+pub trait NarrowOp {
+    fn narrow<D: Dim>(self, d: D, start: usize, len: usize) -> RaiResult<Tensor>;
+}
+
+impl<T> NarrowOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn narrow(&self, dim: impl Dim, start: usize, len: usize) -> Tensor {
-        narrow(self, dim, start, len)
+    fn narrow<D: Dim>(self, d: D, start: usize, len: usize) -> RaiResult<Tensor> {
+        narrow(self, d, start, len)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -28,18 +28,26 @@ impl Op for ToContiguous {
 }
 
 #[track_caller]
-pub fn to_contiguous(x: &Tensor) -> Tensor {
+pub fn to_contiguous(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, ToContiguous, inputs)
+    Tensor::new(device, dtype, shape, ToContiguous, inputs).into()
 }
 
-impl Tensor {
+pub trait ToContiguousOp {
+    fn to_contiguous(self) -> RaiResult<Tensor>;
+}
+
+impl<T> ToContiguousOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn to_contiguous(&self) -> Tensor {
+    fn to_contiguous(self) -> RaiResult<Tensor> {
         to_contiguous(self)
     }
 }

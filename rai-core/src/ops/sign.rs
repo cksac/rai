@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -29,18 +29,26 @@ impl Op for Sign {
 }
 
 #[track_caller]
-pub fn sign(x: &Tensor) -> Tensor {
+pub fn sign(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Sign, inputs)
+    Tensor::new(device, dtype, shape, Sign, inputs).into()
 }
 
-impl Tensor {
+pub trait SignOp {
+    fn sign(self) -> RaiResult<Tensor>;
+}
+
+impl<T> SignOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn sign(&self) -> Tensor {
+    fn sign(self) -> RaiResult<Tensor> {
         sign(self)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::{any::Any, f64::consts::PI};
 use tracing::Level;
 
@@ -30,18 +30,26 @@ impl Op for Erf {
 }
 
 #[track_caller]
-pub fn erf(x: &Tensor) -> Tensor {
+pub fn erf(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Erf, inputs)
+    Tensor::new(device, dtype, shape, Erf, inputs).into()
 }
 
-impl Tensor {
+pub trait ErfOp {
+    fn erf(self) -> RaiResult<Tensor>;
+}
+
+impl<T> ErfOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn erf(&self) -> Tensor {
+    fn erf(self) -> RaiResult<Tensor> {
         erf(self)
     }
 }

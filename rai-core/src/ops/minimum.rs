@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, Shape, Tensor};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -39,10 +39,17 @@ impl Op for Minimum {
 
 broadcast_binary_op!(Minimum, minimum);
 
-impl Tensor {
+pub trait MinimumOp {
+    fn minimum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> MinimumOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn minimum<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        minimum(self, rhs.as_ref())
+    fn minimum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+        minimum(self, rhs)
     }
 }

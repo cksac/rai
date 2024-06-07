@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -79,12 +79,14 @@ impl Op for Conv1d {
 
 #[track_caller]
 fn conv1d_single_group(
-    input: &Tensor,
-    kernel: &Tensor,
+    input: impl TryAsTensor,
+    kernel: impl TryAsTensor,
     padding: usize,
     stride: usize,
     dilation: usize,
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
+    let kernel = crate::try_get! { kernel.try_as_tensor() };
     let device = input.device();
     let dtype = input.dtype();
     let shape = input.shape_conv1d(kernel, padding, stride, dilation);
@@ -96,17 +98,20 @@ fn conv1d_single_group(
         Conv1d::new(padding, stride, dilation),
         inputs,
     )
+    .into()
 }
 
 #[track_caller]
 pub fn conv1d(
-    input: &Tensor,
-    kernel: &Tensor,
+    input: impl TryAsTensor,
+    kernel: impl TryAsTensor,
     padding: usize,
     stride: usize,
     dilation: usize,
     groups: usize,
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
+    let kernel = crate::try_get! { kernel.try_as_tensor() };
     let c_in = input.size(1);
     let c_in_k = kernel.size(1);
     assert_eq!(c_in, c_in_k * groups);
@@ -118,23 +123,40 @@ pub fn conv1d(
         let outputs = blocks
             .iter()
             .zip(kernels.iter())
-            .map(|(block, kernel)| conv1d_single_group(block, kernel, padding, stride, dilation))
-            .collect::<Vec<_>>();
-        Tensor::cat(&outputs, 1)
+            .map(|(block, kernel)| {
+                conv1d_single_group(block, kernel, padding, stride, dilation).to_std_result()
+            })
+            .collect::<Result<Vec<_>, _>>();
+        let outputs = crate::try_get! { outputs };
+        Tensor::cat(&outputs, 1).into()
     }
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn conv1d(
-        &self,
-        kernel: impl AsRef<Tensor>,
+pub trait Conv1dOp {
+    fn conv1d(
+        self,
+        kernel: impl TryAsTensor,
         padding: usize,
         stride: usize,
         dilation: usize,
         groups: usize,
-    ) -> Tensor {
-        conv1d(self, kernel.as_ref(), padding, stride, dilation, groups)
+    ) -> RaiResult<Tensor>;
+}
+
+impl<T> Conv1dOp for T
+where
+    T: TryAsTensor,
+{
+    #[inline]
+    #[track_caller]
+    fn conv1d(
+        self,
+        kernel: impl TryAsTensor,
+        padding: usize,
+        stride: usize,
+        dilation: usize,
+        groups: usize,
+    ) -> RaiResult<Tensor> {
+        conv1d(self, kernel, padding, stride, dilation, groups)
     }
 }

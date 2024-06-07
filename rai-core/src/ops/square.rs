@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -29,18 +29,26 @@ impl Op for Square {
 }
 
 #[track_caller]
-pub fn square(x: &Tensor) -> Tensor {
+pub fn square(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Square, inputs)
+    Tensor::new(device, dtype, shape, Square, inputs).into()
 }
 
-impl Tensor {
+pub trait SquareOp {
+    fn square(self) -> RaiResult<Tensor>;
+}
+
+impl<T> SquareOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn square(&self) -> Tensor {
+    fn square(self) -> RaiResult<Tensor> {
         square(self)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -54,7 +54,8 @@ impl Op for Broadcast {
 }
 
 #[track_caller]
-pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
+pub fn broadcast_to(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let (out_shape, _, _) = x.shape_broadcast_to(&shape).unwrap_or_else(|e| {
@@ -66,25 +67,28 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
         )
     });
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs)
+    Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs).into()
 }
 
 #[track_caller]
-pub fn broadcast_to_unchecked(x: &Tensor, shape: impl Shape) -> Tensor {
+pub fn broadcast_to_unchecked(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, &shape, Broadcast::new(&shape), inputs)
+    Tensor::new(device, dtype, &shape, Broadcast::new(&shape), inputs).into()
 }
 
 #[track_caller]
-pub fn broadcast_left(x: &Tensor, shape: impl Shape) -> Tensor {
+pub fn broadcast_left(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let out_shape = x.shape_expand_left(&shape);
     x.broadcast_to_unchecked(out_shape)
 }
 
 #[track_caller]
-pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
+pub fn broadcast_right(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let out_shape = x.shape_expand_right(&shape);
     let mut x = x.clone();
     for _ in x.rank()..out_shape.rank() {
@@ -93,28 +97,38 @@ pub fn broadcast_right(x: &Tensor, shape: impl Shape) -> Tensor {
     x.broadcast_to_unchecked(out_shape)
 }
 
-impl Tensor {
+pub trait BroadcastOp {
+    fn broadcast_to(self, shape: impl Shape) -> RaiResult<Tensor>;
+    fn broadcast_to_unchecked(self, shape: impl Shape) -> RaiResult<Tensor>;
+    fn broadcast_left(self, shape: impl Shape) -> RaiResult<Tensor>;
+    fn broadcast_right(self, shape: impl Shape) -> RaiResult<Tensor>;
+}
+
+impl<T> BroadcastOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn broadcast_to(&self, shape: impl Shape) -> Tensor {
+    fn broadcast_to(self, shape: impl Shape) -> RaiResult<Tensor> {
         broadcast_to(self, shape)
     }
 
     #[inline]
     #[track_caller]
-    pub fn broadcast_to_unchecked(&self, shape: impl Shape) -> Tensor {
+    fn broadcast_to_unchecked(self, shape: impl Shape) -> RaiResult<Tensor> {
         broadcast_to_unchecked(self, shape)
     }
 
     #[inline]
     #[track_caller]
-    pub fn broadcast_left(&self, shape: impl Shape) -> Tensor {
+    fn broadcast_left(self, shape: impl Shape) -> RaiResult<Tensor> {
         broadcast_left(self, shape)
     }
 
     #[inline]
     #[track_caller]
-    pub fn broadcast_right(&self, shape: impl Shape) -> Tensor {
+    fn broadcast_right(self, shape: impl Shape) -> RaiResult<Tensor> {
         broadcast_right(self, shape)
     }
 }

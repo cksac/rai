@@ -1,4 +1,4 @@
-use crate::{dim::Before, Op, Shape, Tensor};
+use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -47,18 +47,24 @@ impl Op for UpsampleNearest1d {
 }
 
 #[track_caller]
-pub fn upsample_nearest1d(input: &Tensor, size: usize) -> Tensor {
+pub fn upsample_nearest1d(input: impl TryAsTensor, size: usize) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
     let device = input.device();
     let dtype = input.dtype();
     let shape = input.shape_upsample_nearest1d(size);
     let inputs = vec![input.clone()];
-    Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs)
+    Tensor::new(device, dtype, shape, UpsampleNearest1d::new(size), inputs).into()
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn upsample_nearest1d(&self, size: usize) -> Tensor {
+pub trait UpsampleNearest1dOp {
+    fn upsample_nearest1d(self, size: usize) -> RaiResult<Tensor>;
+}
+
+impl<T> UpsampleNearest1dOp for T
+where
+    T: TryAsTensor,
+{
+    fn upsample_nearest1d(self, size: usize) -> RaiResult<Tensor> {
         upsample_nearest1d(self, size)
     }
 }

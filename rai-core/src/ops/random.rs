@@ -1,4 +1,4 @@
-use crate::{AsDevice, ElemType, Op, Shape, Tensor, Type};
+use crate::{AsDevice, ElemType, Op, RaiResult, Shape, Tensor, TryAsTensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -52,7 +52,7 @@ impl<D: Type> Op for Random<D> {
 ///
 /// A `Tensor` filled with random values from a uniform distribution.
 #[track_caller]
-pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> RaiResult<Tensor> {
     let inputs = vec![];
     Tensor::new(
         device,
@@ -64,7 +64,12 @@ pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tens
 }
 
 #[track_caller]
-pub fn rand_with<T: ElemType>(from: T, to: T, shape: impl Shape, device: impl AsDevice) -> Tensor {
+pub fn rand_with<T: ElemType>(
+    from: T,
+    to: T,
+    shape: impl Shape,
+    device: impl AsDevice,
+) -> RaiResult<Tensor> {
     let dtype = T::DType::boxed_dtype();
     let inputs = vec![];
     Tensor::new(
@@ -77,19 +82,20 @@ pub fn rand_with<T: ElemType>(from: T, to: T, shape: impl Shape, device: impl As
 }
 
 #[track_caller]
-pub fn rand_like(x: &Tensor) -> Tensor {
+pub fn rand_like(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
     let op = dtype.rand_op();
     let inputs = vec![];
-    Tensor::new(device, dtype, shape, op, inputs)
+    Tensor::new(device, dtype, shape, op, inputs).into()
 }
 
 impl Tensor {
     #[inline]
     #[track_caller]
-    pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> Tensor {
+    pub fn rand<T: Type>(shape: impl Shape, dtype: T, device: impl AsDevice) -> RaiResult<Tensor> {
         rand(shape, dtype, device)
     }
 
@@ -100,13 +106,22 @@ impl Tensor {
         to: T,
         shape: impl Shape,
         device: impl AsDevice,
-    ) -> Tensor {
+    ) -> RaiResult<Tensor> {
         rand_with(from, to, shape, device)
     }
+}
 
+pub trait RandOp {
+    fn rand_like(self) -> RaiResult<Tensor>;
+}
+
+impl<T> RandOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn rand_like(&self) -> Tensor {
+    fn rand_like(self) -> RaiResult<Tensor> {
         rand_like(self)
     }
 }

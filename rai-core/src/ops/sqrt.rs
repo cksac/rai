@@ -1,4 +1,5 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
+use safetensors::slice::TensorIndexer;
 use std::any::Any;
 use tracing::Level;
 
@@ -30,18 +31,26 @@ impl Op for Sqrt {
 }
 
 #[track_caller]
-pub fn sqrt(x: &Tensor) -> Tensor {
+pub fn sqrt(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Sqrt, inputs)
+    Tensor::new(device, dtype, shape, Sqrt, inputs).into()
 }
 
-impl Tensor {
+pub trait SqrtOp {
+    fn sqrt(self) -> RaiResult<Tensor>;
+}
+
+impl<T> SqrtOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn sqrt(&self) -> Tensor {
+    fn sqrt(self) -> RaiResult<Tensor> {
         sqrt(self)
     }
 }

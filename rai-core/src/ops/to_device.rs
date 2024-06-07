@@ -1,4 +1,4 @@
-use crate::{AsDevice, Device, Op, Shape, Tensor};
+use crate::{AsDevice, Device, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,7 +45,8 @@ impl<D: Device + Clone + 'static> Op for ToDevice<D> {
 }
 
 #[track_caller]
-pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
+pub fn to_device(x: impl TryAsTensor, device: impl AsDevice) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = device.device();
     if x.device() == device {
         return x.clone();
@@ -54,13 +55,20 @@ pub fn to_device(x: &Tensor, device: impl AsDevice) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     let op = device.to_device_op();
-    Tensor::new(device, dtype, shape, op, inputs)
+    Tensor::new(device, dtype, shape, op, inputs).into()
 }
 
-impl Tensor {
+pub trait ToDeviceOp {
+    fn to_device(self, device: impl AsDevice) -> RaiResult<Tensor>;
+}
+
+impl<T> ToDeviceOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn to_device(&self, device: impl AsDevice) -> Tensor {
+    fn to_device(self, device: impl AsDevice) -> RaiResult<Tensor> {
         to_device(self, device)
     }
 }

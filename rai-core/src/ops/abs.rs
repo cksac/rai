@@ -1,5 +1,5 @@
-use crate::{Op, Shape, Tensor};
-use std::any::Any;
+use crate::{try_get, Error, Op, RaiResult, Shape, Tensor, TryAsTensor};
+use std::{any::Any, rc::Rc};
 use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -29,19 +29,26 @@ impl Op for Abs {
     }
 }
 
-#[track_caller]
-pub fn abs(x: &Tensor) -> Tensor {
+pub fn abs(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Abs, inputs)
+    Tensor::new(device, dtype, shape, Abs, inputs).into()
 }
 
-impl Tensor {
+pub trait AbsOp {
+    fn abs(self) -> RaiResult<Tensor>;
+}
+
+impl<T> AbsOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn abs(&self) -> Tensor {
+    fn abs(self) -> RaiResult<Tensor> {
         abs(self)
     }
 }

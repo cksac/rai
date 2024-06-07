@@ -1,4 +1,4 @@
-use crate::{dim::Before, Op, Shape, Tensor};
+use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -83,12 +83,14 @@ impl Op for Conv2d {
 
 #[track_caller]
 fn conv2d_single_group(
-    input: &Tensor,
-    kernel: &Tensor,
+    input: impl TryAsTensor,
+    kernel: impl TryAsTensor,
     padding: [usize; 2],
     stride: [usize; 2],
     dilation: [usize; 2],
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
+    let kernel = crate::try_get! { kernel.try_as_tensor() };
     let device = input.device();
     let dtype = input.dtype();
     let shape = input.shape_conv2d(kernel, &padding, &stride, &dilation);
@@ -100,17 +102,20 @@ fn conv2d_single_group(
         Conv2d::new(padding, stride, dilation),
         inputs,
     )
+    .into()
 }
 
 #[track_caller]
 pub fn conv2d(
-    input: &Tensor,
-    kernel: &Tensor,
+    input: impl TryAsTensor,
+    kernel: impl TryAsTensor,
     padding: [usize; 2],
     stride: [usize; 2],
     dilation: [usize; 2],
     groups: usize,
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
+    let kernel = crate::try_get! { kernel.try_as_tensor() };
     let c_in = input.size(1);
     let c_in_k = kernel.size(1);
     assert_eq!(c_in, c_in_k * groups);
@@ -122,23 +127,38 @@ pub fn conv2d(
         let outputs = blocks
             .iter()
             .zip(kernels.iter())
-            .map(|(block, kernel)| conv2d_single_group(block, kernel, padding, stride, dilation))
-            .collect::<Vec<_>>();
-        Tensor::cat(&outputs, 1)
+            .map(|(block, kernel)| {
+                conv2d_single_group(block, kernel, padding, stride, dilation).to_std_result()
+            })
+            .collect::<Result<Vec<_>, _>>();
+        let outputs = crate::try_get! { outputs };
+        Tensor::cat(&outputs, 1).into()
     }
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn conv2d(
-        &self,
-        kernel: impl AsRef<Tensor>,
+pub trait Conv2dOp {
+    fn conv2d(
+        self,
+        kernel: impl TryAsTensor,
         padding: [usize; 2],
         stride: [usize; 2],
         dilation: [usize; 2],
-        groups: usize,
-    ) -> Tensor {
-        conv2d(self, kernel.as_ref(), padding, stride, dilation, groups)
+    ) -> RaiResult<Tensor>;
+}
+
+impl<T> Conv2dOp for T
+where
+    T: TryAsTensor,
+{
+    #[inline]
+    #[track_caller]
+    fn conv2d(
+        self,
+        kernel: impl TryAsTensor,
+        padding: [usize; 2],
+        stride: [usize; 2],
+        dilation: [usize; 2],
+    ) -> RaiResult<Tensor> {
+        conv2d(self, kernel, padding, stride, dilation, 1)
     }
 }

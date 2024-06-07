@@ -1,4 +1,4 @@
-use crate::{Dims, Op, Shape, Tensor};
+use crate::{Dims, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -48,20 +48,28 @@ impl Op for Permute {
 }
 
 #[track_caller]
-pub fn permute(x: &Tensor, d: impl Dims<Vec<usize>>) -> Tensor {
+pub fn permute(x: impl TryAsTensor, d: impl Dims<Vec<usize>>) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let dims = x.dims(d);
     assert_eq!(dims.len(), x.rank());
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.sizes(&dims);
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Permute::new(dims), inputs)
+    Tensor::new(device, dtype, shape, Permute::new(dims), inputs).into()
 }
 
-impl Tensor {
+pub trait PermuteOp {
+    fn permute<D: Dims<Vec<usize>>>(self, d: D) -> RaiResult<Tensor>;
+}
+
+impl<T> PermuteOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn permute(&self, d: impl Dims<Vec<usize>>) -> Tensor {
+    fn permute<D: Dims<Vec<usize>>>(self, d: D) -> RaiResult<Tensor> {
         permute(self, d)
     }
 }

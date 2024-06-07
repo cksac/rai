@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -48,7 +48,15 @@ impl Op for IndexAdd {
 }
 
 #[track_caller]
-pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+pub fn index_add(
+    x: impl TryAsTensor,
+    dim: impl Dim,
+    index: impl TryAsTensor,
+    source: impl TryAsTensor,
+) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
+    let index = crate::try_get! { index.try_as_tensor() };
+    let source = crate::try_get! { source.try_as_tensor() };
     let dim = x.dim(dim);
     let device = x.device();
     let dtype = x.dtype();
@@ -57,13 +65,30 @@ pub fn index_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> 
     // x and source will have grads, therefore it comes first
     let inputs = vec![x.clone(), source.clone(), index.clone()];
     // TODO: asserts
-    Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs)
+    Tensor::new(device, dtype, shape, IndexAdd::new(dim), inputs).into()
 }
 
-impl Tensor {
+pub trait IndexAddOp {
+    fn index_add(
+        self,
+        dim: impl Dim,
+        index: impl TryAsTensor,
+        source: impl TryAsTensor,
+    ) -> RaiResult<Tensor>;
+}
+
+impl<T> IndexAddOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn index_add(&self, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+    fn index_add(
+        self,
+        dim: impl Dim,
+        index: impl TryAsTensor,
+        source: impl TryAsTensor,
+    ) -> RaiResult<Tensor> {
         index_add(self, dim, index, source)
     }
 }

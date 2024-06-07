@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, impl_std_ops, Op, Shape, Tensor};
+use crate::{broadcast_binary_op, impl_std_ops, Op, RaiResult, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -48,13 +48,19 @@ broadcast_binary_op!(
 
 impl_std_ops!(Div, div);
 
-impl Tensor {
+pub trait DivOp {
     #[inline]
     #[track_caller]
-    pub fn div<T>(&self, rhs: T) -> Tensor
+    fn sub<RHS>(self, rhs: RHS) -> RaiResult<Tensor>
     where
-        for<'a> &'a Self: std::ops::Div<T, Output = Tensor>,
+        Self: Sized + std::ops::Div<RHS, Output = RaiResult<Tensor>>,
     {
-        std::ops::Div::div(self, rhs)
+        self / rhs
     }
 }
+
+impl DivOp for Tensor {}
+impl<'a> DivOp for &'a Tensor {}
+impl DivOp for RaiResult<Tensor> {}
+impl<'a> DivOp for RaiResult<&'a Tensor> {}
+impl<'a> DivOp for &'a RaiResult<Tensor> {}

@@ -1,4 +1,4 @@
-use crate::{dim::Before, Op, Shape, Tensor};
+use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -120,7 +120,8 @@ impl MaxPool1dArgs for (usize, usize, usize, usize) {
 }
 
 #[track_caller]
-pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
+pub fn max_pool1d(input: impl TryAsTensor, args: impl MaxPool1dArgs) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
     let kernel_size = args.kernel_size();
     let stride = args.stride();
     let padding = args.padding();
@@ -136,12 +137,20 @@ pub fn max_pool1d(input: &Tensor, args: impl MaxPool1dArgs) -> Tensor {
         MaxPool1d::new(kernel_size, stride, padding, dilation),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait MaxPool1dOp {
+    fn max_pool1d(self, args: impl MaxPool1dArgs) -> RaiResult<Tensor>;
+}
+
+impl<T> MaxPool1dOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn max_pool1d(&self, args: impl MaxPool1dArgs) -> Tensor {
+    fn max_pool1d(self, args: impl MaxPool1dArgs) -> RaiResult<Tensor> {
         max_pool1d(self, args)
     }
 }

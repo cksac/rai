@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -49,26 +49,31 @@ impl Op for Transpose {
 }
 
 #[track_caller]
-pub fn transpose(x: &Tensor, dim0: impl Dim, dim1: impl Dim) -> Tensor {
+pub fn transpose(x: impl TryAsTensor, dim0: impl Dim, dim1: impl Dim) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let dim0 = x.dim(dim0);
     let dim1 = x.dim(dim1);
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape_transpose(dim0, dim1);
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs)
+    Tensor::new(device, dtype, shape, Transpose::new(dim0, dim1), inputs).into()
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn t(&self) -> Tensor {
-        transpose(self, -2, -1)
+pub trait TransposeOp {
+    fn t(self) -> RaiResult<Tensor> {
+        self.transpose(-2, -1)
     }
+    fn transpose(self, dim0: impl Dim, dim1: impl Dim) -> RaiResult<Tensor>;
+}
 
+impl<T> TransposeOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn transpose(&self, dim0: impl Dim, dim1: impl Dim) -> Tensor {
+    fn transpose(self, dim0: impl Dim, dim1: impl Dim) -> RaiResult<Tensor> {
         transpose(self, dim0, dim1)
     }
 }

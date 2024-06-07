@@ -1,6 +1,6 @@
 use super::ToPair;
 use crate::dim::Before;
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use std::fmt::Debug;
 use tracing::Level;
@@ -126,7 +126,8 @@ where
 }
 
 #[track_caller]
-pub fn avg_pool2d(input: &Tensor, args: impl AvgPool2dArgs) -> Tensor {
+pub fn avg_pool2d(input: impl TryAsTensor, args: impl AvgPool2dArgs) -> RaiResult<Tensor> {
+    let input = crate::try_get! {input.try_as_tensor()};
     let kernel_size = args.kernel_size();
     let stride = args.stride();
     let padding = args.padding();
@@ -142,12 +143,20 @@ pub fn avg_pool2d(input: &Tensor, args: impl AvgPool2dArgs) -> Tensor {
         AvgPool2d::new(kernel_size, stride, padding),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait AvgPool2dOp {
+    fn avg_pool2d<A: AvgPool2dArgs>(self, args: A) -> RaiResult<Tensor>;
+}
+
+impl<T> AvgPool2dOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn avg_pool2d<A: AvgPool2dArgs>(&self, args: A) -> Tensor {
+    fn avg_pool2d<A: AvgPool2dArgs>(self, args: A) -> RaiResult<Tensor> {
         avg_pool2d(self, args)
     }
 }

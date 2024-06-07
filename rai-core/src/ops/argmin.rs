@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor, U32};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor, U32};
 use std::any::Any;
 use tracing::Level;
 
@@ -45,7 +45,8 @@ impl Op for ArgMin {
 }
 
 #[track_caller]
-pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
+pub fn argmin<T: ArgReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = U32;
     let dim = x.dim(args.dim());
@@ -58,12 +59,20 @@ pub fn argmin<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
         ArgMin::new(dim, args.keep_dim()),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait ArgMinOp {
+    fn argmin<T: ArgReduceArgs>(self, args: T) -> RaiResult<Tensor>;
+}
+
+impl<T> ArgMinOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn argmin<T: ArgReduceArgs>(&self, args: T) -> Tensor {
+    fn argmin<U: ArgReduceArgs>(self, args: U) -> RaiResult<Tensor> {
         argmin(self, args)
     }
 }

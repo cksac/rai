@@ -1,4 +1,4 @@
-use rai_core::Tensor;
+use rai_core::{Tensor, TensorOps};
 
 pub fn l1_loss(predictions: &Tensor, targets: &Tensor) -> Tensor {
     (predictions - targets).abs()

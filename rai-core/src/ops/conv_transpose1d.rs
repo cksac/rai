@@ -1,4 +1,4 @@
-use crate::{dim::Before, Op, Shape, Tensor};
+use crate::{dim::Before, try_get, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -70,13 +70,15 @@ impl Op for ConvTranspose1d {
 
 #[track_caller]
 fn conv_transpose1d_single_group(
-    input: &Tensor,
-    kernel: &Tensor,
+    input: impl TryAsTensor,
+    kernel: impl TryAsTensor,
     padding: usize,
     output_padding: usize,
     stride: usize,
     dilation: usize,
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
+    let kernel = crate::try_get! { kernel.try_as_tensor() };
     let device = input.device();
     let dtype = input.dtype();
     let shape = input.shape_conv_transpose1d(kernel, padding, output_padding, stride, dilation);
@@ -88,18 +90,21 @@ fn conv_transpose1d_single_group(
         ConvTranspose1d::new(padding, output_padding, stride, dilation),
         inputs,
     )
+    .into()
 }
 
 #[track_caller]
 pub fn conv_transpose1d(
-    input: &Tensor,
-    kernel: &Tensor,
+    input: impl TryAsTensor,
+    kernel: impl TryAsTensor,
     padding: usize,
     output_padding: usize,
     stride: usize,
     dilation: usize,
     groups: usize,
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
+    let kernel = crate::try_get! { kernel.try_as_tensor() };
     if groups == 1 {
         conv_transpose1d_single_group(input, kernel, padding, output_padding, stride, dilation)
     } else {
@@ -117,27 +122,44 @@ pub fn conv_transpose1d(
                     stride,
                     dilation,
                 )
+                .to_std_result()
             })
-            .collect::<Vec<_>>();
-        Tensor::cat(&outputs, 1)
+            .collect::<Result<Vec<_>, _>>();
+        let outputs = crate::try_get! { outputs };
+        Tensor::cat(&outputs, 1).into()
     }
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn conv_transpose1d(
-        &self,
-        kernel: impl AsRef<Tensor>,
+pub trait ConvTranspose1dOp {
+    fn conv_transpose1d(
+        self,
+        kernel: impl TryAsTensor,
         padding: usize,
         output_padding: usize,
         stride: usize,
         dilation: usize,
         groups: usize,
-    ) -> Tensor {
+    ) -> RaiResult<Tensor>;
+}
+
+impl<T> ConvTranspose1dOp for T
+where
+    T: TryAsTensor,
+{
+    #[inline]
+    #[track_caller]
+    fn conv_transpose1d(
+        self,
+        kernel: impl TryAsTensor,
+        padding: usize,
+        output_padding: usize,
+        stride: usize,
+        dilation: usize,
+        groups: usize,
+    ) -> RaiResult<Tensor> {
         conv_transpose1d(
             self,
-            kernel.as_ref(),
+            kernel,
             padding,
             output_padding,
             stride,

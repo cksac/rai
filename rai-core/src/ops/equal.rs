@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, Shape, Tensor, U8};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor, U8};
 use std::any::Any;
 use tracing::Level;
 
@@ -31,10 +31,17 @@ impl Op for Equal {
 
 broadcast_binary_op!(Equal, eq, U8);
 
-impl Tensor {
+pub trait EqOp {
+    fn eq(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> EqOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn eq<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        eq(self, rhs.as_ref())
+    fn eq(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+        eq(self, rhs)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{ops::reduce_chooser_jvp_rule, Op, Shape, Tensor};
+use crate::{ops::reduce_chooser_jvp_rule, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -64,7 +64,8 @@ impl Op for ReduceMin {
 }
 
 #[track_caller]
-pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+pub fn min<T: ReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let dims = x.dims(args.dims());
@@ -77,12 +78,20 @@ pub fn min<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
         ReduceMin::new(dims, args.keep_dim()),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait ReduceMinOp {
+    fn min<T: ReduceArgs>(self, args: T) -> RaiResult<Tensor>;
+}
+
+impl<T> ReduceMinOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn min<T: ReduceArgs>(&self, args: T) -> Tensor {
+    fn min<U: ReduceArgs>(self, args: U) -> RaiResult<Tensor> {
         min(self, args)
     }
 }

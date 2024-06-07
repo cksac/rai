@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -46,11 +46,11 @@ impl Op for Reshape {
 }
 
 #[track_caller]
-pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
+pub fn reshape(x: impl TryAsTensor, shape: impl Shape) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     if x.shape() == shape.shape() {
         return x.clone();
     }
-
     if x.elem_count() == shape.elem_count() {
         let device = x.device();
         let dtype = x.dtype();
@@ -62,15 +62,23 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
             Reshape::new(shape),
             inputs,
         )
+        .into()
     } else {
         panic!("reshape({:?}, {:?}) with error", x, shape.shape());
     }
 }
 
-impl Tensor {
+pub trait ReshapeOp {
+    fn reshape(self, shape: impl Shape) -> RaiResult<Tensor>;
+}
+
+impl<T> ReshapeOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn reshape(&self, shape: impl Shape) -> Tensor {
+    fn reshape(self, shape: impl Shape) -> RaiResult<Tensor> {
         reshape(self, shape)
     }
 }

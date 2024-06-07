@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -50,7 +50,7 @@ impl Op for Concatenate {
 }
 
 #[track_caller]
-pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
+pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> RaiResult<Tensor> {
     let inputs: Vec<Tensor> = tensors.iter().map(AsRef::as_ref).cloned().collect();
     let t1 = &inputs[0].clone();
     let dim = t1.dim(dim);
@@ -62,13 +62,13 @@ pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
         // todo: check shape
         shape[dim] += t.size(dim);
     }
-    Tensor::new(device, dtype, shape, Concatenate::new(dim), inputs)
+    Tensor::new(device, dtype, shape, Concatenate::new(dim), inputs).into()
 }
 
 impl Tensor {
     #[inline]
     #[track_caller]
-    pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> Tensor {
+    pub fn cat<T: AsRef<Tensor> + Debug>(tensors: &[T], dim: impl Dim) -> RaiResult<Tensor> {
         cat(tensors, dim)
     }
 }

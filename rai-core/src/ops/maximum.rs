@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, Shape, Tensor};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -39,10 +39,17 @@ impl Op for Maximum {
 
 broadcast_binary_op!(Maximum, maximum);
 
-impl Tensor {
+pub trait MaximumOp {
+    fn maximum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> MaximumOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn maximum<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        maximum(self, rhs.as_ref())
+    fn maximum(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+        maximum(self, rhs)
     }
 }

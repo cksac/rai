@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, impl_std_ops, Op, Shape, Tensor};
+use crate::{broadcast_binary_op, impl_std_ops, Op, RaiResult, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -50,13 +50,19 @@ broadcast_binary_op!(
 
 impl_std_ops!(Mul, mul);
 
-impl Tensor {
+pub trait MulOp {
     #[inline]
     #[track_caller]
-    pub fn mul<T>(&self, rhs: T) -> Tensor
+    fn mul<RHS>(self, rhs: RHS) -> RaiResult<Tensor>
     where
-        for<'a> &'a Self: std::ops::Mul<T, Output = Tensor>,
+        Self: Sized + std::ops::Mul<RHS, Output = RaiResult<Tensor>>,
     {
-        std::ops::Mul::mul(self, rhs)
+        self * rhs
     }
 }
+
+impl MulOp for Tensor {}
+impl<'a> MulOp for &'a Tensor {}
+impl MulOp for RaiResult<Tensor> {}
+impl<'a> MulOp for RaiResult<&'a Tensor> {}
+impl<'a> MulOp for &'a RaiResult<Tensor> {}

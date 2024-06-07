@@ -1,5 +1,5 @@
 use super::ArgReduceArgs;
-use crate::{Op, Shape, Tensor, U32};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor, U32};
 use std::any::Any;
 use tracing::Level;
 
@@ -44,7 +44,8 @@ impl Op for ArgMax {
 }
 
 #[track_caller]
-pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
+pub fn argmax<T: ArgReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = U32;
     let dim = x.dim(args.dim());
@@ -57,12 +58,20 @@ pub fn argmax<T: ArgReduceArgs>(x: &Tensor, args: T) -> Tensor {
         ArgMax::new(dim, args.keep_dim()),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait ArgMaxOp {
+    fn argmax<T: ArgReduceArgs>(self, args: T) -> RaiResult<Tensor>;
+}
+
+impl<T> ArgMaxOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn argmax<T: ArgReduceArgs>(&self, args: T) -> Tensor {
+    fn argmax<U: ArgReduceArgs>(self, args: U) -> RaiResult<Tensor> {
         argmax(self, args)
     }
 }

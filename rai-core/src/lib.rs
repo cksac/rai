@@ -19,6 +19,9 @@ pub use param_map::ParamMap;
 pub mod ops;
 pub use ops::Op;
 
+mod tensor_ops;
+pub use tensor_ops::TensorOps;
+
 pub mod hlops;
 
 pub mod dim;
@@ -50,7 +53,7 @@ pub use eval::*;
 pub mod utils;
 
 mod error;
-pub use error::{Error, Result};
+pub use error::{Error, RaiResult, Result, TryAsTensor};
 
 pub mod nn;
 

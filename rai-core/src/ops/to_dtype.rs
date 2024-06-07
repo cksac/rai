@@ -1,4 +1,4 @@
-use crate::{AsDType, Op, Shape, Tensor, Type};
+use crate::{AsDType, Op, RaiResult, Shape, Tensor, TryAsTensor, Type};
 use std::any::Any;
 use tracing::Level;
 
@@ -41,7 +41,8 @@ impl<D: Type> Op for ToDType<D> {
 }
 
 #[track_caller]
-pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
+pub fn to_dtype(x: impl TryAsTensor, dtype: impl AsDType) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let dtype = dtype.dtype();
     if x.dtype() == dtype {
         return x.clone();
@@ -50,13 +51,20 @@ pub fn to_dtype(x: &Tensor, dtype: impl AsDType) -> Tensor {
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
     let op = dtype.to_dtype_op();
-    Tensor::new(device, dtype, shape, op, inputs)
+    Tensor::new(device, dtype, shape, op, inputs).into()
 }
 
-impl Tensor {
+pub trait ToDTypeOp {
+    fn to_dtype<D: Type>(self, dtype: D) -> RaiResult<Tensor>;
+}
+
+impl<T> ToDTypeOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn to_dtype(&self, dtype: impl AsDType) -> Tensor {
+    fn to_dtype<D: Type>(self, dtype: D) -> RaiResult<Tensor> {
         to_dtype(self, dtype)
     }
 }

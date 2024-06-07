@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -48,24 +48,44 @@ impl Op for ScatterAdd {
 }
 
 #[track_caller]
-pub fn scatter_add(x: &Tensor, dim: impl Dim, index: &Tensor, source: &Tensor) -> Tensor {
+pub fn scatter_add(
+    x: impl TryAsTensor,
+    dim: impl Dim,
+    index: impl TryAsTensor,
+    source: impl TryAsTensor,
+) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
+    let index = crate::try_get! { index.try_as_tensor() };
+    let source = crate::try_get! { source.try_as_tensor() };
     let dim = x.dim(dim);
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape();
     let inputs = vec![x.clone(), source.clone(), index.clone()];
-    Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs)
+    Tensor::new(device, dtype, shape, ScatterAdd::new(dim), inputs).into()
 }
 
-impl Tensor {
+pub trait ScatterAddOp {
+    fn scatter_add<D: Dim>(
+        self,
+        dim: D,
+        index: impl TryAsTensor,
+        source: impl TryAsTensor,
+    ) -> RaiResult<Tensor>;
+}
+
+impl<T> ScatterAddOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn scatter_add(
-        &self,
-        dim: impl Dim,
-        index: impl AsRef<Tensor>,
-        source: impl AsRef<Tensor>,
-    ) -> Tensor {
-        scatter_add(self, dim, index.as_ref(), source.as_ref())
+    fn scatter_add<D: Dim>(
+        self,
+        dim: D,
+        index: impl TryAsTensor,
+        source: impl TryAsTensor,
+    ) -> RaiResult<Tensor> {
+        scatter_add(self, dim, index, source)
     }
 }

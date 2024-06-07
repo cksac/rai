@@ -1,5 +1,5 @@
 use super::ToPair;
-use crate::{dim::Before, Op, Shape, Tensor};
+use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -49,19 +49,25 @@ impl Op for UpsampleNearest2d {
 }
 
 #[track_caller]
-pub fn upsample_nearest2d(input: &Tensor, size: impl ToPair<usize>) -> Tensor {
+pub fn upsample_nearest2d(input: impl TryAsTensor, size: impl ToPair<usize>) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
     let device = input.device();
     let dtype = input.dtype();
     let size = size.to_pair();
     let shape = input.shape_upsample_nearest2d(&size);
     let inputs = vec![input.clone()];
-    Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs)
+    Tensor::new(device, dtype, shape, UpsampleNearest2d::new(size), inputs).into()
 }
 
-impl Tensor {
-    #[inline]
-    #[track_caller]
-    pub fn upsample_nearest2d(&self, size: impl ToPair<usize>) -> Tensor {
+pub trait UpsampleNearest2dOp {
+    fn upsample_nearest2d(self, size: impl ToPair<usize>) -> RaiResult<Tensor>;
+}
+
+impl<T> UpsampleNearest2dOp for T
+where
+    T: TryAsTensor,
+{
+    fn upsample_nearest2d(self, size: impl ToPair<usize>) -> RaiResult<Tensor> {
         upsample_nearest2d(self, size)
     }
 }

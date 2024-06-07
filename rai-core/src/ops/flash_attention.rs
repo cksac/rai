@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -151,11 +151,14 @@ impl<'a> FlashAttentionOpts for (f32, usize, usize, &'a Tensor) {
 
 #[track_caller]
 pub fn flash_attention(
-    q: &Tensor,
-    k: &Tensor,
-    v: &Tensor,
+    q: impl TryAsTensor,
+    k: impl TryAsTensor,
+    v: impl TryAsTensor,
     opts: impl FlashAttentionOpts,
-) -> Tensor {
+) -> RaiResult<Tensor> {
+    let q = crate::try_get! { q.try_as_tensor() };
+    let k = crate::try_get! { k.try_as_tensor() };
+    let v = crate::try_get! { v.try_as_tensor() };
     let device = q.device();
     let dtype = q.dtype();
     let shape = q.shape();
@@ -172,12 +175,30 @@ pub fn flash_attention(
         ),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait FlashAttentionOp {
+    fn flash_attention(
+        self,
+        k: impl TryAsTensor,
+        v: impl TryAsTensor,
+        opts: impl FlashAttentionOpts,
+    ) -> RaiResult<Tensor>;
+}
+
+impl<T> FlashAttentionOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn flash_attention(&self, k: &Tensor, v: &Tensor, opts: impl FlashAttentionOpts) -> Tensor {
+    fn flash_attention(
+        self,
+        k: impl TryAsTensor,
+        v: impl TryAsTensor,
+        opts: impl FlashAttentionOpts,
+    ) -> RaiResult<Tensor> {
         flash_attention(self, k, v, opts)
     }
 }

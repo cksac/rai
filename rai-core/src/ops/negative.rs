@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -28,25 +28,17 @@ impl Op for Negative {
 }
 
 #[track_caller]
-pub fn neg(x: &Tensor) -> Tensor {
+pub fn neg(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Negative, inputs)
+    Tensor::new(device, dtype, shape, Negative, inputs).into()
 }
 
 impl std::ops::Neg for Tensor {
-    type Output = Tensor;
-
-    #[track_caller]
-    fn neg(self) -> Self::Output {
-        neg(&self)
-    }
-}
-
-impl<'a> std::ops::Neg for &'a Tensor {
-    type Output = Tensor;
+    type Output = RaiResult<Tensor>;
 
     #[track_caller]
     fn neg(self) -> Self::Output {
@@ -54,10 +46,53 @@ impl<'a> std::ops::Neg for &'a Tensor {
     }
 }
 
-impl Tensor {
+impl<'a> std::ops::Neg for &'a Tensor {
+    type Output = RaiResult<Tensor>;
+
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        neg(self)
+    }
+}
+
+impl std::ops::Neg for RaiResult<Tensor> {
+    type Output = RaiResult<Tensor>;
+
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        neg(self)
+    }
+}
+
+impl<'a> std::ops::Neg for &'a RaiResult<Tensor> {
+    type Output = RaiResult<Tensor>;
+
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        neg(self)
+    }
+}
+
+impl<'a> std::ops::Neg for RaiResult<&'a Tensor> {
+    type Output = RaiResult<Tensor>;
+
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        neg(self)
+    }
+}
+
+pub trait NegOp {
+    fn neg(self) -> RaiResult<Tensor>;
+}
+
+impl<T> NegOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn neg(&self) -> Tensor {
+    fn neg(self) -> RaiResult<Tensor> {
         neg(self)
     }
 }

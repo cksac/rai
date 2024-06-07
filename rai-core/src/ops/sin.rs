@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -29,18 +29,26 @@ impl Op for Sin {
 }
 
 #[track_caller]
-pub fn sin(x: &Tensor) -> Tensor {
+pub fn sin(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Sin, inputs)
+    Tensor::new(device, dtype, shape, Sin, inputs).into()
 }
 
-impl Tensor {
+pub trait SinOp {
+    fn sin(self) -> RaiResult<Tensor>;
+}
+
+impl<T> SinOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn sin(&self) -> Tensor {
+    fn sin(self) -> RaiResult<Tensor> {
         sin(self)
     }
 }

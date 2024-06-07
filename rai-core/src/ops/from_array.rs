@@ -1,4 +1,4 @@
-use crate::{AsDevice, ElemType, FloatElemType, Op, Shape, Tensor, Type};
+use crate::{AsDevice, ElemType, FloatElemType, Op, RaiResult, Shape, Tensor, Type};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -64,7 +64,7 @@ pub fn from_array<T: ElemType>(
     data: impl Into<Vec<T>> + Debug,
     shape: impl Shape,
     device: impl AsDevice,
-) -> Tensor {
+) -> RaiResult<Tensor> {
     let data = data.into();
     assert!(data.len() == shape.elem_count());
     let inputs = vec![];
@@ -75,10 +75,16 @@ pub fn from_array<T: ElemType>(
         FromArray::<T::DType>::new(data),
         inputs,
     )
+    .into()
 }
 
 #[track_caller]
-pub fn linspace<T: FloatElemType>(start: T, end: T, steps: usize, device: impl AsDevice) -> Tensor {
+pub fn linspace<T: FloatElemType>(
+    start: T,
+    end: T,
+    steps: usize,
+    device: impl AsDevice,
+) -> RaiResult<Tensor> {
     let data = T::linspace(start, end, steps);
     from_array(data, [steps], device)
 }
@@ -90,7 +96,7 @@ impl Tensor {
         data: impl Into<Vec<T>> + Debug,
         shape: impl Shape,
         device: impl AsDevice,
-    ) -> Tensor {
+    ) -> RaiResult<Tensor> {
         from_array(data, shape, device)
     }
 
@@ -101,7 +107,7 @@ impl Tensor {
         end: T,
         steps: usize,
         device: impl AsDevice,
-    ) -> Tensor {
+    ) -> RaiResult<Tensor> {
         linspace(start, end, steps, device)
     }
 }

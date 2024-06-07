@@ -1,4 +1,4 @@
-use crate::{Dim, Op, Shape, Tensor};
+use crate::{Dim, Op, RaiResult, Shape, Tensor, TensorOps, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -48,7 +48,9 @@ impl Op for Gather {
 }
 
 #[track_caller]
-pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
+pub fn gather(x: impl TryAsTensor, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
+    let index = crate::try_get! { index.try_as_tensor() };
     let dim = x.dim(dim);
     assert_eq!(x.rank(), index.rank());
     let mut lhs_shape = x.shape().to_vec();
@@ -60,13 +62,20 @@ pub fn gather(x: &Tensor, dim: impl Dim, index: &Tensor) -> Tensor {
     let dtype = x.dtype();
     let shape = index.shape();
     let inputs = vec![x.clone(), index.clone()];
-    Tensor::new(device, dtype, shape, Gather::new(dim), inputs)
+    Tensor::new(device, dtype, shape, Gather::new(dim), inputs).into()
 }
 
-impl Tensor {
+pub trait GatherOp {
+    fn gather(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> GatherOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn gather(&self, dim: impl Dim, index: impl AsRef<Tensor>) -> Tensor {
-        gather(self, dim, index.as_ref())
+    fn gather(self, dim: impl Dim, index: impl TryAsTensor) -> RaiResult<Tensor> {
+        gather(self, dim, index)
     }
 }

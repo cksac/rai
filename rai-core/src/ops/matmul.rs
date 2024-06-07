@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -30,7 +30,9 @@ impl Op for MatMul {
 }
 
 #[track_caller]
-pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
+pub fn matmul(lhs: impl TryAsTensor, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+    let lhs = crate::try_get! { lhs.try_as_tensor() };
+    let rhs = crate::try_get! { rhs.try_as_tensor() };
     let device = lhs.device();
     let dtype = lhs.dtype();
     let lhs_in = lhs;
@@ -66,10 +68,17 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     }
 }
 
-impl Tensor {
+pub trait MatMulOp {
+    fn matmul(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> MatMulOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn matmul<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        matmul(self, rhs.as_ref())
+    fn matmul(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+        matmul(self, rhs)
     }
 }

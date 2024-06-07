@@ -1,4 +1,4 @@
-use crate::{broadcast_binary_op, Op, Shape, Tensor, U8};
+use crate::{broadcast_binary_op, Op, RaiResult, Shape, Tensor, TryAsTensor, U8};
 use std::any::Any;
 use tracing::Level;
 
@@ -31,10 +31,17 @@ impl Op for NotEqual {
 
 broadcast_binary_op!(NotEqual, ne, U8);
 
-impl Tensor {
+pub trait NeOp {
+    fn ne(self, rhs: impl TryAsTensor) -> RaiResult<Tensor>;
+}
+
+impl<T> NeOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn ne<T: AsRef<Tensor>>(&self, rhs: T) -> Tensor {
-        ne(self, rhs.as_ref())
+    fn ne(self, rhs: impl TryAsTensor) -> RaiResult<Tensor> {
+        ne(self, rhs)
     }
 }

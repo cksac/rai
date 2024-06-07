@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -30,18 +30,26 @@ impl Op for Log2 {
 }
 
 #[track_caller]
-pub fn log2(x: &Tensor) -> Tensor {
+pub fn log2(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Log2, inputs)
+    Tensor::new(device, dtype, shape, Log2, inputs).into()
 }
 
-impl Tensor {
+pub trait Log2Op {
+    fn log2(self) -> RaiResult<Tensor>;
+}
+
+impl<T> Log2Op for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn log2(&self) -> Tensor {
+    fn log2(self) -> RaiResult<Tensor> {
         log2(self)
     }
 }

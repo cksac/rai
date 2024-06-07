@@ -1,5 +1,5 @@
 use super::ToPair;
-use crate::{dim::Before, Op, Shape, Tensor};
+use crate::{dim::Before, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::{any::Any, fmt::Debug};
 use tracing::Level;
 
@@ -156,7 +156,8 @@ where
 }
 
 #[track_caller]
-pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
+pub fn max_pool2d(input: impl TryAsTensor, args: impl MaxPool2dArgs) -> RaiResult<Tensor> {
+    let input = crate::try_get! { input.try_as_tensor() };
     let kernel_size = args.kernel_size();
     let stride = args.stride();
     let padding = args.padding();
@@ -172,12 +173,20 @@ pub fn max_pool2d(input: &Tensor, args: impl MaxPool2dArgs) -> Tensor {
         MaxPool2d::new(kernel_size, stride, padding, dilation),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait MaxPool2dOp {
+    fn max_pool2d(self, args: impl MaxPool2dArgs) -> RaiResult<Tensor>;
+}
+
+impl<T> MaxPool2dOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn max_pool2d(&self, args: impl MaxPool2dArgs) -> Tensor {
+    fn max_pool2d(self, args: impl MaxPool2dArgs) -> RaiResult<Tensor> {
         max_pool2d(self, args)
     }
 }

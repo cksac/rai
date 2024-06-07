@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -29,18 +29,26 @@ impl Op for Cos {
 }
 
 #[track_caller]
-pub fn cos(x: &Tensor) -> Tensor {
+pub fn cos(x: impl TryAsTensor) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, Cos, inputs)
+    Tensor::new(device, dtype, shape, Cos, inputs).into()
 }
 
-impl Tensor {
+pub trait CosOp {
+    fn cos(self) -> RaiResult<Tensor>;
+}
+
+impl<T> CosOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn cos(&self) -> Tensor {
+    fn cos(self) -> RaiResult<Tensor> {
         cos(self)
     }
 }

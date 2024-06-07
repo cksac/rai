@@ -1,4 +1,4 @@
-use crate::{ops::reduce_chooser_jvp_rule, Op, Shape, Tensor};
+use crate::{ops::reduce_chooser_jvp_rule, Op, RaiResult, Shape, Tensor, TryAsTensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -64,7 +64,8 @@ impl Op for ReduceMax {
 }
 
 #[track_caller]
-pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
+pub fn max<T: ReduceArgs>(x: impl TryAsTensor, args: T) -> RaiResult<Tensor> {
+    let x = crate::try_get! { x.try_as_tensor() };
     let device = x.device();
     let dtype = x.dtype();
     let dims = x.dims(args.dims());
@@ -77,12 +78,20 @@ pub fn max<T: ReduceArgs>(x: &Tensor, args: T) -> Tensor {
         ReduceMax::new(dims, args.keep_dim()),
         inputs,
     )
+    .into()
 }
 
-impl Tensor {
+pub trait ReduceMaxOp {
+    fn max<T: ReduceArgs>(self, args: T) -> RaiResult<Tensor>;
+}
+
+impl<T> ReduceMaxOp for T
+where
+    T: TryAsTensor,
+{
     #[inline]
     #[track_caller]
-    pub fn max<T: ReduceArgs>(&self, args: T) -> Tensor {
+    fn max<A: ReduceArgs>(self, args: A) -> RaiResult<Tensor> {
         max(self, args)
     }
 }
