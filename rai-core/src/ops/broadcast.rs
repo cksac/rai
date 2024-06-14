@@ -57,16 +57,16 @@ impl Op for Broadcast {
 pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
     let device = x.device();
     let dtype = x.dtype();
-    let (out_shape, _, _) = x.shape_broadcast_to(&shape).unwrap_or_else(|e| {
-        panic!(
-            "{:?} broadcast_to shape {:?} with error {:?}",
-            x,
-            shape.shape(),
-            e
-        )
-    });
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs)
+    match x.shape_broadcast_to(&shape) {
+        Ok((out_shape, _, _)) => {
+            Tensor::new(device, dtype, out_shape, Broadcast::new(shape), inputs)
+        }
+        Err(e) => {
+            let shape = [];
+            Tensor::err(device, dtype, &shape, Broadcast::new(shape), inputs, e)
+        }
+    }
 }
 
 #[track_caller]

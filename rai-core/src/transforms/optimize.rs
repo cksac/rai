@@ -1,6 +1,6 @@
 use crate::{
     ops::{Full, ToDType, ToDevice},
-    utils::topological_sort,
+    utils::topological_sort_unchecked,
     Cpu, Cuda, Func, Metal, Shape, Tensor, Value, BF16, F16, F32, F64, I64, U32, U8,
 };
 use std::{any::TypeId, collections::HashMap};
@@ -47,7 +47,7 @@ where
     move |input| {
         let output = func.invoke(input);
         let out_tensors = output.tensors();
-        let tape = topological_sort(&out_tensors);
+        let tape = topological_sort_unchecked(&out_tensors);
         // (device, dtype, val:shape) -> Tensor
         let mut constants = HashMap::<(TypeId, TypeId, String), Tensor>::new();
         for t in tape.iter() {

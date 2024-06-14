@@ -1,8 +1,8 @@
-use crate::{utils::topological_sort_filter, Func, Shape, Tensor, TensorIter, Value};
+use crate::{utils::topological_sort_filter, Func, Result, Shape, Tensor, TensorIter, Value};
 use colored::*;
 use std::collections::HashMap;
 
-pub fn raiexpr<K, IN, OUT, F>(func: &F, input: IN) -> String
+pub fn raiexpr<K, IN, OUT, F>(func: &F, input: IN) -> Result<String>
 where
     F: Func<K, IN, OUT>,
     IN: Value,
@@ -64,7 +64,7 @@ where
         )
     }
     let input_set: Vec<usize> = in_tensors.tensor_iter().map(Tensor::id).collect();
-    let tape = topological_sort_filter(&out_tensors, |t| !input_set.contains(&t.id()));
+    let tape = topological_sort_filter(&out_tensors, |t| input_set.contains(&t.id()))?;
 
     let inputs = in_tensors
         .tensor_iter()
@@ -90,8 +90,8 @@ where
         .collect::<Vec<String>>()
         .join(", ");
 
-    format!(
+    Ok(format!(
         "fn({}) -> ({}) {{\n{}\n\treturn ({})\n}}",
         inputs, outputs, body, returns
-    )
+    ))
 }

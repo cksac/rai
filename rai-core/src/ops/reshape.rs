@@ -1,4 +1,4 @@
-use crate::{Op, Shape, Tensor};
+use crate::{Error, Op, Shape, Tensor};
 use std::any::Any;
 use tracing::Level;
 
@@ -50,20 +50,29 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
     if x.shape() == shape.shape() {
         return x.clone();
     }
-
+    let device = x.device();
+    let dtype = x.dtype();
+    let inputs = vec![x.clone()];
     if x.elem_count() == shape.elem_count() {
-        let device = x.device();
-        let dtype = x.dtype();
-        let inputs = vec![x.clone()];
         Tensor::new(
             device,
             dtype,
             shape.shape().to_owned(),
-            Reshape::new(shape),
+            Reshape::new(&shape),
             inputs,
         )
     } else {
-        panic!("reshape({:?}, {:?}) with error", x, shape.shape());
+        Tensor::err(
+            device,
+            dtype,
+            shape.shape().to_owned(),
+            Reshape::new(&shape),
+            inputs,
+            Error::IncompatibleShape {
+                lhs: x.shape().to_owned(),
+                rhs: shape.shape().to_owned(),
+            },
+        )
     }
 }
 

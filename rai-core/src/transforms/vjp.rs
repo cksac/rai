@@ -1,4 +1,4 @@
-use crate::{utils::topological_sort_filter, Func, GradMap, TensorIter, Value};
+use crate::{utils::topological_sort_filter_unchecked, Func, GradMap, TensorIter, Value};
 
 pub fn vjp<'a, K, IN, OUT, F>(
     func: F,
@@ -15,7 +15,7 @@ where
     let vjps_fn = move |cotangents: OUT::Gradient| {
         let mut grads = GradMap::with_capacity(output_tensors.count());
         OUT::grad_map(&output_tensors, cotangents, &mut grads);
-        let tape = topological_sort_filter(&output_tensors, |t| !t.is_empty_inputs());
+        let tape = topological_sort_filter_unchecked(&output_tensors, |t| t.is_empty_inputs());
         // run the tape backwards
         for t in tape.iter().rev() {
             let primals = &*t.inputs();

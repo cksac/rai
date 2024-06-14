@@ -43,26 +43,28 @@ pub fn matmul(lhs: &Tensor, rhs: &Tensor) -> Tensor {
     if rhs.rank() == 1 {
         rhs = rhs.reshape([rhs.shape(), &[1]].concat());
     }
-    let (mut shape, lhs_shape, rhs_shape, lhs_b, rhs_b) = lhs
-        .shape_broadcast_matmul(&rhs)
-        .unwrap_or_else(|e| panic!("matmul({:?}, {:?}) with error {:?}", lhs, rhs, e));
-    let inputs = match (lhs_b, rhs_b) {
-        (false, false) => vec![lhs.clone(), rhs.clone()],
-        (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&rhs_shape)],
-        (true, false) => vec![lhs.broadcast_to_unchecked(&lhs_shape), rhs.clone()],
-        (true, true) => vec![
-            lhs.broadcast_to_unchecked(&lhs_shape),
-            rhs.broadcast_to_unchecked(&rhs_shape),
-        ],
-    };
-    if lhs_in.rank() == 1 || rhs_in.rank() == 1 {
-        let erase_start = shape.len() - if lhs_in.rank() == 1 { 2 } else { 1 };
-        let erase_end = shape.len() - if rhs_in.rank() == 1 { 0 } else { 1 };
-        let matml_out = Tensor::new(device, dtype, &shape, MatMul, inputs);
-        shape.drain(erase_start..erase_end);
-        matml_out.reshape(shape)
-    } else {
-        Tensor::new(device, dtype, shape, MatMul, inputs)
+    match lhs.shape_broadcast_matmul(&rhs) {
+        Ok((mut shape, lhs_shape, rhs_shape, lhs_b, rhs_b)) => {
+            let inputs = match (lhs_b, rhs_b) {
+                (false, false) => vec![lhs.clone(), rhs.clone()],
+                (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&rhs_shape)],
+                (true, false) => vec![lhs.broadcast_to_unchecked(&lhs_shape), rhs.clone()],
+                (true, true) => vec![
+                    lhs.broadcast_to_unchecked(&lhs_shape),
+                    rhs.broadcast_to_unchecked(&rhs_shape),
+                ],
+            };
+            if lhs_in.rank() == 1 || rhs_in.rank() == 1 {
+                let erase_start = shape.len() - if lhs_in.rank() == 1 { 2 } else { 1 };
+                let erase_end = shape.len() - if rhs_in.rank() == 1 { 0 } else { 1 };
+                let matml_out = Tensor::new(device, dtype, &shape, MatMul, inputs);
+                shape.drain(erase_start..erase_end);
+                matml_out.reshape(shape)
+            } else {
+                Tensor::new(device, dtype, shape, MatMul, inputs)
+            }
+        }
+        Err(e) => Tensor::err(device, dtype, [], MatMul, [lhs.clone(), rhs.clone()], e),
     }
 }
 

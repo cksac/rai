@@ -1,5 +1,8 @@
-use crate::{Dim, Dims, Shape, Tensor};
+use crate::{Dim, Dims, Error, Shape, Tensor};
 use std::{any::Any, fmt::Debug};
+
+mod err;
+pub use err::*;
 
 mod full;
 pub use full::*;
@@ -300,22 +303,18 @@ macro_rules! broadcast_binary_op {
         pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
             let device = lhs.device();
             let dtype = lhs.dtype();
-            let (shape, lhs_b, rhs_b) = lhs.shape_broadcast_to(rhs).unwrap_or_else(|e| {
-                panic!(
-                    "{}({:?}, {:?}) with error {:?}",
-                    stringify!($func),
-                    lhs,
-                    rhs,
-                    e
-                )
-            });
-            let inputs = match (lhs_b, rhs_b) {
-                (false, false) => vec![lhs.clone(), rhs.clone()],
-                (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&shape)],
-                (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
-                (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
-            };
-            Tensor::new(device, dtype, shape, $op, inputs)
+            match lhs.shape_broadcast_to(rhs) {
+                Ok((shape, lhs_b, rhs_b)) => {
+                    let inputs = match (lhs_b, rhs_b) {
+                        (false, false) => vec![lhs.clone(), rhs.clone()],
+                        (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&shape)],
+                        (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
+                        (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
+                    };
+                    Tensor::new(device, dtype, shape, $op, inputs)
+                }
+                Err(e) => Tensor::err(device, dtype, [], $op, [lhs.clone(), rhs.clone()], e),
+            }
         }
     };
     ($(#[$meta:meta])* $op:ident, $func:ident, $out_ty:ident) => {
@@ -324,22 +323,18 @@ macro_rules! broadcast_binary_op {
         pub fn $func(lhs: &Tensor, rhs: &Tensor) -> Tensor {
             let device = lhs.device();
             let dtype = $out_ty;
-            let (shape, lhs_b, rhs_b) = lhs.shape_broadcast_to(rhs).unwrap_or_else(|e| {
-                panic!(
-                    "{}({:?}, {:?}) with error {:?}",
-                    stringify!($func),
-                    lhs,
-                    rhs,
-                    e
-                )
-            });
-            let inputs = match (lhs_b, rhs_b) {
-                (false, false) => vec![lhs.clone(), rhs.clone()],
-                (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&shape)],
-                (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
-                (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
-            };
-            Tensor::new(device, dtype, shape, $op, inputs)
+            match lhs.shape_broadcast_to(rhs) {
+                Ok((shape, lhs_b, rhs_b)) => {
+                    let inputs = match (lhs_b, rhs_b) {
+                        (false, false) => vec![lhs.clone(), rhs.clone()],
+                        (false, true) => vec![lhs.clone(), rhs.broadcast_to_unchecked(&shape)],
+                        (true, false) => vec![lhs.broadcast_to_unchecked(&shape), rhs.clone()],
+                        (true, true) => vec![lhs.broadcast_to_unchecked(&shape), rhs.broadcast_to_unchecked(&shape)],
+                    };
+                    Tensor::new(device, dtype, shape, $op, inputs)
+                }
+                Err(e) => Tensor::err(device, dtype, [], $op, [lhs.clone(), rhs.clone()], e),
+            }
         }
     };
 }
@@ -451,6 +446,9 @@ pub trait Op: Debug {
     fn as_any(&self) -> &dyn Any;
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor;
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor>;
+    fn err(&self) -> Option<&Error> {
+        None
+    }
 }
 
 impl<T> From<T> for Box<dyn Op>

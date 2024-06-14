@@ -1,35 +1,38 @@
-use crate::{vjp, Func, Shape, Tensor, TensorIter, F64};
+use crate::{vjp, Error, Func, Shape, Tensor, TensorIter, F64};
 use rustc_hash::FxHashSet;
 use std::collections::{hash_map::RandomState, HashSet};
 
-pub fn topological_sort<T>(outputs: &T) -> Vec<Tensor>
+pub fn topological_sort<T>(outputs: &T) -> Result<Vec<Tensor>, Error>
 where
     T: TensorIter,
 {
-    let mut tape = Vec::new();
-    let mut stack = Vec::new();
-    let mut visited = FxHashSet::default();
-    for o in outputs.tensor_iter() {
-        stack.push((o.clone(), o.is_empty_inputs()));
-        while let Some((t, visited_inputs)) = stack.pop() {
-            if visited.contains(&t.id()) {
-                continue;
-            }
-            if visited_inputs {
-                visited.insert(t.id());
-                tape.push(t);
-            } else {
-                stack.push((t.clone(), true));
-                for input in t.inputs().iter() {
-                    stack.push((input.clone(), input.is_empty_inputs()));
-                }
-            }
-        }
-    }
-    tape
+    _topological_sort(outputs, |_| false, true)
 }
 
-pub fn topological_sort_filter<T, F>(outputs: &T, f: F) -> Vec<Tensor>
+pub fn topological_sort_filter<T, F>(outputs: &T, f: F) -> Result<Vec<Tensor>, Error>
+where
+    T: TensorIter,
+    F: Fn(&Tensor) -> bool,
+{
+    _topological_sort(outputs, f, true)
+}
+
+pub fn topological_sort_unchecked<T>(outputs: &T) -> Vec<Tensor>
+where
+    T: TensorIter,
+{
+    _topological_sort(outputs, |_| false, false).unwrap()
+}
+
+pub fn topological_sort_filter_unchecked<T, F>(outputs: &T, f: F) -> Vec<Tensor>
+where
+    T: TensorIter,
+    F: Fn(&Tensor) -> bool,
+{
+    _topological_sort(outputs, f, false).unwrap()
+}
+
+fn _topological_sort<T, F>(outputs: &T, f: F, check_err: bool) -> Result<Vec<Tensor>, Error>
 where
     T: TensorIter,
     F: Fn(&Tensor) -> bool,
@@ -40,8 +43,13 @@ where
     for o in outputs.tensor_iter() {
         stack.push((o.clone(), o.is_empty_inputs()));
         while let Some((t, visited_inputs)) = stack.pop() {
-            if visited.contains(&t.id()) || !f(&t) {
+            if visited.contains(&t.id()) || f(&t) {
                 continue;
+            }
+            if check_err {
+                if let Some(err) = t.op().err().cloned() {
+                    return Err(err);
+                }
             }
             if visited_inputs {
                 visited.insert(t.id());
@@ -54,7 +62,7 @@ where
             }
         }
     }
-    tape
+    Ok(tape)
 }
 
 pub fn dprint<T: TensorIter>(args: T) {
@@ -63,7 +71,7 @@ pub fn dprint<T: TensorIter>(args: T) {
 
 pub fn dot_graph<T: TensorIter>(args: T) -> String {
     let output_set: Vec<usize> = args.tensor_iter().map(Tensor::id).collect();
-    let tape = topological_sort(&args);
+    let tape = topological_sort_unchecked(&args);
     let nodes: HashSet<String, RandomState> = HashSet::from_iter(tape.iter().map(|tensor| {
         let color = if output_set.contains(&tensor.id()) {
             " color=\"red\""
