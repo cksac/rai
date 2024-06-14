@@ -5,7 +5,7 @@ use rai::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Aux, Device, Module, Shape, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Device, Module, Result, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -69,16 +69,16 @@ fn train_step<M: TrainableModule<Input = (Tensor, bool), Output = Tensor>, O: Op
     model: &M,
     images: &Tensor,
     labels: &Tensor,
-) -> (Tensor, Tensor) {
+) -> Result<(Tensor, Tensor)> {
     let vg_fn = value_and_grad(loss_fn);
     let ((loss, Aux(logits)), (grads, ..)) = vg_fn((model, images, true, labels));
     let mut params = optimizer.step(&grads);
-    eval(&params);
-    model.update_params(&mut params);
-    (loss, logits)
+    eval(&params)?;
+    model.update_params(&mut params)?;
+    Ok((loss, logits))
 }
 
-fn main() {
+fn main() -> Result<()> {
     let num_classes = 10;
     let num_epochs = 10;
     let learning_rate = 0.05;
@@ -108,8 +108,8 @@ fn main() {
         for batch_idx in &batch_idxs {
             let train_images = train_images.narrow(0, batch_idx * batch_size, batch_size);
             let train_labels = train_labels.narrow(0, batch_idx * batch_size, batch_size);
-            let (loss, _logits) = train_step(&mut optimizer, &model, &train_images, &train_labels);
-            let loss = loss.as_scalar(F32);
+            let (loss, _logits) = train_step(&mut optimizer, &model, &train_images, &train_labels)?;
+            let loss = loss.as_scalar(F32)?;
             sum_loss += loss;
         }
         let avg_loss = sum_loss / n_batches as f32;
@@ -120,7 +120,7 @@ fn main() {
             .eq(test_labels)
             .to_dtype(F32)
             .sum(..)
-            .as_scalar(F32);
+            .as_scalar(F32)?;
         let test_accuracy = sum_ok / test_labels.elem_count() as f32;
         let elapsed = start.elapsed();
         println!(
@@ -134,4 +134,5 @@ fn main() {
     let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
     println!("elapsed: {:?}, avg: {:.2} sec/epoch", elapsed, avg_elapsed);
     model.to_safetensors("mnist.safetensors");
+    Ok(())
 }

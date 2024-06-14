@@ -16,6 +16,6 @@ fn test_linear_grad_expr() {
     let b = Tensor::ones([out_dim], F32, device);
     let x = Tensor::ones([batch_dim, in_dim], F32, device);
 
-    let e = raiexpr(&vg_func, (&w, &b, &x));
+    let e = raiexpr(&vg_func, (&w, &b, &x)).unwrap();
     println!("{}", e);
 }

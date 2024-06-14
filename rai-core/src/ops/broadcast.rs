@@ -64,7 +64,7 @@ pub fn broadcast_to(x: &Tensor, shape: impl Shape) -> Tensor {
         }
         Err(e) => {
             let shape = [];
-            Tensor::err(device, dtype, &shape, Broadcast::new(shape), inputs, e)
+            Tensor::err(device, dtype, shape, Broadcast::new(shape), inputs, e)
         }
     }
 }

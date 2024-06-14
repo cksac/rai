@@ -39,6 +39,18 @@ fn test_reshape() {
 }
 
 #[test]
+fn test_reshape_err() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.reshape([6]);
+    let vg_func = value_and_grad(func);
+    let a = Tensor::ones([2, 4], F32, device);
+    let (out, grad) = vg_func(&a);
+    println!("{}", dot_graph([&out, &grad]));
+    println!("{}", out);
+    println!("{}", grad);
+}
+
+#[test]
 fn test_broadcast_to() {
     let device = Cpu;
     let func = |x: &Tensor| x.broadcast_to([3, 2, 3]);

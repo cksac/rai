@@ -1,7 +1,7 @@
-use rai::{eval, grad, Cpu, Tensor, F32};
+use rai::{eval, grad, Cpu, Result, Tensor, F32};
 use std::time::Instant;
 
-fn main() {
+fn main() -> Result<()> {
     let num_features = 100;
     let num_samples = 1000;
     let num_iters = 10000;
@@ -35,14 +35,16 @@ fn main() {
     for _ in 0..num_iters {
         let grad = grad_fn(w);
         let new_w = w - grad * learning_rate;
-        eval(&new_w);
-        w.replace_data(new_w);
+        eval(&new_w)?;
+        w.replace_data(new_w)?;
     }
     let elapsed = start.elapsed();
     let loss = loss_fn(w);
+    eval(&loss)?;
     let throughput = num_iters as f64 / elapsed.as_secs_f64();
     println!(
         "loss: {}, elapsed: {:?}, throughput: {:.2} iters/sec",
         loss, elapsed, throughput
     );
+    Ok(())
 }

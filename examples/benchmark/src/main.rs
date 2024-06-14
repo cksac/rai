@@ -5,7 +5,7 @@ pub mod rai_mnist {
         device, eval,
         nn::{Conv2d, Conv2dConfig, Dropout, Linear, Module, TrainableModule},
         opt::optimizers::{Optimizer, SDG},
-        value_and_grad, AsDevice, Device, Module, Shape, Tensor, Type, F32,
+        value_and_grad, AsDevice, Device, Module, Result, Shape, Tensor, Type, F32,
     };
     use rai_datasets::image::mnist;
     use rand::{seq::SliceRandom, thread_rng};
@@ -66,7 +66,12 @@ pub mod rai_mnist {
             .mean(..)
     }
 
-    pub fn training(num_epochs: usize, learning_rate: f64, batch_size: usize, gpu_id: usize) {
+    pub fn training(
+        num_epochs: usize,
+        learning_rate: f64,
+        batch_size: usize,
+        gpu_id: usize,
+    ) -> Result<()> {
         println!("rai mnist training...");
         let num_classes = 10;
         let device: Box<dyn Device> = device::cuda_if_available(gpu_id);
@@ -101,9 +106,9 @@ pub mod rai_mnist {
                 let train_images = &train_images.narrow(0, batch_idx * batch_size, batch_size);
                 let train_labels = &train_labels.narrow(0, batch_idx * batch_size, batch_size);
                 let (loss, mut params) = step_fn((model, optimizer, train_images, train_labels));
-                eval(&params);
-                model.update_params(&mut params);
-                let loss = loss.as_scalar(F32);
+                eval(&params)?;
+                model.update_params(&mut params)?;
+                let loss = loss.as_scalar(F32)?;
                 sum_loss += loss;
             }
             let avg_loss = sum_loss / n_batches as f32;
@@ -114,7 +119,7 @@ pub mod rai_mnist {
                 .eq(test_labels)
                 .to_dtype(F32)
                 .sum(..)
-                .as_scalar(F32);
+                .as_scalar(F32)?;
             let test_accuracy = sum_ok / test_labels.elem_count() as f32;
             let elapsed = start.elapsed();
             println!(
@@ -127,6 +132,7 @@ pub mod rai_mnist {
         let elapsed = start.elapsed();
         let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
         println!("elapsed: {:?}, avg: {:.2} sec/epoch", elapsed, avg_elapsed);
+        Ok(())
     }
 }
 
@@ -279,7 +285,7 @@ fn main() {
 
     match args.which {
         Which::Rai => {
-            rai_mnist::training(args.epochs, args.learning_rate, batch_size, args.gpu_id);
+            rai_mnist::training(args.epochs, args.learning_rate, batch_size, args.gpu_id).unwrap();
         }
         Which::Candle => {
             candle_mnist::training(args.epochs, args.learning_rate, batch_size, args.gpu_id)

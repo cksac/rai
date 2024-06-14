@@ -5,7 +5,7 @@ use rai::{
         losses::softmax_cross_entropy_with_integer_labels,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Aux, Device, Module, Shape, Tensor, Type, F32,
+    value_and_grad, AsDevice, Aux, Device, Module, Result, Shape, Tensor, Type, F32,
 };
 use rai_datasets::image::mnist;
 use std::{fmt::Debug, time::Instant};
@@ -57,7 +57,7 @@ fn loss_fn<M: TrainableModule<Input = Tensor, Output = Tensor>>(
     (loss, Aux(logits))
 }
 
-fn main() {
+fn main() -> Result<()> {
     let num_layers = 2;
     let hidden_dim = 100;
     let num_classes = 10;
@@ -83,9 +83,9 @@ fn main() {
         let start = Instant::now();
         let ((loss, Aux(_logits)), (grads, ..)) = vg_fn((&model, train_images, train_labels));
         let mut params = optimizer.step(&grads);
-        eval(((&loss, &params), true));
-        model.update_params(&mut params);
-        let loss = loss.as_scalar(F32);
+        eval(((&loss, &params), true))?;
+        model.update_params(&mut params)?;
+        let loss = loss.as_scalar(F32)?;
         let test_logits = model.forward(test_images);
         let sum_ok = test_logits
             .argmax(-1)
@@ -93,7 +93,7 @@ fn main() {
             .eq(test_labels)
             .to_dtype(F32)
             .sum(..)
-            .as_scalar(F32);
+            .as_scalar(F32)?;
         let test_accuracy = sum_ok / test_labels.elem_count() as f32;
         let elapsed = start.elapsed();
         println!(
@@ -107,4 +107,5 @@ fn main() {
     let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
     println!("elapsed: {:?}, avg: {:.2} sec/epoch", elapsed, avg_elapsed);
     model.to_safetensors("mnist.safetensors");
+    Ok(())
 }

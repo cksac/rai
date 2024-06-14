@@ -2,7 +2,7 @@ use crate::{
     eval,
     nn::{ApplyModule, Module},
     utils::{self, dot_graph},
-    AsDType, AsDevice, DType, Device, GradMap, Op, Shape, Type,
+    AsDType, AsDevice, DType, Device, GradMap, Op, Result, Shape, Type,
 };
 #[cfg(feature = "debug-location")]
 use std::panic::Location;
@@ -123,8 +123,8 @@ impl Tensor {
         self.0.inputs.borrow_mut().clear();
     }
 
-    #[inline]
-    pub fn replace_data(&self, rhs: Tensor) {
+    pub fn replace_data(&self, rhs: Tensor) -> Result<()> {
+        // TODO: change to return error instead of debug_assert
         debug_assert!(
             self.shape() == rhs.shape(),
             "{:?} not align with rhs shape: {:?}\n{}",
@@ -140,10 +140,11 @@ impl Tensor {
             rhs.device()
         );
         if !rhs.is_evaluated() {
-            eval(&rhs);
+            eval(&rhs)?;
         }
         self.0.data.replace(rhs.0.data.take());
         self.detach();
+        Ok(())
     }
 
     #[inline]
@@ -178,26 +179,32 @@ impl Tensor {
     }
 
     #[allow(unused_variables)]
-    pub fn as_scalar<T: Type>(&self, dtype: T) -> T::Repr {
+    pub fn as_scalar<T: Type>(&self, dtype: T) -> Result<T::Repr> {
+        // TODO: force explict eval?
         if !self.is_evaluated() {
-            eval(self);
+            eval(self)?;
         }
         let data = self.0.data.borrow();
+
+        // TODO: return error instead of unwrap?
         let data = data.as_deref().unwrap();
-        *data.as_scalar().downcast_ref::<T::Repr>().unwrap()
+        Ok(*data.as_scalar().downcast_ref::<T::Repr>().unwrap())
     }
 
     #[allow(unused_variables)]
-    pub fn as_vec<T: Type>(&self, dtype: T) -> Vec<T::Repr> {
+    pub fn as_vec<T: Type>(&self, dtype: T) -> Result<Vec<T::Repr>> {
+        // TODO: use explict eval?
         if !self.is_evaluated() {
-            eval(self);
+            eval(self)?;
         }
         let data = self.0.data.borrow();
+        // TODO: return error instead of unwrap?
         let data = data.as_deref().unwrap();
-        data.as_vec()
+        Ok(data
+            .as_vec()
             .downcast_ref::<Vec<T::Repr>>()
             .unwrap()
-            .clone()
+            .clone())
     }
 
     #[inline]
@@ -285,9 +292,6 @@ impl Debug for Tensor {
 #[cfg(not(feature = "debug-location"))]
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if !self.is_evaluated() {
-            eval((self, true));
-        }
         let data = self.0.data.borrow();
         f.debug_struct("Tensor")
             .field("id", &self.id())
@@ -299,7 +303,7 @@ impl Display for Tensor {
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
             )
-            .field("data", &format_args!("{}", data.as_deref().unwrap()))
+            .field("data", &data.as_deref())
             .finish()
     }
 }
@@ -307,9 +311,6 @@ impl Display for Tensor {
 #[cfg(feature = "debug-location")]
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if !self.is_evaluated() {
-            eval((self, true));
-        }
         let data = self.0.data.borrow();
         f.debug_struct("Tensor")
             .field("id", &self.id())
@@ -321,7 +322,7 @@ impl Display for Tensor {
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
             )
-            .field("data", &format_args!("{}", data.as_deref().unwrap()))
+            .field("data", &data.as_deref())
             .field("location", &format_args!("{}", &self.0.location))
             .finish()
     }
@@ -350,7 +351,7 @@ impl safetensors::View for Tensor {
 
     fn data(&self) -> Cow<[u8]> {
         if !self.is_evaluated() {
-            eval((self, true));
+            eval((self, true)).unwrap();
         }
         let data = self.0.data.borrow();
         let data = data.as_deref().unwrap();
@@ -376,7 +377,7 @@ impl<'a> safetensors::View for &'a Tensor {
 
     fn data(&self) -> Cow<[u8]> {
         if !self.is_evaluated() {
-            eval((self, true));
+            eval((self, true)).unwrap();
         }
         let data = self.0.data.borrow();
         let data = data.as_deref().unwrap();

@@ -1,4 +1,6 @@
-use crate::{ty_kind, AsDevice, GenericValue, GradMap, ParamMap, Tensor, TensorMap, ValueSpec};
+use crate::{
+    ty_kind, AsDevice, GenericValue, GradMap, ParamMap, Result, Tensor, TensorMap, ValueSpec,
+};
 use std::{borrow::Cow, path::Path};
 
 pub trait Module {
@@ -14,7 +16,7 @@ pub trait Module {
         params
     }
 
-    fn update_params(&self, params: &mut TensorMap);
+    fn update_params(&self, params: &mut TensorMap) -> Result<()>;
 
     fn gather_named_params(&self, prefix: &str, params: &mut ParamMap);
 
@@ -24,7 +26,7 @@ pub trait Module {
         params
     }
 
-    fn update_named_params(&self, prefix: &str, params: &mut ParamMap);
+    fn update_named_params(&self, prefix: &str, params: &mut ParamMap) -> Result<()>;
 
     fn to_safetensors<P: AsRef<Path>>(&self, filename: P)
     where
@@ -38,7 +40,7 @@ pub trait Module {
         &self,
         filenames: &[P],
         device: impl AsDevice,
-    ) {
+    ) -> Result<()> {
         let mut st_tensors = ParamMap::new();
         let device = device.device();
         for filename in filenames {
@@ -49,7 +51,7 @@ pub trait Module {
                 st_tensors.insert(name, t);
             }
         }
-        self.update_named_params("", &mut st_tensors);
+        self.update_named_params("", &mut st_tensors)
     }
 }
 
@@ -71,7 +73,7 @@ where
     }
 
     #[inline]
-    fn update_params(&self, params: &mut TensorMap) {
+    fn update_params(&self, params: &mut TensorMap) -> Result<()> {
         (*self).update_params(params)
     }
 
@@ -79,7 +81,7 @@ where
         (*self).gather_named_params(prefix, params)
     }
 
-    fn update_named_params(&self, prefix: &str, params: &mut ParamMap) {
+    fn update_named_params(&self, prefix: &str, params: &mut ParamMap) -> Result<()> {
         (*self).update_named_params(prefix, params)
     }
 }
@@ -144,9 +146,9 @@ impl<T, M> ApplyModule<M> for T where M: Module<Input = T> {}
 
 pub trait WithParams {
     fn gather_by_id(&self, params: &mut TensorMap);
-    fn update_by_id(&self, params: &mut TensorMap);
+    fn update_by_id(&self, params: &mut TensorMap) -> Result<()>;
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str);
-    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str);
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) -> Result<()>;
 }
 
 impl WithParams for Tensor {
@@ -154,12 +156,14 @@ impl WithParams for Tensor {
         params.insert(self.id(), self.clone());
     }
 
-    fn update_by_id(&self, params: &mut TensorMap) {
+    fn update_by_id(&self, params: &mut TensorMap) -> Result<()> {
         if let Some(t) = params.remove(self.id()) {
             // todo: check if can promote type
             let t = t.to_dtype(self).to_device(self);
-            self.replace_data(t);
+            return self.replace_data(t);
         }
+        // TODO: return error if tensor not found?
+        Ok(())
     }
 
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
@@ -171,7 +175,7 @@ impl WithParams for Tensor {
         params.insert(name, self.clone());
     }
 
-    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) -> Result<()> {
         let name: Cow<'_, str> = if prefix.is_empty() {
             name.into()
         } else {
@@ -180,8 +184,9 @@ impl WithParams for Tensor {
         if let Some(t) = params.remove(name.as_ref()) {
             // todo: check if can promote type
             let t = t.to_dtype(self).to_device(self);
-            self.replace_data(t);
+            self.replace_data(t)
         } else {
+            // TODO: return error if tensor not found?
             panic!("parameter {} not found in params {:?}", name, params.keys());
         }
     }
@@ -197,10 +202,11 @@ where
         }
     }
 
-    fn update_by_id(&self, params: &mut TensorMap) {
+    fn update_by_id(&self, params: &mut TensorMap) -> Result<()> {
         if let Some(t) = self {
-            t.update_by_id(params);
+            return t.update_by_id(params);
         }
+        Ok(())
     }
 
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
@@ -209,10 +215,11 @@ where
         }
     }
 
-    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) -> Result<()> {
         if let Some(t) = self {
-            t.update_by_name(params, prefix, name);
+            return t.update_by_name(params, prefix, name);
         }
+        Ok(())
     }
 }
 
@@ -226,10 +233,11 @@ where
         }
     }
 
-    fn update_by_id(&self, params: &mut TensorMap) {
+    fn update_by_id(&self, params: &mut TensorMap) -> Result<()> {
         for t in self {
-            t.update_by_id(params);
+            t.update_by_id(params)?;
         }
+        Ok(())
     }
 
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
@@ -239,11 +247,12 @@ where
         }
     }
 
-    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) -> Result<()> {
         for (i, t) in self.iter().enumerate() {
             let name = &format!("{}.{}", name, i);
-            t.update_by_name(params, prefix, name);
+            t.update_by_name(params, prefix, name)?;
         }
+        Ok(())
     }
 }
 
@@ -255,8 +264,8 @@ where
         self.gather_params(params);
     }
 
-    fn update_by_id(&self, params: &mut TensorMap) {
-        self.update_params(params);
+    fn update_by_id(&self, params: &mut TensorMap) -> Result<()> {
+        self.update_params(params)
     }
 
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
@@ -268,7 +277,7 @@ where
         self.gather_named_params(&p, params)
     }
 
-    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {
+    fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) -> Result<()> {
         let p: Cow<'_, str> = if prefix.is_empty() {
             name.into()
         } else {

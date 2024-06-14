@@ -21,7 +21,13 @@ impl Op for Err {
     }
 
     fn dot_label(&self) -> String {
-        format!("OpErr({}, {:?})", self.op.dot_label(), self.err)
+        format!(
+            "{}\\nERROR: {}",
+            self.op.dot_label(),
+            format!("{:?}", self.err)
+                .replace("{ ", "(")
+                .replace(" }", ")")
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -40,10 +46,10 @@ impl Op for Err {
     fn vjp(
         &self,
         _output: &crate::Tensor,
-        _primals: &[crate::Tensor],
+        primals: &[crate::Tensor],
         _cotangent: &crate::Tensor,
     ) -> Vec<crate::Tensor> {
-        vec![]
+        primals.iter().map(|x| x.zeros_like()).collect()
     }
 
     fn err(&self) -> Option<&Error> {

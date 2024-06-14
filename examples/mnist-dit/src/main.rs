@@ -5,7 +5,7 @@ use rai::{
         losses,
         optimizers::{Optimizer, SDG},
     },
-    value_and_grad, AsDevice, Device, FloatElemType, Module, Shape, Tensor, Type, F32, U32,
+    value_and_grad, AsDevice, Device, FloatElemType, Module, Result, Shape, Tensor, Type, F32, U32,
 };
 use rai_datasets::image::mnist;
 use rand::{seq::SliceRandom, thread_rng};
@@ -372,7 +372,7 @@ fn train(
     batch_size: usize,
     learning_rate: f64,
     device: impl AsDevice,
-) {
+) -> Result<()> {
     let device = device.device();
     let params = model.params();
     println!("params: {:?}", params.len());
@@ -403,13 +403,13 @@ fn train(
             let t = Tensor::rand_with(0.0f32, 1000.0, [batch_size], device).to_dtype(U32);
             let (xs, noise) = scheduler.add_noise(&x, &t);
             let (loss, mut params) = step_fn((model, &mut optimizer, &xs, &t, labels, &noise));
-            eval(&params);
-            model.update_params(&mut params);
+            eval(&params)?;
+            model.update_params(&mut params)?;
             iter_cnt += 1;
             if iter_cnt % 1000 == 0 && iter_cnt > 0 {
                 println!(
                     "epoch: {i:04}, iter: {iter_cnt}, loss: {:10.5}",
-                    loss.as_scalar(F32)
+                    loss.as_scalar(F32)?
                 );
             }
         }
@@ -420,9 +420,10 @@ fn train(
     let avg_elapsed = elapsed.as_secs_f64() / num_epochs as f64;
     println!("elapsed: {:?}, avg: {:.2} sec/epoch", elapsed, avg_elapsed);
     model.to_safetensors("mnist-dit.safetensors");
+    Ok(())
 }
 
-fn main() {
+fn main() -> Result<()> {
     let num_epochs = 1;
     let learning_rate = 0.05;
     let batch_size = 300;
@@ -442,5 +443,5 @@ fn main() {
         batch_size,
         learning_rate,
         device,
-    );
+    )
 }

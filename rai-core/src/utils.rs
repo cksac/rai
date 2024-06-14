@@ -174,6 +174,6 @@ pub fn assert_all_close(x: &Tensor, y: &Tensor, eps: f64) {
     let diff = x - y;
     let t = diff.full_like(eps);
     let check = diff.gt(t);
-    let r = check.to_dtype(F64).sum(..).as_scalar(F64);
+    let r = check.to_dtype(F64).sum(..).as_scalar(F64).unwrap();
     assert_eq!(r, 0.0, "diff too large, x: {}, y: {}", x, y)
 }

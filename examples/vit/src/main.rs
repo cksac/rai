@@ -1,6 +1,6 @@
 use clap::Parser;
 use hf_hub::{api::sync::Api, Repo, RepoType};
-use rai::{device, nn::Module, AsDevice, Device, Tensor, Type, F32};
+use rai::{device, nn::Module, AsDevice, Device, Result, Tensor, Type, F32};
 use rai_models::cv::vit::{ImageClassificationConfig, ImageClassificationModel};
 use std::time::Instant;
 
@@ -31,7 +31,7 @@ pub fn load_image(url: impl AsRef<str>, dtype: impl Type, device: impl AsDevice)
 fn load_model(
     dtype: impl Type,
     device: impl AsDevice,
-) -> (ImageClassificationConfig, ImageClassificationModel) {
+) -> Result<(ImageClassificationConfig, ImageClassificationModel)> {
     let start = Instant::now();
     let device = device.device();
     let model_id = "google/vit-base-patch16-224".to_string();
@@ -43,10 +43,10 @@ fn load_model(
     let cfg: ImageClassificationConfig = serde_json::from_str(&config).unwrap();
     let model_filenames = vec![repo.get("model.safetensors").unwrap()];
     let model = ImageClassificationModel::new(&cfg, dtype, device);
-    model.update_by_safetensors(&model_filenames, device);
+    model.update_by_safetensors(&model_filenames, device)?;
     let elapsed = start.elapsed();
     println!("model loaded in : {:?}", elapsed);
-    (cfg, model)
+    Ok((cfg, model))
 }
 
 #[derive(Parser)]
@@ -58,15 +58,15 @@ struct Args {
     image_url: String,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = Args::parse();
     let device: Box<dyn Device> = device::cuda_if_available(0);
     let device = device.as_ref();
     let dtype = F32;
-    let (cfg, model) = load_model(dtype, device);
+    let (cfg, model) = load_model(dtype, device)?;
     let image = load_image(args.image_url, dtype, device);
     let logits = model.forward(&image.unsqueeze(0));
-    let prs = logits.softmax(-1).narrow(0, 0, 1).squeeze(0).as_vec(F32);
+    let prs = logits.softmax(-1).narrow(0, 0, 1).squeeze(0).as_vec(F32)?;
     let mut prs = prs.iter().enumerate().collect::<Vec<_>>();
     prs.sort_by(|(_, p1), (_, p2)| p2.total_cmp(p1));
     for &(category_idx, pr) in prs.iter().take(5) {
@@ -76,4 +76,5 @@ fn main() {
             100. * pr
         );
     }
+    Ok(())
 }

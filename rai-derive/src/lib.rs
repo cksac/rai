@@ -125,9 +125,13 @@ pub fn module(item: TokenStream) -> TokenStream {
                     #call_fwd
                 }
                 fn gather_params(&self, params: &mut ::#crate_root::TensorMap) {}
-                fn update_params(&self, params: &mut ::#crate_root::TensorMap) {}
+                fn update_params(&self, params: &mut ::#crate_root::TensorMap) -> #crate_root::Result<()> {
+                    Ok(())
+                }
                 fn gather_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {}
-                fn update_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {}
+                fn update_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) -> #crate_root::Result<()> {
+                    Ok(())
+                }
             }
 
             impl #impl_generics ::#crate_root::ValueSpec for #receiver_name #type_generics #where_clause {
@@ -145,7 +149,7 @@ pub fn module(item: TokenStream) -> TokenStream {
             .map(|f| {
                 let field_name = f.field.ident.as_ref().unwrap();
                 quote::quote! {
-                    ::#crate_root::nn::WithParams::update_by_id(&self.#field_name, params);
+                    ::#crate_root::nn::WithParams::update_by_id(&self.#field_name, params)?;
                 }
             })
             .collect();
@@ -169,7 +173,7 @@ pub fn module(item: TokenStream) -> TokenStream {
                 let f_name = field_name.to_string();
                 let param_name = f.rename.as_ref().unwrap_or(&f_name);
                 quote::quote! {
-                    ::#crate_root::nn::WithParams::update_by_name(&self.#field_name, params, prefix, #param_name);
+                    ::#crate_root::nn::WithParams::update_by_name(&self.#field_name, params, prefix, #param_name)?;
                 }
             })
             .collect();
@@ -201,16 +205,18 @@ pub fn module(item: TokenStream) -> TokenStream {
                     #(#gather_params)*
                 }
 
-                fn update_params(&self, params: &mut ::#crate_root::TensorMap) {
+                fn update_params(&self, params: &mut ::#crate_root::TensorMap) -> #crate_root::Result<()> {
                     #(#update_params)*
+                    Ok(())
                 }
 
                 fn gather_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {
                     #(#gather_named_params)*
                 }
 
-                fn update_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) {
+                fn update_named_params(&self, prefix: &str, params: &mut ::#crate_root::ParamMap) -> #crate_root::Result<()> {
                     #(#update_named_params)*
+                    Ok(())
                 }
             }
 

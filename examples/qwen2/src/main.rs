@@ -1,10 +1,10 @@
 use hf_hub::{api::sync::Api, Repo, RepoType};
-use rai::{device, nn::Module, AsDevice, Device, Tensor, Type, F32};
+use rai::{device, nn::Module, AsDevice, Device, Result, Tensor, Type, F32};
 use rai_models::llm::qwen2::{Config, Model};
 use std::{io::Write, time::Instant};
 use tokenizers::Tokenizer;
 
-fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
+fn load_model(dtype: impl Type, device: impl AsDevice) -> Result<(Tokenizer, Model)> {
     let start = Instant::now();
     let device = device.device();
     let model_id = "Qwen/Qwen1.5-0.5B".to_string();
@@ -23,10 +23,10 @@ fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     // 0.5B / 1.8B
     let model_filenames = vec![repo.get("model.safetensors").unwrap()];
     let model = Model::new(&cfg, dtype, device);
-    model.update_by_safetensors(&model_filenames, device);
+    model.update_by_safetensors(&model_filenames, device)?;
     let elapsed = start.elapsed();
     println!("model loaded in : {:?}", elapsed);
-    (tokenizer, model)
+    Ok((tokenizer, model))
 }
 
 fn sample_argmax(logits: &[f32]) -> u32 {
@@ -52,11 +52,11 @@ pub fn apply_repeat_penalty(logits: &mut [f32], penalty: f32, context: &[u32]) {
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let device: Box<dyn Device> = device::cuda_if_available(0);
     let device = device.as_ref();
     let dtype = F32;
-    let (tokenizer, model) = load_model(dtype, device);
+    let (tokenizer, model) = load_model(dtype, device)?;
 
     let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
     println!("{prompt}");
@@ -82,7 +82,7 @@ fn main() {
         let input = Tensor::from_array(ctx, [ctx.len()], device).unsqueeze(0);
         let logits = model.forward(&(input, start_pos));
         let logits = logits.squeeze(0).squeeze(0).to_dtype(F32);
-        let mut logits = logits.as_vec(dtype);
+        let mut logits = logits.as_vec(dtype)?;
         if repeat_penalty >= 1. {
             let start_at = tokens.len().saturating_sub(repeat_last_n);
             apply_repeat_penalty(&mut logits, repeat_penalty, &tokens[start_at..])
@@ -102,4 +102,5 @@ fn main() {
         "\n{generated_tokens} tokens generated ({:.2} token/s)",
         generated_tokens as f64 / dt.as_secs_f64(),
     );
+    Ok(())
 }

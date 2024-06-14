@@ -1,5 +1,5 @@
 use hf_hub::{api::sync::Api, Repo, RepoType};
-use rai::{device, ext, nn::Module, AsDevice, Device, Tensor, Type, F32};
+use rai::{device, ext, nn::Module, AsDevice, Device, Result, Tensor, Type, F32};
 use rai_models::llm::{
     phi3::{Config, Model},
     utils::TokenOutputStream,
@@ -7,7 +7,7 @@ use rai_models::llm::{
 use std::{io::Write, time::Instant};
 use tokenizers::Tokenizer;
 
-fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
+fn load_model(dtype: impl Type, device: impl AsDevice) -> Result<(Tokenizer, Model)> {
     let start = Instant::now();
     let device = device.device();
     let model_id = "microsoft/Phi-3-mini-4k-instruct".to_string();
@@ -23,10 +23,10 @@ fn load_model(dtype: impl Type, device: impl AsDevice) -> (Tokenizer, Model) {
     let cfg: Config = serde_json::from_str(&config).unwrap();
     let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json");
     let model = Model::new(&cfg, dtype, device);
-    model.update_by_safetensors(&model_filenames, device);
+    model.update_by_safetensors(&model_filenames, device)?;
     let elapsed = start.elapsed();
     println!("model loaded in : {:?}", elapsed);
-    (tokenizer, model)
+    Ok((tokenizer, model))
 }
 
 fn sample_argmax(logits: &[f32]) -> u32 {
@@ -52,11 +52,11 @@ pub fn apply_repeat_penalty(logits: &mut [f32], penalty: f32, context: &[u32]) {
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let device: Box<dyn Device> = device::cuda_if_available(0);
     let device = device.as_ref();
     let dtype = F32;
-    let (tokenizer, model) = load_model(dtype, device);
+    let (tokenizer, model) = load_model(dtype, device)?;
 
     let prompt = "A skier slides down a frictionless slope of height 40m and length 80m. What's the skier speed at the bottom?";
     println!("{prompt}");
@@ -85,7 +85,7 @@ fn main() {
         let input = Tensor::from_array(ctx, [ctx.len()], device).unsqueeze(0);
         let logits = model.fwd(&input, pos).narrow(1, 0, 1).squeeze(1);
         let logits = logits.squeeze(0);
-        let mut logits = logits.as_vec(dtype);
+        let mut logits = logits.as_vec(dtype)?;
         if repeat_penalty >= 1. {
             let start_at = output_stream.len().saturating_sub(repeat_last_n);
             apply_repeat_penalty(
@@ -111,4 +111,5 @@ fn main() {
         "\n{generated_tokens} tokens generated ({:.2} token/s)",
         generated_tokens as f64 / dt.as_secs_f64(),
     );
+    Ok(())
 }
