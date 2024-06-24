@@ -1,6 +1,5 @@
 use crate::{Dim, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Narrow {
@@ -29,6 +28,10 @@ impl Narrow {
 }
 
 impl Op for Narrow {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Narrow")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -41,13 +44,11 @@ impl Op for Narrow {
         format!("Narrow({}, {}, {})", self.dim, self.start, self.len)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         tangent_x.narrow(self.dim, self.start, self.len)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let x_dim = x.shape();

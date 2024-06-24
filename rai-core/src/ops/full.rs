@@ -1,6 +1,5 @@
 use crate::{AsDType, AsDevice, ElemType, Op, Shape, Tensor, Type};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Full<D>
@@ -22,6 +21,10 @@ impl<D> Op for Full<D>
 where
     D: Type,
 {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("Full<{}>", D::NAME))
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(*self)
     }
@@ -34,13 +37,11 @@ where
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]

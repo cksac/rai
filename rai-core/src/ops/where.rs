@@ -1,11 +1,14 @@
 use crate::{Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Where;
 
 impl Op for Where {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Where")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -14,7 +17,6 @@ impl Op for Where {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let pred = &primals[2];
         let tangent_t = &tangents[0];
@@ -22,7 +24,6 @@ impl Op for Where {
         pred.where_cond(tangent_t, tangent_f)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let pred = &primals[2];
         let zeros = &cotangent.zeros_like();

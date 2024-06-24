@@ -1,11 +1,14 @@
 use crate::{Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MatMul;
 
 impl Op for MatMul {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("MatMul")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(*self)
     }
@@ -14,12 +17,10 @@ impl Op for MatMul {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         tangents[0].matmul(&primals[1]) + primals[0].matmul(&tangents[1])
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];

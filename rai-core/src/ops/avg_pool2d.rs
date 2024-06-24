@@ -2,8 +2,8 @@ use super::ToPair;
 use crate::dim::Before;
 use crate::{Op, Shape, Tensor};
 use std::any::Any;
+use std::borrow::Cow;
 use std::fmt::Debug;
-use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AvgPool2d {
@@ -27,6 +27,10 @@ impl AvgPool2d {
 }
 
 impl Op for AvgPool2d {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("AvgPool2d")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -42,12 +46,10 @@ impl Op for AvgPool2d {
         )
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         todo!("jvp for AvgPool2d")
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         assert_eq!(
             self.kernel_size, self.stride,

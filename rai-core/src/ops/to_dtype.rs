@@ -1,6 +1,5 @@
 use crate::{AsDType, Op, Shape, Tensor, Type};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ToDType<D: Type> {
@@ -14,6 +13,10 @@ impl<D: Type> ToDType<D> {
 }
 
 impl<D: Type> Op for ToDType<D> {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("ToDType<{}>", D::NAME))
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -26,13 +29,11 @@ impl<D: Type> Op for ToDType<D> {
         format!("ToDType({:?})", &self.dtype)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         tangent_x.to_dtype(self.dtype)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent.to_dtype(x);

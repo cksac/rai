@@ -1,6 +1,5 @@
 use crate::{dim::Before, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConvTranspose2d {
@@ -27,6 +26,10 @@ impl ConvTranspose2d {
 }
 
 impl Op for ConvTranspose2d {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("ConvTranspose2d")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -42,12 +45,10 @@ impl Op for ConvTranspose2d {
         )
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         todo!("jvp for ConvTranspose2d")
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let input = &primals[0];
         let kernel = &primals[1];

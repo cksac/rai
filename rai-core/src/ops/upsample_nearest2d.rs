@@ -1,7 +1,6 @@
 use super::ToPair;
 use crate::{dim::Before, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpsampleNearest2d {
@@ -15,6 +14,10 @@ impl UpsampleNearest2d {
 }
 
 impl Op for UpsampleNearest2d {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("UpsampleNearest2d")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -27,12 +30,10 @@ impl Op for UpsampleNearest2d {
         format!("UpsampleNearest2d({:?})", self.size)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         todo!("jvp for UpsampleNearest2d")
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let [_n, c, h, w] = x.sizes(Before::<4>);

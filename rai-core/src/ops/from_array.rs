@@ -1,6 +1,5 @@
 use crate::{AsDevice, ElemType, FloatElemType, Op, Shape, Tensor, Type};
-use std::{any::Any, fmt::Debug};
-use tracing::Level;
+use std::{any::Any, borrow::Cow, fmt::Debug};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FromArray<D>
@@ -23,6 +22,10 @@ impl<D> Op for FromArray<D>
 where
     D: Type,
 {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("FromArray<{}>", D::NAME))
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -35,13 +38,11 @@ where
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
@@ -50,13 +51,13 @@ where
 
 /// Creates a `Tensor` from an array of values.
 ///
-/// # Arguments
+/// Arguments
 ///
 /// * `data` - The array of values.
 /// * `shape` - The shape of the `Tensor`.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// # Returns
+/// Returns
 ///
 /// A `Tensor` created from the array of values.
 #[track_caller]

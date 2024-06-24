@@ -1,7 +1,6 @@
 use super::ToPair;
 use crate::{dim::Before, Op, Shape, Tensor};
-use std::{any::Any, fmt::Debug};
-use tracing::Level;
+use std::{any::Any, borrow::Cow, fmt::Debug};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MaxPool2d {
@@ -28,6 +27,10 @@ impl MaxPool2d {
 }
 
 impl Op for MaxPool2d {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("MaxPool2d")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -43,12 +46,10 @@ impl Op for MaxPool2d {
         )
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         todo!("jvp for MaxPool2d")
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         assert_eq!(
             self.kernel_size, self.stride,

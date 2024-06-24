@@ -50,7 +50,7 @@ pub use eval::*;
 pub mod utils;
 
 mod error;
-pub use error::{Error, Result};
+pub use error::{Error, OpError, OpResult, Result};
 
 pub mod nn;
 

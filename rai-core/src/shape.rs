@@ -1,4 +1,4 @@
-use crate::{dim::Before, Dim, Dims, Error, Result};
+use crate::{dim::Before, Dim, Dims, OpError, OpResult};
 use std::{cmp::Ordering, fmt::Debug};
 
 pub trait Shape: Debug {
@@ -85,7 +85,7 @@ pub trait Shape: Debug {
         dims
     }
 
-    fn shape_broadcast_to<T: Shape + ?Sized>(&self, rhs: &T) -> Result<(Vec<usize>, bool, bool)> {
+    fn shape_broadcast_to<T: Shape + ?Sized>(&self, rhs: &T) -> OpResult<(Vec<usize>, bool, bool)> {
         let lhs = self;
         let mut lhs_b = false;
         let mut rhs_b = false;
@@ -117,7 +117,7 @@ pub trait Shape: Debug {
                 out_shape.push(l);
                 rhs_b = true;
             } else {
-                return Err(Error::IncompatibleShape {
+                return Err(OpError::IncompatibleShape {
                     lhs: lhs.shape().to_vec(),
                     rhs: rhs.shape().to_vec(),
                 });
@@ -130,11 +130,11 @@ pub trait Shape: Debug {
     fn shape_broadcast_matmul<S: Shape + ?Sized>(
         &self,
         rhs: &S,
-    ) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>, bool, bool)> {
+    ) -> OpResult<(Vec<usize>, Vec<usize>, Vec<usize>, bool, bool)> {
         let lhs = self.shape();
         let rhs = rhs.shape();
         if lhs.rank() < 2 || rhs.rank() < 2 {
-            return Err(Error::IncompatibleShape {
+            return Err(OpError::IncompatibleShape {
                 lhs: lhs.to_vec(),
                 rhs: rhs.to_vec(),
             });
@@ -142,7 +142,7 @@ pub trait Shape: Debug {
         let (m, lhs_k) = (lhs[lhs.len() - 2], lhs[lhs.len() - 1]);
         let (rhs_k, n) = (rhs[rhs.len() - 2], rhs[rhs.len() - 1]);
         if lhs_k != rhs_k {
-            return Err(Error::IncompatibleShape {
+            return Err(OpError::IncompatibleShape {
                 lhs: lhs.to_vec(),
                 rhs: rhs.to_vec(),
             });

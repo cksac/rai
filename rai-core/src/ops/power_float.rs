@@ -1,6 +1,5 @@
 use crate::{Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PowerFloat {
@@ -18,6 +17,10 @@ impl PowerFloat {
 }
 
 impl Op for PowerFloat {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("PowerFloat")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -30,14 +33,12 @@ impl Op for PowerFloat {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         tangent_x * x.powf(self.exponent - 1.0) * self.exponent
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent * x.powf(self.exponent - 1.0) * self.exponent;

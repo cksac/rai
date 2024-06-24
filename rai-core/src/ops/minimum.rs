@@ -1,11 +1,14 @@
 use crate::{broadcast_binary_op, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Minimum;
 
 impl Op for Minimum {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Minimum")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(*self)
     }
@@ -14,7 +17,6 @@ impl Op for Minimum {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let lhs = &primals[0];
         let rhs = &primals[1];
@@ -25,7 +27,6 @@ impl Op for Minimum {
         tangent_lhs * lhs_mask / (rhs_mask + 1.0) + tangent_rhs * rhs_mask / (lhs_mask + 1.0)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];

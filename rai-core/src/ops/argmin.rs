@@ -1,6 +1,5 @@
 use crate::{Op, Shape, Tensor, U32};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 use super::ArgReduceArgs;
 
@@ -21,6 +20,10 @@ impl ArgMin {
 }
 
 impl Op for ArgMin {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("ArgMin")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -33,12 +36,10 @@ impl Op for ArgMin {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
     }

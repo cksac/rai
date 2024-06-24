@@ -27,6 +27,7 @@ pub trait FloatElemType: ElemType + Add + Sub + Div + Mul {
 
 pub trait Type: Clone + Copy + Debug + PartialEq + 'static {
     type Repr: ElemType<DType = Self>;
+    const NAME: &'static str;
 
     fn boxed_dtype() -> Box<dyn DType>;
 
@@ -208,6 +209,8 @@ pub struct U8;
 impl Type for U8 {
     type Repr = u8;
 
+    const NAME: &'static str = "U8";
+
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(U8)
     }
@@ -237,6 +240,8 @@ impl ElemType for u32 {
 pub struct U32;
 impl Type for U32 {
     type Repr = u32;
+
+    const NAME: &'static str = "U32";
 
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(U32)
@@ -290,6 +295,8 @@ pub struct F16;
 impl Type for F16 {
     type Repr = f16;
 
+    const NAME: &'static str = "F16";
+
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(F16)
     }
@@ -341,6 +348,8 @@ impl FloatElemType for bf16 {
 pub struct BF16;
 impl Type for BF16 {
     type Repr = bf16;
+
+    const NAME: &'static str = "BF16";
 
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(BF16)
@@ -394,6 +403,8 @@ pub struct F32;
 impl Type for F32 {
     type Repr = f32;
 
+    const NAME: &'static str = "F32";
+
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(F32)
     }
@@ -446,6 +457,8 @@ pub struct F64;
 impl Type for F64 {
     type Repr = f64;
 
+    const NAME: &'static str = "F64";
+
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(F64)
     }
@@ -475,6 +488,8 @@ impl ElemType for i64 {
 pub struct I64;
 impl Type for I64 {
     type Repr = i64;
+
+    const NAME: &'static str = "I64";
 
     fn boxed_dtype() -> Box<dyn DType> {
         Box::new(I64)

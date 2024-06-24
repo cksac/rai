@@ -1,7 +1,6 @@
 use super::ArgReduceArgs;
 use crate::{Op, Shape, Tensor, U32};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ArgMax {
@@ -20,6 +19,10 @@ impl ArgMax {
 }
 
 impl Op for ArgMax {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("ArgMax")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -32,12 +35,10 @@ impl Op for ArgMax {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
     }

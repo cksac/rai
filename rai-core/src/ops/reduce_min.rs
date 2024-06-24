@@ -1,6 +1,5 @@
 use crate::{ops::reduce_chooser_jvp_rule, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 use super::ReduceArgs;
 
@@ -24,6 +23,10 @@ impl ReduceMin {
 }
 
 impl Op for ReduceMin {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("ReduceMin")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -36,14 +39,12 @@ impl Op for ReduceMin {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
         reduce_chooser_jvp_rule(tangent_x, output, x, self.dims())
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let mut shape = x.shape().to_vec();

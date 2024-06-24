@@ -1,11 +1,14 @@
 use crate::{broadcast_binary_op, impl_std_ops, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Div;
 
 impl Op for Div {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Div")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(*self)
     }
@@ -14,7 +17,6 @@ impl Op for Div {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let rhs = &primals[1];
         let tangent_lhs = &tangents[0];
@@ -22,7 +24,6 @@ impl Op for Div {
         tangent_lhs / rhs - output * tangent_rhs
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let rhs = &primals[1];
         let cotangent_lhs = cotangent / rhs;
@@ -34,12 +35,12 @@ impl Op for Div {
 broadcast_binary_op!(
     /// Divides two `Tensor` objects.
     ///
-    /// # Arguments
+    /// Arguments
     ///
     /// * `lhs` - The first `Tensor`.
     /// * `rhs` - The second `Tensor`.
     ///
-    /// # Returns
+    /// Returns
     ///
     /// The resulting `Tensor` after the division.
     Div,

@@ -48,7 +48,7 @@ where
             }
             if check_err {
                 if let Some(err) = t.op().err().cloned() {
-                    return Err(err);
+                    return Err(err.into());
                 }
             }
             if visited_inputs {

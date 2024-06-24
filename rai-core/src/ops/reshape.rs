@@ -1,6 +1,5 @@
-use crate::{Error, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use crate::{Op, OpError, Shape, Tensor};
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Reshape {
@@ -19,6 +18,10 @@ impl Reshape {
 }
 
 impl Op for Reshape {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Reshape")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -31,13 +34,11 @@ impl Op for Reshape {
         format!("Reshape({:?})", self.shape)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         tangent_x.reshape(self.shape())
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let cotangent_x = cotangent.reshape(x);
@@ -68,7 +69,7 @@ pub fn reshape(x: &Tensor, shape: impl Shape) -> Tensor {
             shape.shape().to_owned(),
             Reshape::new(&shape),
             inputs,
-            Error::IncompatibleShape {
+            OpError::IncompatibleShape {
                 lhs: x.shape().to_owned(),
                 rhs: shape.shape().to_owned(),
             },

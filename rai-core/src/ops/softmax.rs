@@ -1,6 +1,5 @@
 use crate::{Dim, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Softmax {
@@ -14,6 +13,10 @@ impl Softmax {
 }
 
 impl Op for Softmax {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Softmax")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -26,14 +29,12 @@ impl Op for Softmax {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         let sv = &(output * tangent_x);
         sv - output * sv.sum((self.dim, true))
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, _primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let sv = &(output * cotangent);
         let cotangent_x = sv - output * sv.sum((self.dim, true));

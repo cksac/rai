@@ -1,6 +1,5 @@
 use crate::{AsDevice, ElemType, Op, Shape, Tensor, Type};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Normal<D: Type> {
@@ -15,6 +14,10 @@ impl<D: Type> Normal<D> {
 }
 
 impl<D: Type> Op for Normal<D> {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("Normal<{}>", D::NAME))
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(*self)
     }
@@ -27,13 +30,11 @@ impl<D: Type> Op for Normal<D> {
         format!("Normal({:?}, {:?})", self.mean, self.std)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
@@ -42,13 +43,13 @@ impl<D: Type> Op for Normal<D> {
 
 /// Creates a `Tensor` filled with random values from a normal distribution with mean 0 and variance 1.
 ///
-/// # Arguments
+/// Arguments
 ///
 /// * `shape` - The shape of the `Tensor`.
 /// * `dtype` - The data type of the `Tensor`.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// # Returns
+/// Returns
 ///
 /// A `Tensor` filled with random values from a normal distribution.
 #[track_caller]

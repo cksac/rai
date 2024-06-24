@@ -1,6 +1,5 @@
 use crate::{Dim, Op, Shape, Tensor};
-use std::{any::Any, fmt::Debug};
-use tracing::Level;
+use std::{any::Any, borrow::Cow, fmt::Debug};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Concatenate {
@@ -18,6 +17,10 @@ impl Concatenate {
 }
 
 impl Op for Concatenate {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Concatenate")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -30,12 +33,10 @@ impl Op for Concatenate {
         format!("Concatenate({:?})", self.dim())
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         Tensor::cat(tangents, self.dim)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let mut start_idx = 0;
         let mut cotangent_primals = Vec::with_capacity(primals.len());

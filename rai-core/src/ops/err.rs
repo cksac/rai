@@ -1,18 +1,24 @@
-use crate::{AsDType, AsDevice, Error, Op, Shape, Tensor};
+use std::borrow::Cow;
+
+use crate::{AsDType, AsDevice, Op, OpError, Shape, Tensor};
 
 #[derive(Clone, Debug)]
 pub struct Err {
     op: Box<dyn Op>,
-    err: Error,
+    err: OpError,
 }
 
 impl Err {
-    pub fn new(op: Box<dyn Op>, err: Error) -> Self {
+    pub fn new(op: Box<dyn Op>, err: OpError) -> Self {
         Err { op, err }
     }
 }
 
 impl Op for Err {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Err")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(Err {
             op: self.op.clone_boxed(),
@@ -52,7 +58,7 @@ impl Op for Err {
         primals.iter().map(|x| x.zeros_like()).collect()
     }
 
-    fn err(&self) -> Option<&Error> {
+    fn err(&self) -> Option<&OpError> {
         Some(&self.err)
     }
 }
@@ -63,7 +69,7 @@ pub fn err(
     shape: impl Shape,
     op: impl Into<Box<dyn Op>>,
     inputs: impl Into<Vec<Tensor>>,
-    e: Error,
+    e: OpError,
 ) -> Tensor {
     let op = Err::new(op.into(), e);
     Tensor::new(device, dtype, shape, op, inputs)
@@ -78,7 +84,7 @@ impl Tensor {
         shape: impl Shape,
         op: impl Into<Box<dyn Op>>,
         inputs: impl Into<Vec<Tensor>>,
-        e: Error,
+        e: OpError,
     ) -> Tensor {
         err(device, dtype, shape, op, inputs, e)
     }

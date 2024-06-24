@@ -1,5 +1,5 @@
-use crate::{Dim, Dims, Error, Shape, Tensor};
-use std::{any::Any, fmt::Debug};
+use crate::{Dim, Dims, OpError, Shape, Tensor};
+use std::{any::Any, borrow::Cow, fmt::Debug};
 
 mod err;
 pub use err::*;
@@ -439,6 +439,7 @@ impl ToPair<usize> for (usize, usize) {
 }
 
 pub trait Op: Debug {
+    fn name(&self) -> Cow<'static, str>;
     fn clone_boxed(&self) -> Box<dyn Op>;
     fn dot_label(&self) -> String {
         format!("{:?}", self)
@@ -446,7 +447,7 @@ pub trait Op: Debug {
     fn as_any(&self) -> &dyn Any;
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor;
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor>;
-    fn err(&self) -> Option<&Error> {
+    fn err(&self) -> Option<&OpError> {
         None
     }
 }

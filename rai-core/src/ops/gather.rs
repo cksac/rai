@@ -1,6 +1,5 @@
 use crate::{Dim, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Gather {
@@ -18,6 +17,10 @@ impl Gather {
 }
 
 impl Op for Gather {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Gather")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -30,14 +33,12 @@ impl Op for Gather {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         let index = &primals[1];
         tangent_x.gather(self.dim, index)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let index = &primals[1];

@@ -1,6 +1,5 @@
 use crate::{Dims, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Permute {
@@ -17,6 +16,10 @@ impl Permute {
 }
 
 impl Op for Permute {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("Permute")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -29,13 +32,11 @@ impl Op for Permute {
         format!("Permute({:?})", self.dims)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         tangent_x.permute(self.dims())
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let dims = self.dims();
         let mut inv_dims = vec![0; dims.len()];

@@ -1,6 +1,5 @@
 use crate::{dim::Before, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpsampleNearest1d {
@@ -14,6 +13,10 @@ impl UpsampleNearest1d {
 }
 
 impl Op for UpsampleNearest1d {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("UpsampleNearest1d")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -26,12 +29,10 @@ impl Op for UpsampleNearest1d {
         format!("UpsampleNearest1d({})", self.size)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, _primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         todo!("jvp for UpsampleNearest1d")
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
         let [_n, c, size] = x.sizes(Before::<3>);

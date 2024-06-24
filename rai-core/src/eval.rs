@@ -38,8 +38,8 @@ pub fn eval<T: EvalArgs>(args: T) -> Result<()> {
             let op = op.as_ref();
             let inputs = &*t.inputs();
             let rule = eval_rule(device, op).ok_or_else(|| Error::Unimplemented {
-                op: op.clone_boxed(),
-                device: device.clone_boxed(),
+                op: op.name(),
+                device: device.name(),
             })?;
             rule.eval(device, op, inputs, &t);
         }

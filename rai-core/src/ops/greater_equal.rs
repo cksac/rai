@@ -1,11 +1,14 @@
 use crate::{broadcast_binary_op, Op, Shape, Tensor, U8};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GreaterEqual;
 
 impl Op for GreaterEqual {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("GreaterEqual")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(*self)
     }
@@ -14,12 +17,10 @@ impl Op for GreaterEqual {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.zeros_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         let lhs = &primals[0];
         let rhs = &primals[1];

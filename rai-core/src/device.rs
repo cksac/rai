@@ -1,7 +1,8 @@
 use crate::{ops::ToDevice, utils::cuda_enabled, Op, Tensor};
-use std::{any::Any, fmt::Debug};
+use std::{any::Any, borrow::Cow, fmt::Debug};
 
 pub trait Device: Debug {
+    fn name(&self) -> Cow<'static, str>;
     fn as_any(&self) -> &dyn Any;
     fn clone_boxed(&self) -> Box<dyn Device>;
     fn eq(&self, rhs: &dyn Device) -> bool;
@@ -12,6 +13,10 @@ impl<'a, T> Device for &'a T
 where
     T: Device,
 {
+    fn name(&self) -> Cow<'static, str> {
+        T::name(*self)
+    }
+
     fn as_any(&self) -> &dyn Any {
         Device::as_any(*self)
     }
@@ -30,6 +35,10 @@ where
 }
 
 impl<'a> Device for &'a dyn Device {
+    fn name(&self) -> Cow<'static, str> {
+        Device::name(*self)
+    }
+
     fn as_any(&self) -> &dyn Any {
         Device::as_any(*self)
     }
@@ -48,6 +57,10 @@ impl<'a> Device for &'a dyn Device {
 }
 
 impl Device for Box<dyn Device> {
+    fn name(&self) -> Cow<'static, str> {
+        self.as_ref().name()
+    }
+
     fn as_any(&self) -> &dyn Any {
         self.as_ref().as_any()
     }
@@ -122,6 +135,10 @@ impl<'a> AsDevice for &'a Tensor {
 pub struct Cpu;
 
 impl Device for Cpu {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("cpu")
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -155,6 +172,10 @@ impl Cuda {
 }
 
 impl Device for Cuda {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("cuda")
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -196,6 +217,10 @@ impl Metal {
 }
 
 impl Device for Metal {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("metal")
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

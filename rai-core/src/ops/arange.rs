@@ -1,8 +1,8 @@
 use crate::{AsDevice, ElemType, Op, Tensor, Type, F16, F32, F64, U32, U8};
 use half::f16;
 use std::any::Any;
+use std::borrow::Cow;
 use std::fmt::Debug;
-use tracing::Level;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Arange<D: Type> {
@@ -18,6 +18,10 @@ impl<D: Type> Arange<D> {
 }
 
 impl<D: Type> Op for Arange<D> {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("Arange<{}>", D::NAME))
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -30,13 +34,11 @@ impl<D: Type> Op for Arange<D> {
         self
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn jvp(&self, output: &Tensor, _primals: &[Tensor], _tangents: &[Tensor]) -> Tensor {
         output.ones_like()
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     #[inline]
     fn vjp(&self, _output: &Tensor, _primals: &[Tensor], _cotangent: &Tensor) -> Vec<Tensor> {
         vec![]
@@ -88,12 +90,12 @@ impl<D: Type> ArangeArgs<D> {
 
 /// Creates a 1-D `Tensor` with values from a range.
 ///
-/// # Arguments
+/// Arguments
 ///
 /// * `args` - The arguments for the `arange` function.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// # Returns
+/// Returns
 ///
 /// A 1-D `Tensor` with values from the specified range.
 #[track_caller]

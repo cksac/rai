@@ -1,6 +1,5 @@
 use crate::{Dim, Op, Shape, Tensor};
-use std::any::Any;
-use tracing::Level;
+use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScatterAdd {
@@ -18,6 +17,10 @@ impl ScatterAdd {
 }
 
 impl Op for ScatterAdd {
+    fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("ScatterAdd")
+    }
+
     fn clone_boxed(&self) -> Box<dyn Op> {
         Box::new(self.clone())
     }
@@ -30,7 +33,6 @@ impl Op for ScatterAdd {
         format!("ScatterAdd({})", self.dim)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn jvp(&self, _output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let tangent_x = &tangents[0];
         let tangent_source = &tangents[1];
@@ -38,7 +40,6 @@ impl Op for ScatterAdd {
         tangent_x.scatter_add(self.dim, index, tangent_source)
     }
 
-    #[tracing::instrument(ret(level = Level::TRACE))]
     fn vjp(&self, _output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let index = &primals[2];
         let cotangent_x = cotangent.clone();
