@@ -51,13 +51,13 @@ where
 
 /// Creates a `Tensor` from an array of values.
 ///
-/// Arguments
+/// # Arguments
 ///
 /// * `data` - The array of values.
 /// * `shape` - The shape of the `Tensor`.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// Returns
+/// # Returns
 ///
 /// A `Tensor` created from the array of values.
 #[track_caller]

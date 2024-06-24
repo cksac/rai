@@ -43,13 +43,13 @@ impl<D: Type> Op for Random<D> {
 
 /// Creates a `Tensor` filled with random values from a uniform distribution on the interval [0, 1).
 ///
-/// Arguments
+/// # Arguments
 ///
 /// * `shape` - The shape of the `Tensor`.
 /// * `dtype` - The data type of the `Tensor`.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// Returns
+/// # Returns
 ///
 /// A `Tensor` filled with random values from a uniform distribution.
 #[track_caller]

@@ -43,13 +43,13 @@ impl<D: Type> Op for Normal<D> {
 
 /// Creates a `Tensor` filled with random values from a normal distribution with mean 0 and variance 1.
 ///
-/// Arguments
+/// # Arguments
 ///
 /// * `shape` - The shape of the `Tensor`.
 /// * `dtype` - The data type of the `Tensor`.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// Returns
+/// # Returns
 ///
 /// A `Tensor` filled with random values from a normal distribution.
 #[track_caller]

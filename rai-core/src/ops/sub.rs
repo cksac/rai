@@ -33,12 +33,12 @@ impl Op for Sub {
 broadcast_binary_op!(
     /// Subtracts two `Tensor` objects.
     ///
-    /// Arguments
+    /// # Arguments
     ///
     /// * `lhs` - The first `Tensor`.
     /// * `rhs` - The second `Tensor`.
     ///
-    /// Returns
+    /// # Returns
     ///
     /// The resulting `Tensor` after the subtraction.
     Sub,

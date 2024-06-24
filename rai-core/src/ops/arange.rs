@@ -90,12 +90,12 @@ impl<D: Type> ArangeArgs<D> {
 
 /// Creates a 1-D `Tensor` with values from a range.
 ///
-/// Arguments
+/// # Arguments
 ///
 /// * `args` - The arguments for the `arange` function.
 /// * `device` - The device to place the `Tensor` on.
 ///
-/// Returns
+/// # Returns
 ///
 /// A 1-D `Tensor` with values from the specified range.
 #[track_caller]

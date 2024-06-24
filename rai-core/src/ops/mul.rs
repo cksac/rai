@@ -37,12 +37,12 @@ impl Op for Mul {
 broadcast_binary_op!(
     /// Multiplies two `Tensor` objects.
     ///
-    /// Arguments
+    /// # Arguments
     ///
     /// * `lhs` - The first `Tensor`.
     /// * `rhs` - The second `Tensor`.
     ///
-    /// Returns
+    /// # Returns
     ///
     /// The resulting `Tensor` after the multiplication.
     Mul,

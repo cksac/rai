@@ -35,12 +35,12 @@ impl Op for Div {
 broadcast_binary_op!(
     /// Divides two `Tensor` objects.
     ///
-    /// Arguments
+    /// # Arguments
     ///
     /// * `lhs` - The first `Tensor`.
     /// * `rhs` - The second `Tensor`.
     ///
-    /// Returns
+    /// # Returns
     ///
     /// The resulting `Tensor` after the division.
     Div,
