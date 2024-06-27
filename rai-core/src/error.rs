@@ -12,6 +12,33 @@ pub enum Error {
         op: Cow<'static, str>,
         device: Cow<'static, str>,
     },
+
+    #[error("param not found: {0}")]
+    ParamNotFound(String),
+
+    #[error("no data")]
+    NoData,
+
+    #[error("downcast error from: {from}, to: {to}")]
+    Downcast {
+        from: &'static str,
+        to: &'static str,
+    },
+
+    #[error("missing weight map")]
+    MissingWeightMap,
+
+    #[error("invalid weight map: {0}")]
+    InvalidWeightMap(String),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    HfHub(#[from] hf_hub::api::sync::ApiError),
 }
 
 #[derive(thiserror::Error, Debug, Clone)]

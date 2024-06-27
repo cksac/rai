@@ -2,12 +2,12 @@ use crate::{
     eval,
     nn::{ApplyModule, Module},
     utils::{self, dot_graph},
-    AsDType, AsDevice, DType, Device, GradMap, Op, Result, Shape, Type,
+    AsDType, AsDevice, DType, Device, Error, GradMap, Op, Result, Shape, Type,
 };
 #[cfg(feature = "debug-location")]
 use std::panic::Location;
 use std::{
-    any::Any,
+    any::{type_name, type_name_of_val, Any},
     borrow::Cow,
     cell::{Ref, RefCell},
     fmt::{Debug, Display},
@@ -180,31 +180,34 @@ impl Tensor {
 
     #[allow(unused_variables)]
     pub fn as_scalar<T: Type>(&self, dtype: T) -> Result<T::Repr> {
-        // TODO: force explict eval?
         if !self.is_evaluated() {
             eval(self)?;
         }
         let data = self.0.data.borrow();
-
-        // TODO: return error instead of unwrap?
-        let data = data.as_deref().unwrap();
-        Ok(*data.as_scalar().downcast_ref::<T::Repr>().unwrap())
+        let data = data.as_deref().ok_or(Error::NoData)?;
+        data.as_scalar()
+            .downcast_ref::<T::Repr>()
+            .cloned()
+            .ok_or(Error::Downcast {
+                from: type_name_of_val(data),
+                to: type_name::<T::Repr>(),
+            })
     }
 
     #[allow(unused_variables)]
     pub fn as_vec<T: Type>(&self, dtype: T) -> Result<Vec<T::Repr>> {
-        // TODO: use explict eval?
         if !self.is_evaluated() {
             eval(self)?;
         }
         let data = self.0.data.borrow();
-        // TODO: return error instead of unwrap?
-        let data = data.as_deref().unwrap();
-        Ok(data
-            .as_vec()
+        let data = data.as_deref().ok_or(Error::NoData)?;
+        data.as_vec()
             .downcast_ref::<Vec<T::Repr>>()
-            .unwrap()
-            .clone())
+            .cloned()
+            .ok_or(Error::Downcast {
+                from: type_name_of_val(data),
+                to: type_name::<Vec<T::Repr>>(),
+            })
     }
 
     #[inline]

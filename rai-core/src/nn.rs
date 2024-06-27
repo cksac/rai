@@ -1,5 +1,5 @@
 use crate::{
-    ty_kind, AsDevice, GenericValue, GradMap, ParamMap, Result, Tensor, TensorMap, ValueSpec,
+    ty_kind, AsDevice, Error, GenericValue, GradMap, ParamMap, Result, Tensor, TensorMap, ValueSpec,
 };
 use std::{borrow::Cow, path::Path};
 
@@ -186,8 +186,7 @@ impl WithParams for Tensor {
             let t = t.to_dtype(self).to_device(self);
             self.replace_data(t)
         } else {
-            // TODO: return error if tensor not found?
-            panic!("parameter {} not found in params {:?}", name, params.keys());
+            Err(Error::ParamNotFound(name.into()))
         }
     }
 }

@@ -18,7 +18,7 @@ fn load_model(dtype: impl Type, device: impl AsDevice) -> Result<(Tokenizer, Mod
     let config_filename = repo.get("config.json").unwrap();
     let config = std::fs::read_to_string(config_filename).unwrap();
     let cfg: Config = serde_json::from_str(&config).unwrap();
-    let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json");
+    let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json")?;
     let model = Model::new(&cfg, dtype, device);
     model.update_by_safetensors(&model_filenames, device)?;
     let elapsed = start.elapsed();

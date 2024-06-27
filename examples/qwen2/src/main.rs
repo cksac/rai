@@ -19,7 +19,7 @@ fn load_model(dtype: impl Type, device: impl AsDevice) -> Result<(Tokenizer, Mod
     let config = std::fs::read_to_string(config_filename).unwrap();
     let cfg: Config = serde_json::from_str(&config).unwrap();
     // >4B
-    //let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json");
+    //let model_filenames = ext::hf::load_safetensors(&repo, "model.safetensors.index.json")?;
     // 0.5B / 1.8B
     let model_filenames = vec![repo.get("model.safetensors").unwrap()];
     let model = Model::new(&cfg, dtype, device);
