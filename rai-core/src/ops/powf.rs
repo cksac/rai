@@ -1,22 +1,34 @@
-use crate::{Op, Shape, Tensor};
+use crate::{FloatElemType, Op, Shape, Tensor, Type};
 use std::{any::Any, borrow::Cow};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PowerFloat {
-    pub exponent: f64,
+pub struct Powf<D>
+where
+    D: Type,
+    D::Repr: FloatElemType,
+{
+    pub exponent: D::Repr,
 }
 
-impl PowerFloat {
-    pub fn new(exponent: f64) -> Self {
+impl<D> Powf<D>
+where
+    D: Type,
+    D::Repr: FloatElemType,
+{
+    pub fn new(exponent: D::Repr) -> Self {
         Self { exponent }
     }
 
-    pub fn exponent(&self) -> f64 {
+    pub fn exponent(&self) -> D::Repr {
         self.exponent
     }
 }
 
-impl Op for PowerFloat {
+impl<D> Op for Powf<D>
+where
+    D: Type,
+    D::Repr: FloatElemType,
+{
     fn name(&self) -> Cow<'static, str> {
         Cow::Borrowed("PowerFloat")
     }
@@ -36,29 +48,35 @@ impl Op for PowerFloat {
     fn jvp(&self, output: &Tensor, primals: &[Tensor], tangents: &[Tensor]) -> Tensor {
         let x = &primals[0];
         let tangent_x = &tangents[0];
-        tangent_x * x.powf(self.exponent - 1.0) * self.exponent
+        tangent_x * x.powf(self.exponent - D::one()) * self.exponent
     }
 
     fn vjp(&self, output: &Tensor, primals: &[Tensor], cotangent: &Tensor) -> Vec<Tensor> {
         let x = &primals[0];
-        let cotangent_x = cotangent * x.powf(self.exponent - 1.0) * self.exponent;
+        let cotangent_x = cotangent * x.powf(self.exponent - D::one()) * self.exponent;
         vec![cotangent_x]
     }
 }
 
 #[track_caller]
-pub fn powf(x: &Tensor, exponent: f64) -> Tensor {
+pub fn powf<T: FloatElemType>(x: &Tensor, exponent: T) -> Tensor {
     let device = x.device();
     let dtype = x.dtype(); // todo: promote to f64?
     let shape = x.shape().to_vec();
     let inputs = vec![x.clone()];
-    Tensor::new(device, dtype, shape, PowerFloat::new(exponent), inputs)
+    Tensor::new(
+        device,
+        dtype,
+        shape,
+        Powf::<T::DType>::new(exponent),
+        inputs,
+    )
 }
 
 impl Tensor {
     #[inline]
     #[track_caller]
-    pub fn powf(&self, exponent: f64) -> Tensor {
+    pub fn powf<T: FloatElemType>(&self, exponent: T) -> Tensor {
         powf(self, exponent)
     }
 }

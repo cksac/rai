@@ -147,8 +147,22 @@ impl<T, M> ApplyModule<M> for T where M: Module<Input = T> {}
 pub trait WithParams {
     fn gather_by_id(&self, params: &mut TensorMap);
     fn update_by_id(&self, params: &mut TensorMap) -> Result<()>;
+    fn update_by_id_if_exist(&self, params: &mut TensorMap) -> Result<()> {
+        match self.update_by_id(params) {
+            Ok(()) => Ok(()),
+            Err(Error::TensorNotFound(_)) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str);
     fn update_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) -> Result<()>;
+    fn update_by_name_if_exist(&self, params: &mut TensorMap) -> Result<()> {
+        match self.update_by_id(params) {
+            Ok(()) => Ok(()),
+            Err(Error::ParamNotFound(_)) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl WithParams for Tensor {
@@ -160,10 +174,10 @@ impl WithParams for Tensor {
         if let Some(t) = params.remove(self.id()) {
             // todo: check if can promote type
             let t = t.to_dtype(self).to_device(self);
-            return self.replace_data(t);
+            self.replace_data(t)
+        } else {
+            Err(Error::TensorNotFound(self.id()))
         }
-        // TODO: return error if tensor not found?
-        Ok(())
     }
 
     fn gather_by_name(&self, params: &mut ParamMap, prefix: &str, name: &str) {

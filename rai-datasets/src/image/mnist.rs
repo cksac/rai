@@ -43,7 +43,7 @@ fn load_parquet(
 pub fn load(device: impl AsDevice) -> Result<Dataset> {
     let device = device.device();
     let api = Api::new().map_err(Error::wrap)?;
-    let dataset_id = "mnist".to_string();
+    let dataset_id = "ylecun/mnist".to_string();
     let repo = Repo::with_revision(
         dataset_id,
         RepoType::Dataset,

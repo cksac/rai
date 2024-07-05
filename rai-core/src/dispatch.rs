@@ -92,7 +92,10 @@ macro_rules! register_backend {
         _register::<$backend, $device, ops::Tanh>($backend, &mut $rules);
         _register::<$backend, $device, ops::Negative>($backend, &mut $rules);
         _register::<$backend, $device, ops::Square>($backend, &mut $rules);
-        _register::<$backend, $device, ops::PowerFloat>($backend, &mut $rules);
+        _register::<$backend, $device, ops::Powf<BF16>>($backend, &mut $rules);
+        _register::<$backend, $device, ops::Powf<F16>>($backend, &mut $rules);
+        _register::<$backend, $device, ops::Powf<F32>>($backend, &mut $rules);
+        _register::<$backend, $device, ops::Powf<F64>>($backend, &mut $rules);
         _register::<$backend, $device, ops::Sqrt>($backend, &mut $rules);
         _register::<$backend, $device, ops::Rsqrt>($backend, &mut $rules);
         _register::<$backend, $device, ops::Sign>($backend, &mut $rules);

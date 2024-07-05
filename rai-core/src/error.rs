@@ -16,6 +16,9 @@ pub enum Error {
     #[error("param not found: {0}")]
     ParamNotFound(String),
 
+    #[error("tensor not found: {0}")]
+    TensorNotFound(usize),
+
     #[error("no data")]
     NoData,
 

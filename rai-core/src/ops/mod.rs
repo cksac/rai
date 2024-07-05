@@ -109,8 +109,8 @@ pub use erf::*;
 mod tanh;
 pub use tanh::*;
 
-mod power_float;
-pub use power_float::*;
+mod powf;
+pub use powf::*;
 
 mod broadcast;
 pub use broadcast::*;

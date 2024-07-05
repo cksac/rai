@@ -21,7 +21,14 @@ pub trait ElemType: Clone + Copy + Debug + PartialEq + 'static {
     }
 }
 
-pub trait FloatElemType: ElemType + Add + Sub + Div + Mul {
+pub trait FloatElemType:
+    ElemType
+    + Add<Self, Output = Self>
+    + Sub<Self, Output = Self>
+    + Div<Self, Output = Self>
+    + Mul<Self, Output = Self>
+{
+    fn to_f64(&self) -> f64;
     fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self>;
 }
 
@@ -273,6 +280,10 @@ impl ElemType for f16 {
 }
 
 impl FloatElemType for f16 {
+    fn to_f64(&self) -> f64 {
+        f16::to_f64(*self)
+    }
+
     fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
         match steps {
             0 => vec![],
@@ -327,6 +338,10 @@ impl ElemType for bf16 {
 }
 
 impl FloatElemType for bf16 {
+    fn to_f64(&self) -> f64 {
+        bf16::to_f64(*self)
+    }
+
     fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
         match steps {
             0 => vec![],
@@ -381,6 +396,10 @@ impl ElemType for f32 {
 }
 
 impl FloatElemType for f32 {
+    fn to_f64(&self) -> f64 {
+        *self as f64
+    }
+
     fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
         match steps {
             0 => vec![],
@@ -435,6 +454,10 @@ impl ElemType for f64 {
 }
 
 impl FloatElemType for f64 {
+    fn to_f64(&self) -> f64 {
+        *self
+    }
+
     fn linspace(start: Self, end: Self, steps: usize) -> Vec<Self> {
         match steps {
             0 => vec![],

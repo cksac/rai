@@ -13,9 +13,9 @@ rai-datasets = { workspace = true }
 rand = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
-candle-core = { version = "0.4.1" }
-candle-nn = { version = "0.4.1" }
-candle-datasets = { version = "0.4.1" }
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+candle-datasets = { workspace = true }
 
 
 [features]

@@ -1,6 +1,6 @@
 use crate::{
-    device::Metal, ops, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, Tensor, Type,
-    BF16, F16, F32, F64, I64, U32, U8,
+    device::Metal, ops, tensor::TensorLike, Backend, Cpu, Cuda, DType, Device, Eval, FloatElemType,
+    Tensor, Type, BF16, F16, F32, F64, I64, U32, U8,
 };
 use half::{bf16, f16};
 use once_cell::sync::Lazy;
@@ -964,12 +964,15 @@ impl<D: Device> Eval<D, ops::Tanh> for CandleBackend {
     }
 }
 
-impl<D: Device> Eval<D, ops::PowerFloat> for CandleBackend {
-    fn eval(&self, _: &D, op: &ops::PowerFloat, inputs: &[Tensor], output: &Tensor) {
+impl<D: Device, T: Type> Eval<D, ops::Powf<T>> for CandleBackend
+where
+    T::Repr: FloatElemType,
+{
+    fn eval(&self, _: &D, op: &ops::Powf<T>, inputs: &[Tensor], output: &Tensor) {
         let x = &inputs[0];
         let t = x.get_data::<Data>().unwrap();
         let t = t.deref();
-        let t = t.powf(op.exponent).unwrap();
+        let t = t.powf(op.exponent.to_f64()).unwrap();
         output.set_data(t)
     }
 }
