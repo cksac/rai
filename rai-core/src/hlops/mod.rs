@@ -22,6 +22,9 @@ pub use flatten::*;
 mod squeeze;
 pub use squeeze::*;
 
+mod stack;
+pub use stack::*;
+
 mod tril;
 pub use tril::*;
 

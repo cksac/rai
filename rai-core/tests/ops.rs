@@ -1,4 +1,4 @@
-use rai_core::{utils::dot_graph, value_and_grad, Cpu, Tensor, F32};
+use rai_core::{eval, jacrev, utils::dot_graph, value_and_grad, Cpu, Shape, Tensor, F32};
 
 #[test]
 fn test_dot_graph() {
@@ -263,4 +263,17 @@ fn test_sign() {
     let out = func(x);
     println!("{}", x);
     println!("{}", out);
+}
+
+#[test]
+fn test_jacrev() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sin();
+    let jac_fn = jacrev(func);
+    let x = &Tensor::from_array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 2, 2], device);
+    let out = jac_fn(x);
+    eval((&x, &out)).unwrap();
+    println!("{}", x);
+    println!("{}", out);
+    println!("{:?}", out.shape());
 }

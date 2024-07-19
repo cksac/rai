@@ -295,8 +295,8 @@ impl Debug for Tensor {
 #[cfg(not(feature = "debug-location"))]
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let data = self.0.data.borrow();
-        f.debug_struct("Tensor")
+        let mut b = &mut f.debug_struct("Tensor");
+        b = b
             .field("id", &self.id())
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
@@ -305,17 +305,20 @@ impl Display for Tensor {
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
-            )
-            .field("data", &data.as_deref())
-            .finish()
+            );
+        let data = self.0.data.borrow();
+        if let Some(data) = data.as_deref() {
+            b = b.field("data", &format_args!("{}", data));
+        };
+        b.finish()
     }
 }
 
 #[cfg(feature = "debug-location")]
 impl Display for Tensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let data = self.0.data.borrow();
-        f.debug_struct("Tensor")
+        let mut b = &mut f.debug_struct("Tensor");
+        b = b
             .field("id", &self.id())
             .field("shape", &self.shape().shape())
             .field("dtype", &self.dtype())
@@ -324,9 +327,12 @@ impl Display for Tensor {
             .field(
                 "inputs",
                 &self.inputs().iter().map(|v| v.id()).collect::<Vec<_>>(),
-            )
-            .field("data", &data.as_deref())
-            .field("location", &format_args!("{}", &self.0.location))
+            );
+        let data = self.0.data.borrow();
+        if let Some(data) = data.as_deref() {
+            b = b.field("data", &format_args!("{}", data));
+        };
+        b.field("location", &format_args!("{}", &self.0.location))
             .finish()
     }
 }

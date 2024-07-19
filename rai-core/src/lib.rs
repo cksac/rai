@@ -40,7 +40,9 @@ mod backend;
 pub use backend::{Backend, CandleBackend, Eval};
 
 mod transforms;
-pub use transforms::{grad, jvp, linearize, optimize, raiexpr, value_and_grad, vjp};
+pub use transforms::{
+    grad, jacfwd, jacrev, jvp, linearize, optimize, raiexpr, value_and_grad, vjp,
+};
 
 pub mod dispatch;
 

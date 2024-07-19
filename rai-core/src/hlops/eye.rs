@@ -1,6 +1,4 @@
-use crate::Tensor;
-
-use crate::{AsDType, AsDevice};
+use crate::{AsDType, AsDevice, Tensor};
 
 pub fn eye(n: usize, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
     let device = device.device();
