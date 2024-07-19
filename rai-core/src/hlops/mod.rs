@@ -4,6 +4,9 @@ pub use activations::*;
 mod dropout;
 pub use dropout::*;
 
+mod eye;
+pub use eye::*;
+
 mod clamp;
 pub use clamp::*;
 
@@ -18,6 +21,12 @@ pub use flatten::*;
 
 mod squeeze;
 pub use squeeze::*;
+
+mod tril;
+pub use tril::*;
+
+mod triu;
+pub use triu::*;
 
 mod unsqueeze;
 pub use unsqueeze::*;
