@@ -1,10 +1,4 @@
-use crate::{device, dtype, eval, vjp, AsDType, AsDevice, Func, Shape, Tensor, Value};
-
-fn basis(size: usize, index: usize, dtype: impl AsDType, device: impl AsDevice) -> Tensor {
-    let mut data = vec![0u32; size];
-    data[index] = 1;
-    Tensor::from_array(data, [size], device).to_dtype(dtype)
-}
+use crate::{vjp, Func, Shape, Tensor, Value};
 
 pub fn jacrev<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> Tensor + Clone + 'a
 where
@@ -12,6 +6,7 @@ where
     IN: Value<Tensors = Tensor, Gradient = Tensor>,
     OUT: Value<Tensors = Tensor, Gradient = Tensor>,
 {
+    // TODO: use vmap later
     let jac_fn = move |input: IN| {
         let in_tensor = input.tensors();
         let func = func.clone();
@@ -24,7 +19,7 @@ where
             .chunk(l, 0)
             .into_iter()
             .map(|vin| {
-                let i = vin.reshape(y.shape());
+                let i = vin.reshape(&y);
                 pullback(i).flatten(..)
             })
             .collect::<Vec<_>>();
