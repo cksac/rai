@@ -1,6 +1,6 @@
-use crate::{vjp, Func, Shape, Tensor, Value};
+use crate::{linearize, Func, Shape, Tensor, Value};
 
-pub fn jacrev<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> Tensor + Clone + 'a
+pub fn jacfwd<'a, K, IN, OUT, F>(func: F) -> impl Fn(IN) -> Tensor + Clone + 'a
 where
     F: Func<K, IN, OUT> + Clone + 'a,
     IN: Value<Tensors = Tensor, Gradient = Tensor>,
@@ -10,17 +10,17 @@ where
     let jac_fn = move |input: IN| {
         let in_tensor = input.tensors();
         let func = func.clone();
-        let (out, pullback) = vjp(func, input);
+        let (out, pushforward) = linearize(func, input);
         let out_tensor = out.tensors();
-        let out_tensor_flat = out_tensor.flatten(..);
-        let l = out_tensor_flat.shape().size(0);
-        let out_eye = Tensor::eye(l, out_tensor.dtype(), out_tensor.device());
-        let jv = out_eye
+        let in_tensor_flat = in_tensor.flatten(..);
+        let l = in_tensor_flat.shape().size(0);
+        let in_eye = Tensor::eye(l, in_tensor_flat.dtype(), in_tensor_flat.device());
+        let jv = in_eye
             .chunk(l, 0)
             .into_iter()
             .map(|vin| {
-                let i = vin.reshape(&out_tensor);
-                pullback(i).flatten(..)
+                let i = vin.reshape(&in_tensor);
+                pushforward(i).flatten(..)
             })
             .collect::<Vec<_>>();
         Tensor::cat(jv.as_slice(), 0).reshape(in_tensor.shape().shape_expand_right(&out_tensor))

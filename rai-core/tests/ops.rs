@@ -1,4 +1,6 @@
-use rai_core::{eval, jacrev, utils::dot_graph, value_and_grad, Cpu, Shape, Tensor, F32};
+use rai_core::{
+    eval, hessian, jacfwd, jacrev, utils::dot_graph, value_and_grad, Cpu, Shape, Tensor, F32,
+};
 
 #[test]
 fn test_dot_graph() {
@@ -266,12 +268,38 @@ fn test_sign() {
 }
 
 #[test]
+fn test_jacfwd() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sin();
+    let jac_fn = jacfwd(func);
+    let x = &Tensor::from_array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 4], device);
+    let out = jac_fn(x);
+    eval((&x, &out)).unwrap();
+    println!("{}", x);
+    println!("{}", out);
+    println!("{:?}", out.shape());
+}
+
+#[test]
 fn test_jacrev() {
     let device = Cpu;
     let func = |x: &Tensor| x.sin();
     let jac_fn = jacrev(func);
-    let x = &Tensor::from_array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 2, 2], device);
+    let x = &Tensor::from_array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 4], device);
     let out = jac_fn(x);
+    eval((&x, &out)).unwrap();
+    println!("{}", x);
+    println!("{}", out);
+    println!("{:?}", out.shape());
+}
+
+#[test]
+fn test_hessian() {
+    let device = Cpu;
+    let func = |x: &Tensor| x.sin();
+    let hessian_fn = hessian(func);
+    let x = &Tensor::from_array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 4], device);
+    let out = hessian_fn(x);
     eval((&x, &out)).unwrap();
     println!("{}", x);
     println!("{}", out);

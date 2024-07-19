@@ -1,6 +1,12 @@
 mod grad;
 pub use grad::grad;
 
+mod hessian;
+pub use hessian::hessian;
+
+mod jacfwd;
+pub use jacfwd::jacfwd;
+
 mod jacrev;
 pub use jacrev::jacrev;
 
